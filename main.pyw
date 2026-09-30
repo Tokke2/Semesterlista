@@ -8,6 +8,18 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.3.0: TVÅSPRÅKIG (svenska/engelska) – väljs i
+                   Arkiv → Inställningar → Språk.
+                   Alla texter hämtas via core/i18n.py (core.i18n.t()).
+                   Menyer, tabbar, statusrad och systemfält byggs om
+                   direkt vid språkbyte (_retranslate_ui) – ingen omstart.
+                   NYTT: Riktig inställningsdialog (core/settings_dialog.py)
+                   med språk, tema, helgdagar (Sverige/USA), fönster,
+                   plugins och avancerat.
+                   NYTT: Plugins som inaktiverats i Inställningar laddas inte.
+                   FIXAT: _show_tab() lägger inte längre till dubbletter
+                   av en tabb som redan visas.
+                   APP_VERSION bumpat till 2.3.0.
 UPPDATERAD v2.2.0: Synkad med alla kärnmoduler och plugins v2.2.0.
                    APP_VERSION bumpat till 2.2.0.
                    Tillagt: Autostart-menyval i Arkiv-menyn.
@@ -91,6 +103,8 @@ from core.event_bus import EventBus
 from core.settings_manager import SettingsManager
 from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
+from core import i18n
+from core.settings_dialog import SettingsDialog
 from plugins.base_plugin import BasePlugin
 
 if TYPE_CHECKING:
@@ -115,7 +129,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.2.0"
+APP_VERSION: str = "2.3.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -240,6 +254,20 @@ class PluginManager:
                     f"Plugin {plugin_info['name']} ärver inte BasePlugin"
                 )
                 return False
+
+            # Hoppa över plugins som inaktiverats i Inställningar (v2.3.0)
+            plugin_meta = getattr(module, "PLUGIN_INFO", {}) or {}
+            settings_name = plugin_meta.get("name", plugin_info["name"])
+            try:
+                entry = self._settings_manager.get_plugin_info(settings_name)
+                if entry and entry.get("enabled") is False:
+                    logger.info(
+                        f"Pluginen '{settings_name}' är inaktiverad "
+                        f"i Inställningar – hoppar över"
+                    )
+                    return False
+            except Exception as e:  # pragma: no cover – defensivt
+                logger.warning(f"Kunde inte läsa plugin-status: {e}")
 
             plugin_instance = plugin_class(
                 self._event_bus,
@@ -367,6 +395,12 @@ class MainWindow(QMainWindow):
         # Autostart-action (referens för uppdatering)
         self._autostart_action: Optional[QAction] = None
 
+        # Menyer och systemfält (referenser för språkbyte, v2.3.0)
+        self._arkiv_menu:   Optional[QMenu] = None
+        self._visa_menu:    Optional[QMenu] = None
+        self._theme_actions: Dict[str, QAction] = {}
+        self._tray_manager: Optional[Any] = None
+
         # Bygg UI
         self._init_ui()
 
@@ -379,6 +413,9 @@ class MainWindow(QMainWindow):
         # Koppla events
         self._event_bus.on("plugin:loaded", self._on_plugin_loaded)
         self._event_bus.on("settings:changed", self._on_settings_changed)
+
+        # Språkbyte (v2.3.0) – bygg om alla texter utan omstart
+        i18n.get_translator().language_changed.connect(self._on_language_changed)
 
     # ──────────────────────────────────────────────────────
     # UI-uppbyggnad
@@ -427,19 +464,32 @@ class MainWindow(QMainWindow):
         # ── StatusBar ────────────────────────────────────
         self._statusbar   = QStatusBar()
         self.setStatusBar(self._statusbar)
-        self._status_label = QLabel("Redo")
+        self._status_label = QLabel(i18n.t("status.ready"))
         self._statusbar.addWidget(self._status_label)
 
         # ── Menyrad ──────────────────────────────────────
         self._init_menu_bar()
 
+    def _app_name(self) -> str:
+        """Applikationens namn (används i menytexter och dialoger)."""
+        return self._settings_manager.get("app_name", "Semesterlista")
+
+    def _tab_index(self, plugin_id: str) -> int:
+        """Index för en tabb i QTabWidget, eller -1 om den är dold."""
+        if self._tab_widget is None or plugin_id not in self._tab_widgets:
+            return -1
+        return self._tab_widget.indexOf(self._tab_widgets[plugin_id])
+
     def _init_menu_bar(self) -> None:
         """
-        Skapa menyraden.
+        Bygg menyraden på aktuellt språk.
+
+        Anropas vid start OCH vid språkbyte (_on_language_changed),
+        därför börjar metoden med att tömma menyraden.
 
         Arkiv:
-          Inställningar...
-          Autostart vid inloggning (checkable)  ← NY v2.2.0
+          Inställningar...            (språk, tema, helgdagar, plugins m.m.)
+          Autostart vid inloggning    (checkable)
           ─────────────────────────────────────
           Avsluta  Ctrl+Q
 
@@ -455,62 +505,62 @@ class MainWindow(QMainWindow):
           Om Semesterlista...
         """
         menubar = self.menuBar()
+        menubar.clear()
 
         # ══════════════════════════════════════════════════
         # ARKIV
         # ══════════════════════════════════════════════════
-        arkiv_menu = menubar.addMenu("&Arkiv")
+        self._arkiv_menu = menubar.addMenu(i18n.t("menu.file"))
 
-        # Inställningar
-        settings_action = QAction("&Inställningar...", self)
+        # Inställningar (v2.3.0: riktig dialog)
+        settings_action = QAction(i18n.t("menu.file.settings"), self)
         settings_action.triggered.connect(self._open_settings)
-        arkiv_menu.addAction(settings_action)
+        self._arkiv_menu.addAction(settings_action)
 
-        arkiv_menu.addSeparator()
+        self._arkiv_menu.addSeparator()
 
-        # Autostart (v2.2.0)
-        self._autostart_action = QAction(
-            "&Autostart vid inloggning", self
-        )
+        # Autostart
+        self._autostart_action = QAction(i18n.t("menu.file.autostart"), self)
         self._autostart_action.setCheckable(True)
-        self._autostart_action.setChecked(
-            self._lock.get_autostart()
-        )
+        self._autostart_action.setChecked(self._lock.get_autostart())
         self._autostart_action.setToolTip(
-            f"Starta Semesterlista automatiskt vid inloggning.\n"
-            f"{self._lock.get_autostart_info()}"
+            i18n.t("menu.file.autostart_tooltip", app=self._app_name())
+            + "\n"
+            + self._lock.get_autostart_info()
         )
         self._autostart_action.triggered.connect(self._on_autostart_toggle)
-        arkiv_menu.addAction(self._autostart_action)
+        self._arkiv_menu.addAction(self._autostart_action)
 
-        arkiv_menu.addSeparator()
+        self._arkiv_menu.addSeparator()
 
         # Avsluta
-        quit_action = QAction("&Avsluta", self)
+        quit_action = QAction(i18n.t("menu.file.quit"), self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self._quit_application)
-        arkiv_menu.addAction(quit_action)
+        self._arkiv_menu.addAction(quit_action)
 
         # ══════════════════════════════════════════════════
         # VISA (dynamisk)
         # ══════════════════════════════════════════════════
-        self._visa_menu = menubar.addMenu("&Visa")
+        self._visa_menu = menubar.addMenu(i18n.t("menu.view"))
+        self._rebuild_view_menu()
 
         # ══════════════════════════════════════════════════
         # UTSEENDE (3 teman)
         # ══════════════════════════════════════════════════
-        utseende_menu = menubar.addMenu("&Utseende")
+        utseende_menu = menubar.addMenu(i18n.t("menu.appearance"))
         theme_group   = QActionGroup(self)
         theme_group.setExclusive(True)
 
         current_theme = self._theme_manager.get_current_theme()
+        self._theme_actions = {}
 
-        for theme_id, theme_label in [
-            ("dark",   "&Mörkt tema"),
-            ("light",  "&Ljust tema"),
-            ("system", "&System-tema"),
-        ]:
-            action = QAction(theme_label, self)
+        for theme_id, theme_key in (
+            ("dark",   "theme.dark"),
+            ("light",  "theme.light"),
+            ("system", "theme.system"),
+        ):
+            action = QAction(i18n.t(theme_key), self)
             action.setCheckable(True)
             action.setChecked(theme_id == current_theme)
             action.setData(theme_id)
@@ -519,15 +569,91 @@ class MainWindow(QMainWindow):
             )
             theme_group.addAction(action)
             utseende_menu.addAction(action)
+            self._theme_actions[theme_id] = action
 
         # ══════════════════════════════════════════════════
         # HJÄLP
         # ══════════════════════════════════════════════════
-        hjalp_menu = menubar.addMenu("&Hjälp")
+        hjalp_menu = menubar.addMenu(i18n.t("menu.help"))
 
-        about_action = QAction("&Om Semesterlista...", self)
+        about_action = QAction(
+            i18n.t("menu.help.about", app=self._app_name()), self
+        )
         about_action.triggered.connect(self._show_about)
         hjalp_menu.addAction(about_action)
+
+    # ──────────────────────────────────────────────────────
+    # Visa-menyn (dynamisk – en post per tabb)
+    # ──────────────────────────────────────────────────────
+
+    def _rebuild_view_menu(self) -> None:
+        """Bygg om Visa-menyn med en post per registrerad tabb."""
+        if self._visa_menu is None:
+            return
+
+        self._visa_menu.clear()
+        self._tab_actions = {}
+
+        for plugin_id in self._plugin_manager.get_plugin_order():
+            plugin = self._plugin_manager.get_plugin(plugin_id)
+            if plugin is None or plugin_id not in self._tab_widgets:
+                continue
+
+            # escape_mnemonics: annars göms & i menyn (v2.3.0)
+            display_name = i18n.plugin_display_name_qt(plugin.get_name())
+            action = QAction(display_name, self)
+            action.setCheckable(True)
+            action.setChecked(self._tab_index(plugin_id) >= 0)
+            action.setData(plugin_id)
+            action.triggered.connect(
+                lambda checked, pid=plugin_id: self._toggle_tab(pid, checked)
+            )
+            self._visa_menu.addAction(action)
+            self._tab_actions[plugin_id] = action
+
+    # ──────────────────────────────────────────────────────
+    # Språkbyte (v2.3.0)
+    # ──────────────────────────────────────────────────────
+
+    @Slot(str)
+    def _on_language_changed(self, language: str = "") -> None:
+        """
+        Bygg om gränssnittets texter när språket ändras.
+
+        Uppdaterar menyrad, tabbrubriker, statusrad och systemfält samt
+        meddelar pluginarna via EventBus ("language:changed") så att
+        deras vyer kan uppdatera sina texter utan omstart.
+        """
+        self._retranslate_ui()
+        self._event_bus.emit("language:changed", {
+            "language": language or i18n.current_language(),
+        })
+
+    def _retranslate_ui(self) -> None:
+        """Uppdatera alla statiska texter i huvudfönstret."""
+        self._init_menu_bar()
+
+        if self._tab_widget is not None:
+            for plugin_id, widget in self._tab_widgets.items():
+                plugin = self._plugin_manager.get_plugin(plugin_id)
+                if plugin is None:
+                    continue
+                idx = self._tab_widget.indexOf(widget)
+                if idx >= 0:
+                    # escape_mnemonics: annars göms & i flikrubriken
+                    self._tab_widget.setTabText(
+                        idx,
+                        i18n.plugin_display_name_qt(plugin.get_name()),
+                    )
+
+        self.set_status(i18n.t("status.ready"))
+
+        if self._tray_manager is not None:
+            self._tray_manager.retranslate()
+
+    def attach_tray(self, tray: Any) -> None:
+        """Koppla systemfältet till huvudfönstret (för språkbyte)."""
+        self._tray_manager = tray
 
     # ──────────────────────────────────────────────────────
     # Autostart (v2.2.0)
@@ -550,18 +676,28 @@ class MainWindow(QMainWindow):
 
         if success:
             self._settings_manager.set("advanced.autostart", enabled)
-            status_text = "aktiverad" if enabled else "avaktiverad"
-            self.set_status(f"Autostart {status_text}")
+            status_text = i18n.t(
+                "autostart.status_on" if enabled else "autostart.status_off"
+            )
+            self.set_status(f"{i18n.t('autostart.title')}: {status_text}")
             logger.info(f"Autostart {status_text}")
         else:
             # Återställ checkmark vid fel
             self._autostart_action.setChecked(not enabled)
             QMessageBox.warning(
                 self,
-                "Autostart",
-                f"Kunde inte {'aktivera' if enabled else 'avaktivera'} "
-                f"autostart.\n\n"
-                f"Plats: {self._lock.get_autostart_info()}",
+                i18n.t("autostart.title"),
+                i18n.t(
+                    "autostart.error",
+                    action=i18n.t(
+                        "autostart.enable" if enabled else "autostart.disable"
+                    ),
+                )
+                + "\n\n"
+                + i18n.t(
+                    "autostart.location",
+                    path=self._lock.get_autostart_info(),
+                ),
             )
 
     # ──────────────────────────────────────────────────────
@@ -577,7 +713,11 @@ class MainWindow(QMainWindow):
             try:
                 widget = plugin.get_tab_widget()
                 if widget is not None:
-                    self._register_tab(widget, plugin.get_name(), name)
+                    self._register_tab(
+                        widget,
+                        i18n.plugin_display_name_qt(plugin.get_name()),
+                        name,
+                    )
             except Exception as e:
                 logger.error(f"Kunde inte skapa tabb för {name}: {e}")
 
@@ -602,18 +742,8 @@ class MainWindow(QMainWindow):
         self._tab_widgets[plugin_id]   = widget
         self._tab_positions[plugin_id] = idx
 
-        if self._visa_menu is not None:
-            action = QAction(tab_name, self)
-            action.setCheckable(True)
-            action.setChecked(True)
-            action.setData(plugin_id)
-            action.triggered.connect(
-                lambda checked, pid=plugin_id: self._toggle_tab(
-                    pid, checked
-                )
-            )
-            self._visa_menu.addAction(action)
-            self._tab_actions[plugin_id] = action
+        # Visa-menyn byggs om så att nya tabbar får en menyrad
+        self._rebuild_view_menu()
 
     def _toggle_tab(self, plugin_id: str, visible: bool) -> None:
         """Toggla visa/dölj för en tabb."""
@@ -623,13 +753,26 @@ class MainWindow(QMainWindow):
             self._hide_tab(plugin_id)
 
     def _show_tab(self, plugin_id: str) -> None:
-        """Visa en tidigare dold tabb."""
+        """
+        Visa en tidigare dold tabb.
+
+        Om tabben redan visas görs ingenting (v2.3.0: förhindrar
+        dubbletter av samma widget i QTabWidget).
+        """
         if plugin_id not in self._tab_widgets:
+            return
+
+        if self._tab_index(plugin_id) >= 0:
+            if plugin_id in self._tab_actions:
+                self._tab_actions[plugin_id].setChecked(True)
             return
 
         widget  = self._tab_widgets[plugin_id]
         plugin  = self._plugin_manager.get_plugin(plugin_id)
-        tab_name = plugin.get_name() if plugin else plugin_id
+        tab_name = (
+            i18n.plugin_display_name_qt(plugin.get_name())
+            if plugin else plugin_id
+        )
 
         idx = self._tab_widget.addTab(widget, tab_name)
         self._tab_positions[plugin_id] = idx
@@ -638,7 +781,7 @@ class MainWindow(QMainWindow):
             self._tab_actions[plugin_id].setChecked(True)
 
         self._event_bus.emit("tab:shown", {"name": plugin_id})
-        self.set_status(f"Visade: {tab_name}")
+        self.set_status(i18n.t("status.tab_shown", name=tab_name))
 
     def _hide_tab(self, plugin_id: str) -> None:
         """Dölj en tabb."""
@@ -658,10 +801,13 @@ class MainWindow(QMainWindow):
             self._tab_actions[plugin_id].setChecked(False)
 
         plugin   = self._plugin_manager.get_plugin(plugin_id)
-        tab_name = plugin.get_name() if plugin else plugin_id
+        tab_name = (
+            i18n.plugin_display_name(plugin.get_name())
+            if plugin else plugin_id
+        )
 
         self._event_bus.emit("tab:hidden", {"name": plugin_id})
-        self.set_status(f"Dolde: {tab_name}")
+        self.set_status(i18n.t("status.tab_hidden", name=tab_name))
 
     def _on_tab_context_menu(self, pos) -> None:
         """Högerklick på tabb → kontextmeny."""
@@ -685,25 +831,25 @@ class MainWindow(QMainWindow):
             return
 
         plugin   = self._plugin_manager.get_plugin(plugin_id)
-        tab_name = plugin.get_name() if plugin else "Okänd"
+        tab_name = (
+            i18n.plugin_display_name(plugin.get_name())
+            if plugin else i18n.t("menu.unknown_tab")
+        )
 
         menu            = QMenu(self)
-        hide_action     = menu.addAction(f'Dölj "{tab_name}"')
+        # escape_mnemonics krävs även i menytexten
+        hide_action     = menu.addAction(i18n.escape_mnemonics(
+            i18n.t("menu.view.hide_tab", name=tab_name)
+        ))
         menu.addSeparator()
-        show_all_action = menu.addAction("Visa alla dolda tabbar")
+        show_all_action = menu.addAction(i18n.t("menu.view.show_all"))
 
         action = menu.exec(tab_bar.mapToGlobal(pos))
 
         if action == hide_action:
             self._hide_tab(plugin_id)
         elif action == show_all_action:
-            for pid in list(self._tab_widgets.keys()):
-                if pid not in [
-                    self._tab_widgets.get(self._tab_widget.widget(i))
-                    for i in range(self._tab_widget.count())
-                ]:
-                    self._show_tab(pid)
-            # Visa alla (enkel variant)
+            # Visa alla dolda tabbar (_show_tab hoppar över de som redan syns)
             for pid in list(self._tab_widgets.keys()):
                 self._show_tab(pid)
 
@@ -712,7 +858,7 @@ class MainWindow(QMainWindow):
         if self._tab_widget is None or index < 0:
             return
         tab_name = self._tab_widget.tabText(index)
-        self.set_status(f"Aktiv: {tab_name}")
+        self.set_status(i18n.t("status.active_tab", name=tab_name))
 
     # ──────────────────────────────────────────────────────
     # Tema
@@ -722,7 +868,14 @@ class MainWindow(QMainWindow):
         """Hantera tema-byte från meny."""
         try:
             self._theme_manager.set_theme(theme)
-            self.set_status(f"Tema: {theme}")
+            theme_key = {
+                "dark":   "theme.dark.name",
+                "light":  "theme.light.name",
+                "system": "theme.system.name",
+            }.get(theme, "theme.system.name")
+            self.set_status(
+                i18n.t("status.theme", name=i18n.t(theme_key))
+            )
         except ValueError as e:
             logger.error(f"Ogiltigt tema: {e}")
 
@@ -841,40 +994,42 @@ class MainWindow(QMainWindow):
 
     def _open_settings(self) -> None:
         """
-        Öppna inställningsdialog.
+        Öppna inställningsdialogen (v2.3.0).
 
-        Visar data-sökväg och autostart-status.
+        Dialogen hanterar språk (svenska/engelska), tema,
+        helgdagsval (Sverige/USA), fönster/systemfält, plugins
+        och avancerade inställningar.
         """
-        autostart_status = self._lock.get_autostart_status_text()
-        autostart_info   = self._lock.get_autostart_info()
-
-        QMessageBox.information(
-            self,
-            "Inställningar",
-            f"<b>Inställningar sparas i:</b><br>"
-            f"{self._settings_manager.get_data_path()}<br><br>"
-            f"<b>Tema:</b> {self._theme_manager.get_current_theme()}<br><br>"
-            f"<b>Autostart:</b> {autostart_status}<br>"
-            f"<small>{autostart_info}</small><br><br>"
-            f"Använd <b>Arkiv → Autostart</b> för att ändra autostart.<br>"
-            f"Använd <b>Utseende</b>-menyn för att byta tema.",
+        dialog = SettingsDialog(
+            settings_manager=self._settings_manager,
+            theme_manager=self._theme_manager,
+            lock=self._lock,
+            plugin_manager=self._plugin_manager,
+            event_bus=self._event_bus,
+            parent=self,
         )
+        dialog.exec()
+
+        # Autostart kan ha ändrats i dialogen
+        if self._autostart_action is not None:
+            self._autostart_action.setChecked(self._lock.get_autostart())
 
     def _show_about(self) -> None:
         """
         Visa Om-dialog med dynamiskt copyright-år.
         """
-        app_name = self._settings_manager.get("app_name", "Semesterlista")
+        app_name = self._app_name()
         QMessageBox.about(
             self,
-            f"Om {app_name}",
-            f"<b>{app_name}</b> v{APP_VERSION}<br><br>"
-            f"Plugin-baserad desktopapplikation<br>"
-            f"för semesterlistor, limokörning &amp; hyresfakturering.<br><br>"
-            f"Byggd med Python "
-            f"{sys.version_info.major}.{sys.version_info.minor} "
-            f"och PySide6.<br><br>"
-            f"&copy; {COPYRIGHT_YEAR} Rickard Längkvist",
+            i18n.t("about.title", app=app_name),
+            i18n.t(
+                "about.body",
+                app=app_name,
+                version=APP_VERSION,
+                py_major=sys.version_info.major,
+                py_minor=sys.version_info.minor,
+                year=COPYRIGHT_YEAR,
+            ),
         )
 
     # ──────────────────────────────────────────────────────
@@ -912,6 +1067,10 @@ class MainWindow(QMainWindow):
         if key == "advanced.autostart" and self._autostart_action:
             value = data.get("value", False)
             self._autostart_action.setChecked(bool(value))
+        # Språk kan ha ändrats utanför dialogen (v2.3.0)
+        elif key == "language":
+            value = data.get("value", i18n.DEFAULT_LANGUAGE)
+            i18n.set_language(str(value))
 
 
 # ══════════════════════════════════════════════════════════
@@ -924,7 +1083,10 @@ class SystrayManager:
 
     Enkelklick (vänster) → visa/dölj fönster
     Högerklick           → meny (Visa, Dölj, Avsluta)
-    Tooltip              → f"Semesterlista v{APP_VERSION}"
+    Tooltip              → f"{app_name} v{APP_VERSION}"
+
+    v2.3.0: Alla texter hämtas via core/i18n.py och kan byggas om
+            direkt vid språkbyte (retranslate()).
     """
 
     def __init__(self, app: QApplication, main_window: MainWindow):
@@ -957,29 +1119,49 @@ class SystrayManager:
 
         icon = QIcon(pixmap)
 
+        self._app_name: str = main_window._app_name()
+
         # Skapa systemfältsikon
         self._tray_icon = QSystemTrayIcon(icon, app)
-        self._tray_icon.setToolTip(f"Semesterlista v{APP_VERSION}")
+        self._tray_icon.setToolTip(f"{self._app_name} v{APP_VERSION}")
 
         # Tray-meny
         self._tray_menu = QMenu()
 
-        show_action = self._tray_menu.addAction("Visa Semesterlista")
-        show_action.triggered.connect(self._main_window.show_application)
+        self._show_action = self._tray_menu.addAction(
+            i18n.t("tray.show", app=self._app_name)
+        )
+        self._show_action.triggered.connect(
+            self._main_window.show_application
+        )
 
-        hide_action = self._tray_menu.addAction("Dölj")
-        hide_action.triggered.connect(self._main_window.hide_application)
+        self._hide_action = self._tray_menu.addAction(i18n.t("tray.hide"))
+        self._hide_action.triggered.connect(
+            self._main_window.hide_application
+        )
 
         self._tray_menu.addSeparator()
 
-        quit_action = self._tray_menu.addAction("Avsluta")
-        quit_action.triggered.connect(
+        self._quit_action = self._tray_menu.addAction(i18n.t("tray.quit"))
+        self._quit_action.triggered.connect(
             self._main_window._quit_application
         )
 
         self._tray_icon.setContextMenu(self._tray_menu)
         self._tray_icon.activated.connect(self._on_tray_activated)
         self._tray_icon.show()
+
+    def retranslate(self) -> None:
+        """
+        Uppdatera systemfältets texter till aktuellt språk (v2.3.0).
+
+        Anropas av MainWindow._retranslate_ui() vid språkbyte.
+        """
+        self._app_name = self._main_window._app_name()
+        self._tray_icon.setToolTip(f"{self._app_name} v{APP_VERSION}")
+        self._show_action.setText(i18n.t("tray.show", app=self._app_name))
+        self._hide_action.setText(i18n.t("tray.hide"))
+        self._quit_action.setText(i18n.t("tray.quit"))
 
     def _on_tray_activated(self, reason) -> None:
         """
@@ -1021,6 +1203,7 @@ def main() -> None:
      2. Kolla single-instance-lock
      3. Skapa QApplication (inkl. hög DPI)
      4. Skapa SettingsManager
+     4b. Initiera i18n (språk från settings.json)   ← NY v2.3.0
      5. Skapa EventBus
      6. Skapa ThemeManager + applicera tema
      7. Skapa PluginManager + ladda plugins
@@ -1056,6 +1239,10 @@ def main() -> None:
 
     # 4. SettingsManager
     settings_manager = SettingsManager(str(PROJECT_ROOT))
+
+    # 4b. Språk (i18n) – läses från settings.json innan UI byggs (v2.3.0)
+    i18n.init(settings_manager)
+    logger.info(f"  Språk: {i18n.current_language()}")
 
     # 5. EventBus
     event_bus = EventBus()
@@ -1110,6 +1297,7 @@ def main() -> None:
 
     # 11. SystrayManager
     systray = SystrayManager(app, main_window)
+    main_window.attach_tray(systray)   # så att språkbytet når systemfältet
 
     # Synka autostart från sparad inställning
     saved_autostart = settings_manager.get("advanced.autostart", False)
@@ -1124,8 +1312,8 @@ def main() -> None:
 
     # Visa notifikation i systray
     systray.show_notification(
-        f"{app_name}",
-        f"v{APP_VERSION} – Körs i systemfältet",
+        app_name,
+        i18n.t("tray.started_message", version=APP_VERSION),
         duration_ms=settings_manager.get(
             "systray.notification_duration_ms", 3000
         ),
