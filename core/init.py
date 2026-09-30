@@ -9,11 +9,17 @@ Detta paket innehåller applikationens kärnmoduler:
 - AutostartManager: Autostart med OS (Windows/macOS/Linux)
 - SystrayManager: Systemfältshantering (ikon, meny, minimering)
 - ThemeManager: Temahantering (endast 3 teman: mörk/ljus/system)
+- i18n: Språkhantering (svenska/engelska) för hela appen + PDF:er
+- holidays: Helgdagar för Sverige och USA (väljs i Inställningar)
+- SettingsDialog: Inställningsdialog för huvudfönstret
 
 Användning:
     from core import EventBus, SettingsManager
     from core.event_bus import EventBus
     from core.settings_manager import SettingsManager
+    from core.i18n import Translator
+    from core.holidays import get_holidays
+    from core.settings_dialog import SettingsDialog
     from core.single_instance import SingleInstanceLock, AutostartManager
     from core.theme_manager import ThemeManager
 
@@ -46,6 +52,12 @@ __all__ = [
 
     # Teman
     "ThemeManager",
+
+    # Språk (i18n) – v2.3.0
+    "Translator",
+
+    # Inställningsdialog – v2.3.0
+    "SettingsDialog",
 ]
 
 # ──────────────────────────────────────────────────────────
@@ -90,6 +102,12 @@ def __getattr__(name: str):
 
         # Teman
         "ThemeManager":          "core.theme_manager",
+
+        # Språk (i18n) – v2.3.0
+        "Translator":            "core.i18n",
+
+        # Inställningsdialog – v2.3.0
+        "SettingsDialog":        "core.settings_dialog",
     }
 
     if name in _import_map:
@@ -104,6 +122,6 @@ def __getattr__(name: str):
 # Paket-metadata
 # ──────────────────────────────────────────────────────────
 
-__version__     = "2.2.0"
+__version__     = "2.3.0"
 __author__      = "Rickard Längkvist"
 __description__ = "Kärnmoduler för plugin-baserad desktopapplikation"
