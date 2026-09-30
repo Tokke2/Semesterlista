@@ -1,0 +1,26 @@
+{
+  "Hyresfakturering": {
+    "version": "2.2.0",
+    "enabled": true,
+    "settings": {
+      "year": 2026,
+      "last_file": "Hyresgäster.txt",
+      "last_used": "2026-06-05T10:07:36.623543"
+    },
+    "last_updated": "2026-06-05T10:07:36.623543"
+  },
+  "Semesterlista & Limokörning": {
+    "version": "2.2.0",
+    "enabled": true,
+    "settings": {
+      "default_mode": "Limokörning",
+      "auto_open_pdf": true,
+      "default_year": 2026,
+      "last_file": "E:/D/Program/Semesterlista/Fordon.txt",
+      "months_per_page": 2,
+      "start_month": 10,
+      "last_used": "2026-06-05T10:07:36.622580"
+    },
+    "last_updated": "2026-09-30T09:47:23.751538"
+  }
+}

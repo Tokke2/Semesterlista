@@ -1,0 +1,13 @@
+{
+  "app_name": "Semesterlista",
+  "version": "2.2.0",
+  "description": "Plugin-baserad desktopapplikation för semesterlistor och hyresfakturering",
+  "author": "Rickard Längkvist",
+  "copyright": "Rickard Längkvist 2025",
+  "python_min": "3.12",
+  "framework": "PySide6",
+  "data_path": "data",
+  "plugins_path": "plugins",
+  "log_path": "data/app.log",
+  "debug": false
+}

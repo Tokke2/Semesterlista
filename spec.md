@@ -1,0 +1,1737 @@
+# Semesterlista
+
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
+║  Version: 2.2.0                                                             ║
+║  Datum: 2026-06-05                                                          ║
+║  Python: 3.12+                                                              ║
+║  UI-ramverk: PySide6 (Qt for Python)                                        ║
+║  Copyright: Rickard Längkvist 2025 – dynamiskt år                          ║
+═══════════════════════════════════════════════════════════════════════════════
+-->
+
+# 📋 SPECIFIKATION
+
+## Projekt: Semesterlista – Plugin-baserad Desktop App med Modern UI, Systray & Event-System
+
+---
+
+## INNEHÅLLSFÖRTECKNING
+
+1.  Programmets Syfte & Övergripande Mål
+2.  Mappstruktur (Fullständig – Faktisk)
+3.  Teknisk Översikt – Teknikval & Beroenden
+4.  Alla Filer – Funktioner, Importer & Ansvar (Detaljerad)
+    - 4.1  main.py
+    - 4.2  core/__init__.py
+    - 4.3  core/event_bus.py
+    - 4.4  core/settings_manager.py
+    - 4.5  core/single_instance.py
+    - 4.6  core/theme_manager.py
+    - 4.7  core/plugin_base.py (brygga)
+    - 4.8  plugins/__init__.py
+    - 4.9  plugins/base_plugin.py
+    - 4.10 plugins/hyra/__init__.py
+    - 4.11 plugins/hyra/plugin.py
+    - 4.12 plugins/lista/__init__.py
+    - 4.13 plugins/lista/plugin.py
+5.  Detaljerad Funktionalitet
+6.  Temahantering (Endast 3 Teman)
+7.  Tabbar – Visa/Dölj (Dynamiskt)
+8.  Single-Instance-Lock
+9.  Systray & Minimering
+10. Event-System (EventBus)
+11. Inställningar – JSON-Struktur
+12. Färgkodning av Dagar – Exakt Definition
+13. Manuellt Val av Startmånad & Årsskifte
+14. Autostart med OS
+15. Sammanfattning – Vad Har Gjorts
+16. Vad Som Är Kvar Att Göra
+17. Checklista (50 Punkter)
+18. Kända Fel/Buggar & Åtgärdsplan
+19. Framtidsplan
+
+---
+
+## 1. PROGRAMMETS SYFTE & ÖVERGRIPANDE MÅL
+
+<!--
+Plugin-baserad desktopapplikation byggd i Python för hantering av
+semesterlistor, limokörningsscheman och hyresfakturering.
+-->
+
+| Egenskap                  | Beskrivning                                                                                                      |
+|---------------------------|------------------------------------------------------------------------------------------------------------------|
+| Plugin-arkitektur         | Kärna (core/) + fristående plugins (plugins/hyra/, plugins/lista/) via pub/sub EventBus                          |
+| Modern UI                 | PySide6, dynamiskt anpassat för alla fönsterstorlekar/skärmar                                                    |
+| Endast 3 Teman            | Mörkt, Ljust, System – inga andra                                                                                |
+| Tydliga knappar/tabbar    | Ljust tema → mörkgrå knappar (#3D3D3D) med VIT FET text. Mörkt → ljusgrå (#E8E8E8) med SVART FET text         |
+| Inverterade knappar       | Knappar/tabbar inverteras alltid mot bakgrunden för maximal synlighet                                            |
+| Dynamiska tabbar          | Visa/dölj individuellt via "Visa"-meny, högerklick på tabb för att dölja                                        |
+| Scroll via mushjul        | Alla vyer + QTabBar (horisontell scroll)                                                                         |
+| Single-instance-lock      | Endast en instans. Vid dubbelstart → befintlig instans visas (bring-to-front)                                    |
+| Alltid minimerad start    | Startar i systemfältet, utan terminalfönster (även .py)                                                          |
+| Systray-ikon              | Programmatiskt skapad (64×64 blå rundad "S"), öppna via enkelklick                                              |
+| JSON-inställningar        | Alla inställningar i JSON-filer. Ingen databas                                                                   |
+| Ingen profilhantering     | App-till-app kommunikation. Användaren säger till om det behövs                                                  |
+| PDF månader per blad      | Val av 2 eller 3 månader per blad vid generering. Alltid centrerat på liggande A4                               |
+| Manuell startmånad        | Dropdown: Standard=jan–dec valt år. Manuellt val=12 mån från vald månad, kan gå över årsskifte (Dec→Jan)        |
+| Korrekt färgkodning       | Röda=officiella helgdagar+söndagar. Gröna=halvdagar (inkl. midsommarafton). Blå=lördagar                        |
+| Autostart med OS          | Arkiv → Autostart vid inloggning (checkable). Windows/macOS/Linux plattformsspecifikt                           |
+| Dynamiskt copyright-år    | © {datetime.now().year} Rickard Längkvist – uppdateras automatiskt                                              |
+
+---
+
+## 2. MAPPSTRUKTUR (Fullständig – Faktisk)
+
+<!--
+Komplett mappstruktur för projektet.
+-->
+Semesterlista/ ← Rotmapp
+│
+├── main.py ← Entry point (PySide6)
+├── main.pyw ← Windows no-console variant
+├── config.json ← Rot-config
+│
+├── core/ ← Applikationskärna
+│ ├── init.py ← Lazy loading, exporter
+│ ├── event_bus.py ← Pub/Sub-event-system
+│ ├── settings_manager.py ← JSON-inställningshantering
+│ ├── single_instance.py ← Single-instance-lock + AutostartManager
+│ ├── theme_manager.py ← 3 teman + QSS-generator
+│ └── plugin_base.py ← Bakåtkompatibel brygga
+│
+├── plugins/ ← Plugin-katalog
+│ ├── init.py ← Lazy loading, BasePlugin-export
+│ ├── base_plugin.py ← Abstrakt basklass (ABC)
+│ ├── hyra/ ← Hyresfakturering
+│ │ ├── init.py
+│ │ └── plugin.py ← Hyreslista-PDF
+│ └── lista/ ← Semesterlista & Limokörning
+│ ├── init.py
+│ └── plugin.py ← Semester- & limo-PDF
+│
+├── data/ ← JSON-datafiler
+│ ├── settings.json ← Huvudinställningar
+│ └── plugins.json ← Plugin-inställningar
+│
+├── Anställda.txt ← Indata: anställda
+├── Fordon.txt ← Indata: fordon
+├── Hyresgäster.txt ← Indata: hyresgäster
+├── requirements.txt ← Python-beroenden
+└── spec.md ← Denna fil
+
+text
+
+
+---
+
+## 3. TEKNISK ÖVERSIKT – TEKNIKVAL & BEROENDEN
+
+<!--
+Alla tekniska val och beroenden listade.
+-->
+
+| Komponent        | Teknik/Modul                             | Beskrivning                              |
+|------------------|------------------------------------------|------------------------------------------|
+| UI-ramverk       | PySide6                                  | Qt for Python                            |
+| Systemfält       | PySide6.QtWidgets.QSystemTrayIcon        | Systray                                  |
+| Teman            | QSS + QPalette                           | 3 teman (dark/light/system)              |
+| Inställningar    | json                                     | Allt i JSON, atomär skrivning            |
+| Kommunikation    | EventBus (Pub/Sub)                       | Plugin ↔ Kärna, trådsäkert              |
+| Single-instance  | QSharedMemory + QLocalServer             | Lås + bring-to-front                     |
+| Autostart        | AutostartManager                         | Windows/macOS/Linux OS-autostart         |
+| PDF-generering   | reportlab                                | Semesterlistor, limokörning, hyra        |
+| Helgdagar        | get_swedish_holidays() (intern)          | Svenska helgdagar, egen implementation   |
+| Trådsäkerhet     | threading.Lock                           | EventBus + SettingsManager               |
+| Python-version   | 3.12+                                    |                                          |
+| Plattformar      | Windows, macOS, Linux                    |                                          |
+
+<!--
+requirements.txt innehåll:
+  PySide6>=6.7.0
+  reportlab>=4.0
+-->
+
+---
+
+## 4. ALLA FILER – FUNKTIONER, IMPORTER & ANSVAR
+
+<!--
+EXTREMT DETALJERAT – klistra in i ny chatt för att se vad som ska matchas.
+Varje fils exakta importer, funktioner och ansvar listas.
+Alla filer i samma mapp uppdateras innan nästa mapp påbörjas.
+-->
+
+---
+
+### 4.1 `main.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    main.py / main.pyw                                   │
+│ ANSVAR: Entry point. Startar minimerat i systray.            │
+│         Inget terminalfönster. All UI via PySide6.           │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~650                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+KONSTANTER:
+  APP_VERSION:    str = "2.2.0"       ← En enda källa, används överallt
+  COPYRIGHT_YEAR: str = str(datetime.now().year)  ← Dynamiskt år
+
+IMPORTER:
+  Standard:      sys, os, ctypes, importlib, importlib.util, json,
+                 logging, pathlib.Path, datetime.datetime,
+                 typing (Dict, List, Any, Optional, TYPE_CHECKING)
+  PySide6.QtWidgets:
+                 QApplication, QMainWindow, QTabWidget, QTabBar,
+                 QMenu, QMenuBar, QWidget, QVBoxLayout, QHBoxLayout,
+                 QStatusBar, QLabel, QPushButton, QMessageBox,
+                 QSizePolicy, QFrame, QSystemTrayIcon
+  PySide6.QtCore:
+                 Qt, QEvent, QTimer, QSize, Signal, Slot
+  PySide6.QtGui:
+                 QAction, QActionGroup, QIcon, QFont, QPalette,
+                 QColor, QMouseEvent, QWheelEvent, QKeySequence,
+                 QShortcut, QPainter, QPixmap
+  Kärnmoduler:   core.event_bus.EventBus
+                 core.settings_manager.SettingsManager
+                 core.theme_manager.ThemeManager
+                 core.single_instance.SingleInstanceLock, AutostartManager
+                 plugins.base_plugin.BasePlugin
+
+FUNKTIONER (modulnivå):
+  hide_console_window()
+    → Döljer terminalfönster på Windows (ctypes.windll)
+
+  main()
+    → 13 steg:
+        1.  hide_console_window()
+        2.  SingleInstanceLock – kolla + send_to_existing + exit
+        3.  QApplication + setHighDpiScaleFactorRoundingPolicy
+        4.  SettingsManager
+        5.  EventBus
+        6.  ThemeManager (applicerar sparat tema)
+        7.  PluginManager discover + load + initialize_all
+        8.  MainWindow (visas EJ – startar minimerat)
+        9.  _apply_theme() kopplas till theme_changed-signal
+        10. lock.instance_started → main_window.show_application
+        11. SystrayManager
+        12. Synk autostart från settings
+        13. event_bus.emit("app:started") + systray-notifikation
+        14. app.exec() → sys.exit(exit_code)
+
+KLASSER:
+
+  PluginManager:
+    __init__(event_bus, settings_manager)
+    discover_plugins(plugins_dir) → List[Dict]
+      → Skannar plugins/-mappen efter undermappar med plugin.py
+      → Ignorerar mappar som börjar med _
+    load_plugin(plugin_info) → bool
+      → Dynamisk import, hittar Plugin-klass, ärver BasePlugin,
+        instantierar, sparar i self.plugins
+    initialize_all()
+      → Anropar plugin.initialize() för alla laddade plugins
+    shutdown_all()
+      → Omvänd ordning, anropar plugin.shutdown()
+    get_plugin(name) → Optional[BasePlugin]
+    get_all_plugins() → Dict[str, BasePlugin]
+    get_plugin_order() → List[str]
+
+  MainWindow(QMainWindow):
+    window_shown = Signal()
+    __init__(app, event_bus, settings_manager, theme_manager,
+             plugin_manager, lock)   ← lock=SingleInstanceLock (v2.2.0)
+    _init_ui()
+      → Central widget, QTabWidget (movable, scroll-buttons),
+        QStatusBar, installerar eventFilter på QTabBar
+    _init_menu_bar()
+      → Arkiv:
+          Inställningar...
+          Autostart vid inloggning (checkable QAction)  ← NY v2.2.0
+          ─────────────────
+          Avsluta  Ctrl+Q
+        Visa (dynamisk – fylls av _register_tab)
+        Utseende (dark/light/system – QActionGroup exclusive)
+        Hjälp (Om)
+    _load_plugin_tabs()
+      → Itererar plugin_order, anropar plugin.get_tab_widget(),
+        registrerar varje tabb
+    _register_tab(widget, tab_name, plugin_id)
+      → Lägger till i QTabWidget + checkable QAction i Visa-meny
+    _toggle_tab(plugin_id, visible)
+    _show_tab(plugin_id) → återlägger tabb, uppdaterar meny
+    _hide_tab(plugin_id) → tar bort tabb, uppdaterar meny
+    _on_tab_context_menu(pos)
+      → Högerklick: "Dölj [namn]" + "Visa alla dolda tabbar"
+    _on_tab_changed(index) → uppdaterar statusrad
+    _on_theme_action(theme) → ThemeManager.set_theme()
+    _on_autostart_toggle() [Slot]  ← NY v2.2.0
+      → lock.set_autostart(enabled)
+      → settings_manager.set("advanced.autostart", enabled)
+      → QMessageBox.warning vid fel
+    _on_settings_changed(data)  ← NY v2.2.0
+      → Synkar autostart-checkmark om inställningen ändras externt
+    _save_window_state() → SettingsManager.set(window.*)
+    _restore_window_state() → SettingsManager.get(window.*)
+    eventFilter(obj, event)
+      → Fångar QEvent.Wheel på QTabBar → horisontell tabb-scroll
+    closeEvent(event)
+      → Om close_to_tray=True: ignorera + hide()
+        Annars: _quit_application()
+    show_application() → show() + raise_() + activateWindow()
+    hide_application() → hide()
+    set_status(message) → statusrad
+    _quit_application()
+      → _save_window_state → emit app:shutting_down →
+        shutdown_all → save tabs.order → QApplication.quit()
+    _open_settings()
+      → QMessageBox med data-path, tema, autostart-status och -info
+    _show_about()
+      → QMessageBox.about med APP_VERSION + COPYRIGHT_YEAR (dynamiskt)
+    _on_plugin_loaded(data) → skapar tabb om ej redan registrerad
+
+  SystrayManager:
+    __init__(app, main_window)
+      → Skapar QPixmap (64×64, blå rundad fyrkant med "S"),
+        QPainter.RenderHint.Antialiasing för skarpare ikon,
+        QSystemTrayIcon, tray-meny (Visa/Dölj/Avsluta),
+        tooltip = f"Semesterlista v{APP_VERSION}"
+    _on_tray_activated(reason)
+      → Trigger (vänsterklick) = toggla visa/dölj
+    show_notification(title, message, duration_ms)
+-->
+
+---
+
+### 4.2 `core/__init__.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/__init__.py                                     │
+│ ANSVAR: Gör core/ till Python-paket med lazy loading.        │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~90                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER: importlib
+
+FUNKTIONER:
+  __getattr__(name: str)
+    → Lazy loading via _import_map
+    → Förhindrar cirkulära importer
+
+VARIABLER:
+  __all__ = ["EventBus", "MainApp", "SettingsManager",
+             "SingleInstanceLock", "AutostartManager",
+             "check_single_instance", "send_to_existing",
+             "SystrayManager", "ThemeManager"]
+  __version__     = "2.2.0"
+  __author__      = "Rickard Längkvist"
+  __description__ = "Kärnmoduler för plugin-baserad desktopapplikation"
+  _import_map: Dict[str, str]
+    → "EventBus"              → "core.event_bus"
+    → "SettingsManager"       → "core.settings_manager"
+    → "SingleInstanceLock"    → "core.single_instance"
+    → "AutostartManager"      → "core.single_instance"   ← NY v2.2.0
+    → "check_single_instance" → "core.single_instance"
+    → "send_to_existing"      → "core.single_instance"
+    → "ThemeManager"          → "core.theme_manager"
+-->
+
+---
+
+### 4.3 `core/event_bus.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/event_bus.py                                    │
+│ ANSVAR: Pub/Sub-event-system. Trådsäkert.                    │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~260                                                 │
+│ MODULE_VERSION = "2.2.0"                                     │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  logging
+  typing:      Callable, Dict, List, Any, Optional
+  collections: defaultdict
+  threading:   Lock
+
+KONSTANTER:
+  MODULE_VERSION: str = "2.2.0"
+
+KLASS: EventBus – 11 metoder
+  __init__(self)
+    → self._subscribers: defaultdict(list)
+    → self._once_subscribers: defaultdict(list)
+    → self._emit_count: defaultdict(int)
+    → self._lock: Lock
+
+  on(event_name, callback) → None      → Prenumerera (beständig)
+  once(event_name, callback) → None    → Prenumerera (en gång)
+  off(event_name, callback=None) → None → Avprenumerera
+  emit(event_name, data=None) → None
+    → Anropar alla prenumeranter (logger.error per callback)
+    → Räknar emit-anrop, trådsäkert via Lock
+  get_subscribers(event_name) → List[Callable]
+  has_subscribers(event_name) → bool
+  subscriber_count(event_name) → int
+  get_emit_count(event_name) → int
+  list_all_events() → List[str]
+  clear_all() → None
+  __repr__() → inkluderar MODULE_VERSION + total_emits
+-->
+
+---
+
+### 4.4 `core/settings_manager.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/settings_manager.py                             │
+│ ANSVAR: JSON-baserad inställningshantering.                  │
+│         Atomär skrivning, trådsäkert, punktnotation.         │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~580                                                 │
+│ MODULE_VERSION = "2.2.0"                                     │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  json, os, shutil
+  pathlib: Path
+  threading: Lock
+  typing: Any, Dict, List, Optional, Union
+
+KONSTANTER:
+  MODULE_VERSION: str = "2.2.0"
+
+KLASS: SettingsManager – 22+ metoder
+
+  DEFAULT_SETTINGS: Dict
+    → app_name, version (MODULE_VERSION), theme, language,
+      window{x,y,width,height,maximized,min_size},
+      tabs{visible,hidden,order},
+      systray{minimize_to_tray,start_minimized,show_notifications,
+              notification_duration_ms,close_to_tray},
+      plugins{enabled,disabled,auto_load},
+      advanced{debug_mode,log_to_file,log_path,check_updates,
+               autostart}   ← NY v2.2.0
+
+  DEFAULT_PLUGIN_SETTINGS: Dict  ← NY v2.2.0
+    → "Hyresfakturering": {version, enabled, settings{year, last_file}}
+    → "Semesterlista & Limokörning": {version, enabled,
+        settings{default_mode, auto_open_pdf, last_file,
+                 months_per_page, start_month}}
+
+  __init__(base_path)
+    → Skapar data/-mapp
+    → Laddar settings.json + plugins.json
+    → Anropar _merge_plugin_defaults()  ← NY v2.2.0
+
+  _load_or_create(file_path, defaults) → Dict
+    → Merge:ar defaults + uppdaterar version till MODULE_VERSION
+  _save_atomic(file_path, data)
+    → Skriver till .tmp → rename (atomärt)
+  _merge_plugin_defaults() → NY v2.2.0
+    → Säkerställer att alla fält i DEFAULT_PLUGIN_SETTINGS finns
+    → Lägger till saknade fält (t.ex. start_month) i befintliga filer
+    → Validerar start_month (0–12) för lista-plugin
+    → Uppdaterar version-fält till "2.2.0"
+    → Sparar om något ändrades
+
+  load(file_name) → Dict
+  save(file_name, data)
+  get(key, default=None) → Any     → Punktnotation
+  set(key, value) → auto-spara
+  get_all() → Dict
+  reset_defaults()
+    → Återställer BÅDE settings.json OCH plugins.json
+  get_version() → str
+
+  get_plugin_settings(plugin_name) → Dict
+  save_plugin_settings(plugin_name, data)
+    → Sparar + sätter last_updated timestamp
+  get_plugin_info(plugin_name) → Dict
+  set_plugin_enabled(plugin_name, enabled)
+  list_plugins() → List[str]
+  remove_plugin(plugin_name) → bool
+
+  import_settings(data) / export_settings() → Dict
+  _get_nested(keys, default) / _set_nested(keys, value)
+  reload()
+    → Laddar om från disk + _merge_plugin_defaults()
+  get_data_path() → str
+
+  __repr__() → inkluderar MODULE_VERSION
+  __contains__(key) / __getitem__(key) / __setitem__(key, value)
+-->
+
+---
+
+### 4.5 `core/single_instance.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/single_instance.py                              │
+│ ANSVAR: Single-instance-lock + bring-to-front.              │
+│         AutostartManager – OS-autostart. (NY v2.2.0)        │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~700                                                 │
+│ MODULE_VERSION = "2.2.0"                                     │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  sys, os, socket, hashlib, platform, subprocess
+  pathlib: Path
+  typing: Optional, TYPE_CHECKING
+  PySide6.QtCore: QObject, Signal, Slot, QSharedMemory
+  PySide6.QtNetwork: QLocalServer, QLocalSocket
+
+KONSTANTER:
+  MODULE_VERSION: str = "2.2.0"
+  AUTOSTART_APP_NAME:    str = "Semesterlista"
+  AUTOSTART_MACOS_PLIST: str = "com.semesterlista.plist"
+  AUTOSTART_LINUX_FILE:  str = "semesterlista.desktop"
+  AUTOSTART_WIN_REG_KEY: str = r"Software\Microsoft\...\Run"
+  _HAS_SHARED_MEMORY: bool (try/except import)
+
+HJÄLPFUNKTIONER (modulnivå):
+  _get_app_key(app_name) → str        → MD5-hash
+  _get_lock_file_path(app_name) → Path
+  _find_available_port(start, max) → int
+  _get_socket_port(app_name) → int    → Port 49152–65535
+  _get_executable_path() → str
+    → Fryst app: sys.executable
+    → Windows: pythonw.exe om tillgängligt
+    → Annars: python + skript
+
+KLASS: AutostartManager – NY v2.2.0
+  __init__(app_name)
+  is_enabled() → bool
+  enable() → bool
+  disable() → bool
+  set(enabled) → bool
+  get_status_text() → str    → "Aktiverad"/"Avaktiverad"/"Ej tillgänglig"
+  get_platform_info() → str  → Var autostart lagras
+
+  Windows:
+    _is_enabled_windows() → winreg HKCU Run
+    _enable_windows()     → winreg SetValueEx
+    _disable_windows()    → winreg DeleteValue
+
+  macOS:
+    _get_macos_plist_path() → Path
+    _is_enabled_macos()     → plist exists
+    _enable_macos()         → Skapa plist + launchctl load
+    _disable_macos()        → launchctl unload + ta bort
+
+  Linux (XDG Autostart):
+    _get_linux_desktop_path() → Path
+    _is_enabled_linux()       → .desktop exists + ej Hidden=true
+    _enable_linux()           → Skapa .desktop
+    _disable_linux()          → Ta bort .desktop
+
+KLASS: SingleInstanceLock(QObject) – 19+ metoder
+  instance_started = Signal()
+    → Koppla: lock.instance_started.connect(window.show_application)
+
+  __init__(app_name)
+    → Skapar AutostartManager(app_name)  ← NY v2.2.0
+  _setup_lock()
+  _setup_shared_memory()
+  _setup_socket_lock()
+  _start_local_server()
+  _on_new_connection() [Slot]
+  _write_lock_file() / _remove_lock_file()
+  is_running() → bool
+  get_version() → str
+  send_to_existing() → bool
+  _try_qlocal_socket() → bool
+  _try_tcp_socket() → bool
+  _cleanup_stale_lock()
+  _is_pid_alive(pid) → bool [staticmethod]
+  release()
+
+  get_autostart() → bool               ← NY v2.2.0
+  set_autostart(enabled) → bool        ← NY v2.2.0
+  get_autostart_info() → str           ← NY v2.2.0
+  get_autostart_status_text() → str    ← NY v2.2.0
+  autostart_manager (property)         ← NY v2.2.0
+
+  __del__() / __repr__()
+    → Inkluderar MODULE_VERSION + autostart=on/off
+
+FRISTÅENDE FUNKTIONER:
+  check_single_instance(app_name) → bool
+  send_to_existing(app_name) → bool
+-->
+
+---
+
+### 4.6 `core/theme_manager.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/theme_manager.py                                │
+│ ANSVAR: 3 teman (dark/light/system) + QSS-generator.        │
+│         Inverterade knappar/tabbar med FET text.             │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~900                                                 │
+│ MODULE_VERSION = "2.2.0"                                     │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  os, platform, subprocess
+  pathlib: Path
+  typing: Dict, Optional, Tuple, TYPE_CHECKING
+  PySide6.QtWidgets: QApplication
+  PySide6.QtGui: QPalette, QColor
+  PySide6.QtCore: QObject, Signal
+
+KONSTANTER:
+  MODULE_VERSION: str = "2.2.0"
+
+KLASS: ThemeManager(QObject) – 22+ metoder
+  theme_changed = Signal(str)
+
+  DARK_THEME   = "dark"
+  LIGHT_THEME  = "light"
+  SYSTEM_THEME = "system"
+  VALID_THEMES = (DARK_THEME, LIGHT_THEME, SYSTEM_THEME)
+
+  LIGHT_COLORS (26 nycklar):
+    Princip: Ljus bakgrund → MÖRKA knappar med VIT text
+    button_bg=#3D3D3D,     button_fg=#FFFFFF (mörkgrå+vit FET)
+    button_hover_bg=#555555, button_pressed_bg=#2A2A2A
+    tab_bg=#4A4A4A,        tab_fg=#FFFFFF
+    tab_selected_bg=#0078D4, tab_selected_fg=#FFFFFF
+    window_bg=#FAFAFA,     window_fg=#1A1A1A
+    accent=#0078D4, + scrollbar, menu, statusbar, input-färger
+
+  DARK_COLORS (26 nycklar):
+    Princip: Mörk bakgrund → LJUSA knappar med SVART text
+    button_bg=#E8E8E8,     button_fg=#000000 (ljusgrå+svart FET)
+    button_hover_bg=#FFFFFF, button_pressed_bg=#C8C8C8
+    tab_bg=#D0D0D0,        tab_fg=#000000
+    tab_selected_bg=#0078D4, tab_selected_fg=#FFFFFF
+    window_bg=#1A1A1A,     window_fg=#E8E8E8
+    accent=#0078D4, + scrollbar, menu, statusbar, input-färger
+
+  __init__(settings_manager)
+    → Laddar sparat tema, sätter _current_colors
+
+  get_current_theme() → str
+  get_version() → str
+  is_dark() → bool
+  set_theme(theme)
+    → Validerar → _apply_current_theme → save → emit theme_changed
+  refresh()
+
+  _apply_current_theme()
+    → _get_effective_theme → dark/light → setPalette
+    → app.setStyleSheet(get_button_tab_stylesheet())
+    → Om extern QSS-fil: kombinieras med stylesheet
+  _get_effective_theme() → str
+  _apply_dark_theme(app) / _apply_light_theme(app)
+    → _current_colors = DARK/LIGHT_COLORS
+    → _get_base_palette(is_dark)
+    → Kombinerar ev. extern QSS med get_button_tab_stylesheet()
+
+  _detect_system_theme() → str
+  _detect_windows_theme() → winreg AppsUseLightTheme
+  _detect_macos_theme()   → defaults read AppleInterfaceStyle
+  _detect_linux_theme()   → gsettings / KDE kdeglobals fallback
+
+  get_button_color() → (bg, fg, border)
+  get_tab_color()    → (bg, fg)
+  get_color(key)     → str
+  get_all_colors()   → Dict
+
+  _get_base_palette(is_dark) → QPalette
+    → Sätter 13 QPalette.ColorRole inkl. Disabled-grupp
+    → Button/ButtonText synkade med DARK/LIGHT_COLORS
+
+  get_button_tab_stylesheet() → str
+    → Komplett QSS (20 widget-typer, font-weight:bold överallt):
+      QPushButton (alla tillstånd: normal/hover/pressed/disabled/checked)
+      QToolButton (alla tillstånd)
+      QTabBar::tab (normal/hover/selected/disabled)
+      QTabWidget::pane, QTabBar::scroller
+      QScrollBar (v+h)
+      QMenu, QMenuBar
+      QStatusBar
+      QGroupBox
+      QLineEdit/QSpinBox/QDoubleSpinBox/QComboBox
+      QCheckBox
+      QLabel (normal/heading/link)
+      QFrame[card]
+      QProgressBar
+      QDialog, QDialogButtonBox
+      QMessageBox
+      QMainWindow/QWidget
+      QToolTip
+    → color: {button_fg} explicit på hover/pressed/disabled
+    → Inkluderar "v{MODULE_VERSION}" i QSS-kommentaren
+
+  _load_qss_file(filename) → Optional[str]
+    → Letar i resources/themes/{filename}
+-->
+
+---
+
+### 4.7 `core/plugin_base.py` (brygga) ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    core/plugin_base.py                                  │
+│ ANSVAR: Bakåtkompatibel brygga.                              │
+│         Re-exporterar BasePlugin från plugins.base_plugin.   │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~15                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER: from plugins.base_plugin import BasePlugin
+
+VARIABLER:
+  PluginBase = BasePlugin   ← alias för bakåtkompatibilitet
+  __all__ = ["BasePlugin", "PluginBase"]
+-->
+
+---
+
+### 4.8 `plugins/__init__.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/__init__.py                                  │
+│ ANSVAR: Plugin-paket med lazy loading.                       │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~65                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER: importlib
+
+FUNKTIONER: __getattr__(name) → lazy loading
+
+VARIABLER:
+  __all__         = ["BasePlugin"]
+  __version__     = "2.2.0"
+  __author__      = "Rickard Längkvist"
+  __description__ = "Plugin-paket"
+-->
+
+---
+
+### 4.9 `plugins/base_plugin.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/base_plugin.py                               │
+│ ANSVAR: Abstrakt basklass (ABC). EventBus + SettingsManager. │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~340                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  from __future__ import annotations
+  abc: ABC, abstractmethod
+  typing: Dict, Any, Optional, List, Callable, TYPE_CHECKING
+  PySide6.QtWidgets: QWidget
+  (TYPE_CHECKING): core.event_bus.EventBus
+                   core.settings_manager.SettingsManager
+
+KLASS: BasePlugin(ABC) – 15 metoder
+
+  Kända plugins v2.2.0:
+    "Hyresfakturering":
+      year, last_file, last_used
+    "Semesterlista & Limokörning":
+      default_mode, auto_open_pdf, last_file,
+      months_per_page, start_month, default_year, last_used
+      start_month: 0=Standard(jan–dec valt år),
+                   1–12=explicit,
+                   12=December→kan gå till Jan nästa år
+
+  NAME, VERSION, DESCRIPTION, AUTHOR: str = ""
+  DEPENDENCIES: List[str] = []
+
+  __init__(event_bus, settings_manager)
+  @abstractmethod get_name() → str
+  @abstractmethod get_version() → str
+  @abstractmethod get_tab_widget() → QWidget
+  initialize() → bool
+  shutdown()    → Avprenumererar alla _subscriptions automatiskt
+  is_initialized() → bool
+  get_settings() → Dict
+  save_settings(settings)
+  subscribe(event_name, callback)
+  unsubscribe(event_name, callback=None)
+  emit(event_name, data=None)
+  event_bus (property) → EventBus
+  settings_manager (property) → SettingsManager
+  __repr__() → inkl. antal subscriptions
+  __str__()
+-->
+
+---
+
+### 4.10 `plugins/hyra/__init__.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/hyra/__init__.py                             │
+│ ANSVAR: Plugin-paket för hyresfakturering.                   │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~12                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+VARIABLER: __all__ = ["Plugin"]
+-->
+
+---
+
+### 4.11 `plugins/hyra/plugin.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/hyra/plugin.py                               │
+│ ANSVAR: Hyresfakturering – generera hyreslistor som PDF.     │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~650                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  os, platform, webbrowser, logging
+  datetime: date, datetime
+  pathlib: Path
+  typing: List, Dict, Any, Optional, TYPE_CHECKING
+  PySide6.QtWidgets:
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
+    QPushButton, QGroupBox, QSpinBox, QFrame,
+    QMessageBox, QSizePolicy
+  PySide6.QtCore: Qt, Signal, Slot
+  PySide6.QtGui: QFont
+  reportlab.platypus: SimpleDocTemplate, Table, TableStyle,
+                      Paragraph, Spacer
+  reportlab.lib.pagesizes: A4
+  reportlab.lib: colors
+  reportlab.lib.styles: getSampleStyleSheet, ParagraphStyle
+  reportlab.lib.units: mm
+  plugins.base_plugin: BasePlugin
+  (TYPE_CHECKING): core.event_bus.EventBus
+                   core.settings_manager.SettingsManager
+
+KONSTANTER:
+  PLUGIN_INFO: Dict         ← id, name, version="2.2.0", author, desc
+  DEFAULT_TENANT_FILE: str  ← "Hyresgäster.txt"
+  SEPARATOR: str            ← "-------"
+  MONTHS: Dict[int, str]    ← 12 månader på svenska (förkortade)
+  QUARTER_INVOICE_DATES: Dict[int, str]
+  QUARTER_INFO: Dict[int, dict]
+
+HJÄLPFUNKTIONER (modulnivå):
+  get_documents_folder() → str
+  get_app_folder()       → str
+  get_all_quarter_invoice_info(year) → List[Dict]
+  calculate_text_width(text, font_size) → float
+
+KLASSER:
+
+  TenantManager – 9 metoder:
+    __init__()
+    _load_tenants()         → Läser Hyresgäster.txt (separator: -------)
+    _create_example_file()
+    reload()
+    get_monthly_tenants()   → List[str]
+    get_quarterly_tenants() → List[str]
+    get_year() / set_year(year)
+    get_max_name_length()   → int
+
+  HyraMainView(QWidget) – 13 metoder:
+    year_changed     = Signal(int)
+    reload_requested = Signal()
+    __init__(tenant_manager, plugin_ref, parent)
+    _init_ui()
+    _create_top_panel()       → titel + år-väljare
+    _create_file_info_row()   → fil-info + Redigera + Ladda om
+    _create_quarter_info_panel() → färgkodade QFrame-kort per kvartal
+    _create_tenant_overview() → månads + kvartalslista sida vid sida
+    _create_tenant_group(title, tenants)
+    _create_button_bar()      → Generera PDF + Redigera
+    _on_year_change(value)
+    _reload()
+    _refresh_ui()
+    _clear_layout(layout) [staticmethod]
+
+  PDFGenerator – 5 metoder:
+    __init__(plugin)
+    generate() → bool
+    _add_quarter_info(elements, styles)
+    _create_monthly_table(tenants) → Table
+    _create_quarterly_table(tenants) → Table
+
+  Plugin(BasePlugin) – 13 metoder:
+    NAME    = "Hyresfakturering"
+    VERSION = "2.2.0"
+    DESCRIPTION / AUTHOR
+
+    __init__(event_bus, settings_manager)
+      → Återställer sparat år från settings
+    get_name() / get_version() / get_tab_widget()
+    initialize()   → subscribe app:shutting_down, settings:changed
+    shutdown()     → Sparar year + last_file + last_used
+    _on_app_shutdown(data)
+    _on_settings_changed(data)
+    _generate_pdf()
+    _open_tenant_file()   → subprocess check=False
+    _reload_tenants()
+    main_view (property) → HyraMainView
+-->
+
+---
+
+### 4.12 `plugins/lista/__init__.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/lista/__init__.py                            │
+│ ANSVAR: Plugin-paket för semesterlista & limokörning.        │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~12                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+VARIABLER: __all__ = ["Plugin"]
+-->
+
+---
+
+### 4.13 `plugins/lista/plugin.py` ✅ v2.2.0
+
+<!--
+┌──────────────────────────────────────────────────────────────┐
+│ FIL:    plugins/lista/plugin.py                              │
+│ ANSVAR: Semesterlista & Limokörning – PDF med färgkodade     │
+│         dagar, helgdagar, halvdagar, veckolinjer.            │
+│         Val av 2 eller 3 månader per blad.                   │
+│         Manuell startmånad – kan gå över årsskifte           │
+│         (Dec 2026 → Jan 2027).                               │
+│         Alltid centrerat och anpassat för liggande A4.       │
+│         KORRIGERAD färgkodning: midsommarafton = GRÖN.       │
+│ STATUS: ✅ KLAR v2.2.0                                       │
+│ RADER:  ~950                                                 │
+└──────────────────────────────────────────────────────────────┘
+
+IMPORTER:
+  from __future__ import annotations
+  os, json, calendar, platform, webbrowser, logging
+  datetime: date, datetime, timedelta
+  pathlib: Path
+  typing: List, Dict, Any, Optional, Set, TYPE_CHECKING
+  PySide6.QtWidgets:
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
+    QPushButton, QGroupBox, QSpinBox, QComboBox, QLineEdit,
+    QCheckBox, QMessageBox, QFileDialog,
+    QDialog, QDialogButtonBox, QSizePolicy
+  PySide6.QtCore: Qt, Signal, Slot
+  PySide6.QtGui: QFont
+  reportlab.platypus:
+    SimpleDocTemplate, Table, TableStyle,
+    Paragraph, Spacer, PageBreak
+  reportlab.lib.pagesizes: landscape, A4
+  reportlab.lib: colors
+  reportlab.lib.styles: getSampleStyleSheet
+  reportlab.lib.units: mm
+  plugins.base_plugin: BasePlugin
+  (TYPE_CHECKING): core.event_bus.EventBus
+                   core.settings_manager.SettingsManager
+
+KONSTANTER:
+  TABLE_WIDTH_MM    = 270.0
+  TABLE_WIDTH_PT    = 270.0 * mm
+  NAME_COL_WIDTH    = 70
+  MIN_DAY_COL_WIDTH = 8
+  FONT_SIZE         = 7
+  PLUGIN_INFO: Dict  ← version="2.2.0"
+
+  MONTHS_SV: Dict[int, str]
+    → {1: "Januari", ..., 12: "December"}
+
+  MONTH_OPTIONS: List[str]  ← 14 alternativ
+    → ["Standard (Januari)", "Januari", ..., "December"]
+    → Index 0 = standard (jan–dec valt år)
+    → Index 1–12 = explicit startmånad
+
+HJÄLPFUNKTIONER (modulnivå):
+
+  get_documents_folder() → str
+  get_plugin_data_folder() → str
+
+  get_easter(year) → date
+    → Gauss algoritm
+
+  get_swedish_holidays(year) → Set[date]
+    → OFFICIELLA röda dagar (13 st):
+        Nyårsdagen, Trettondedag jul, Långfredag, Påskdagen,
+        Annandag påsk, Första maj, Kristi himmelsfärd, Pingstdagen,
+        Nationaldagen, Midsommardagen (lördag), Alla helgons dag (lördag),
+        Juldagen, Annandag jul
+    → INTE röda: Midsommarafton, Julafton, Nyårsafton
+
+  get_half_days(year) → Set[date]
+    → GRÖNA halvdagar (6 st):
+        Skärtorsdag, Valborg (30/4), Midsommarafton (fredag ← GRÖN EJ röd),
+        Dag före Alla helgons dag (fredag), Julafton (24/12), Nyårsafton (31/12)
+
+KLASSER:
+
+  SettingsDialog(QDialog) – 4 metoder:
+    __init__(parent, plugin)
+    _init_ui()
+      → auto_open_pdf (QCheckBox)
+      → default_mode (QComboBox)
+      → months_per_page (QComboBox: 2/3)
+      → start_month_combo (QComboBox: MONTH_OPTIONS)
+    _load_settings()
+    _save() → sparar inkl. start_month
+
+  TestRunner – 3 metoder:
+    __init__(parent, plugin)
+    run() → 10 automatiska tester:
+      1.  Ogiltigt år
+      2.  År utanför intervall
+      3.  Ogiltigt läge
+      4.  Skottårshantering
+      5.  Svenska helgdagar – korrekthet
+      6.  Midsommarafton = GRÖN (ej röd)
+      7.  Julafton = grön
+      8.  Påskberäkning 2024
+      9.  Standardläge = jan–dec samma år
+      10. December → januari över årsskifte
+    _show_results(results) → QDialog
+
+  PDFGenerator – 9 metoder:
+    __init__(plugin)
+
+    generate(year_str, file_path, mode, months_per_page,
+             start_month=None) → bool
+      → start_month: None/0 = standardläge (jan–dec valt år)
+      → 1–12 = 12 sammanhängande månader från vald månad
+      → Kan gå över årsskifte
+
+    _validate_inputs(year_str, file_path, mode) → List[str]
+    _read_list_from_file(file_path) → List[str]
+    _create_legend_with_colors() → Table
+      → "Röd = Helgdag eller söndag"
+      → "Grön = Halvdag (midsommarafton, julafton m.fl.)"
+
+    _calc_column_widths(days_in_month) → (float, float)
+    _apply_table_scaling(table)
+      → Garanterar exakt 270mm via ReportLab wrap()
+
+    _build_month_sequence(base_year, start_month) → List[(year, month)]
+      → None → [(2026,1),...,(2026,12)]
+      → 12   → [(2026,12),(2027,1),...,(2027,11)]
+
+    _chunk_months(sequence, chunk_size) → List[List]
+    _format_range_label(sequence) → str
+    _format_page_title(prefix, page_months) → str
+    _build_output_filename(documents_path, mode, sequence) → str
+      → Standard: semesterlista_2026.pdf
+      → Manuell: semesterlista_2026_12-2027_11.pdf
+
+    _generate_pdf(data_list, year, mode, months_per_page,
+                  start_month=None) → bool
+      → Beräknar years_in_sequence (kan vara 2 år)
+      → Hämtar helgdagar/halvdagar per år (official_holidays_by_year)
+      → Liggande A4, 13.5mm marginal, 270mm tabell
+      → Färgprioritet: röd > grön > blå
+      → Orange LINEBEFORE vid ny vecka
+      → emit semesterlista:pdf_generated inkl. spans_year_boundary
+
+  SemesterlistaView(QWidget) – 10 metoder:
+    generate_requested = Signal(str, str, str, int, int)
+
+    __init__(plugin, parent)
+    _init_ui()
+    _create_form_group() → QGroupBox
+      → Rad 0: Läge          [Semesterlista ▼]
+      → Rad 1: År            [2026 ↑↓]
+      → Rad 2: Startmånad    [Standard (Januari) ▼]
+      → Rad 3: Månader/blad  [3 ▼]
+      → Rad 4: Fil           [Anställda.txt] [Bläddra...]
+    _create_button_bar() → Generera PDF, Kör tester, Öppna Dokument
+    _create_legend_group() → färgförklaring med uppdaterad text
+    _on_mode_change(mode) [Slot]
+    _on_start_month_change(index) [Slot] → sparar index
+    _browse_file()
+    _generate_pdf()
+      → index=0 → start_month=None (standard)
+      → index=1–12 → start_month=index
+    _run_tests()
+    _open_documents()
+
+  Plugin(BasePlugin) – 14 metoder:
+    NAME        = "Semesterlista & Limokörning"
+    VERSION     = "2.2.0"
+    DESCRIPTION / AUTHOR
+
+    __init__(event_bus, settings_manager)
+    get_name() / get_version() / get_tab_widget()
+    _load_settings() → Dict
+      → default: months_per_page=3, auto_open_pdf=True,
+                 default_mode="Semesterlista", start_month=0
+    _save_settings()
+    initialize()   → subscribe app:shutting_down, theme:changed
+    shutdown()     → Sparar start_month
+    _on_app_shutdown(data)
+    _on_theme_changed(data)
+    _show_main_view()
+    _show_settings() → SettingsDialog
+    _open_documents_folder() → subprocess check=False
+    main_view (property) → SemesterlistaView
+-->
+
+---
+
+## 5. DETALJERAD FUNKTIONALITET
+
+<!--
+Startsekvens och övrig funktionalitet.
+-->
+
+### 5.1 Startsekvens
+hide_console_window() → Dölj terminal (Windows)
+SingleInstanceLock → Kolla + send_to_existing() + sys.exit(0)
+QApplication → Skapa + setHighDpiScaleFactorRoundingPolicy
+SettingsManager → Laddar settings.json + plugins.json
+EventBus → Skapa
+ThemeManager → Applicerar sparat tema
+PluginManager → discover + load + initialize_all
+MainWindow → Skapa (show() anropas EJ)
+_apply_theme() → Kopplas till theme_changed-signal
+lock.instance_started → Kopplas till main_window.show_application
+SystrayManager → Ikon visas i systemfältet
+Synk autostart → Från settings → lock.set_autostart()
+event_bus.emit("app:started") → {version, app_name}
+systray-notifikation
+app.exec() → Qt event-loop
+text
+
+
+### 5.2 Fönsterhantering
+Min storlek: 800×600
+Dynamisk layout: QVBoxLayout, QHBoxLayout, QSizePolicy.Expanding
+Spara/återställ geometri i settings.json (window.x/y/width/height/maximized)
+text
+
+
+### 5.3 Mushjulsscroll
+QTabBar: eventFilter fångar QEvent.Wheel → horisontell tabb-scroll
+QScrollBar: QSS-stylad för alla scrollbara ytor
+text
+
+
+### 5.4 Start utan terminalfönster
+Windows: ctypes.windll.user32.ShowWindow(GetConsoleWindow(), 0)
+Alternativ: pythonw.exe eller .pyw-extension
+_get_executable_path() väljer pythonw.exe automatiskt om tillgängligt
+text
+
+
+### 5.5 PDF – Månader per blad + Manuell startmånad
+Standardläge: start_month=None → jan–dec valt år
+Manuellt val: 12 sammanhängande månader, kan gå över årsskifte
+Exempel: Dec 2026 → Jan 2027 → ... → Nov 2027
+Tabellen är alltid 270mm bred (nästan hela liggande A4)
+Marginal = (297-270)/2 = 13.5mm per sida (centrerat)
+_calc_column_widths(days_in_month) beräknar korrekt dagbredd
+_apply_table_scaling() garanterar exakt 270mm via ReportLab wrap()
+Filnamn:
+Standard: semesterlista_2026.pdf
+Manuell: semesterlista_2026_12-2027_11.pdf
+text
+
+
+---
+
+## 6. TEMAHANTERING (Endast 3 Teman)
+
+<!--
+Exakt definition av alla tre teman.
+Knappar/tabbar inverteras mot bakgrunden för maximal synlighet.
+-->
+LJUST TEMA (ljus bakgrund → MÖRKA knappar med VIT text):
+Knapp-bakgrund: #3D3D3D (mörkgrå)
+Knapp-text: #FFFFFF (vit) FET
+Knapp-border: #222222
+Knapp-hover: #555555
+Tabb-bakgrund: #4A4A4A (mörkgrå)
+Tabb-text: #FFFFFF (vit) FET
+Tabb-active: #0078D4 (blå) + vit text
+
+MÖRKT TEMA (mörk bakgrund → LJUSA knappar med SVART text):
+Knapp-bakgrund: #E8E8E8 (ljusgrå)
+Knapp-text: #000000 (svart) FET
+Knapp-border: #AAAAAA
+Knapp-hover: #FFFFFF
+Tabb-bakgrund: #D0D0D0 (ljusgrå)
+Tabb-text: #000000 (svart) FET
+Tabb-active: #0078D4 (blå) + vit text
+
+SYSTEM-TEMA:
+Följer OS: Windows (register), macOS (defaults), Linux (gsettings/KDE)
+
+QSS täcker 20 widget-typer:
+QPushButton, QToolButton, QTabBar::tab, QTabWidget::pane,
+QTabBar::scroller, QScrollBar (v+h), QMenu, QMenuBar,
+QStatusBar, QGroupBox, QLineEdit/QSpinBox/QComboBox,
+QCheckBox, QLabel, QFrame[card], QProgressBar,
+QDialog, QDialogButtonBox, QMessageBox,
+QMainWindow/QWidget, QToolTip
+
+text
+
+
+---
+
+## 7. TABBAR – VISA/DÖLJ (Dynamiskt)
+"Visa"-meny: checkable QActions per tabb – bock = synlig
+Högerklick på tabb → kontextmeny: "Dölj [namn]" + "Visa alla dolda tabbar"
+Dolda tabbar sparas i _tab_widgets dict, kan återställas
+Dynamiskt – fungerar med plugins som laddas/avlastas
+Tabb-ordning sparas i settings.json → tabs.order
+Scroll via mushjul på QTabBar (eventFilter)
+text
+
+
+---
+
+## 8. SINGLE-INSTANCE-LOCK
+QSharedMemory (primär) + QLocalServer/QLocalSocket (IPC)
+TCP-socket fallback om Qt ej tillgängligt
+Lock-fil med PID för stale cleanup
+bring-to-front: skickar "show" → befintlig instans visar fönstret
+check_single_instance() + send_to_existing() – fristående
+text
+
+
+---
+
+## 9. SYSTRAY & MINIMERING
+Startar ALLTID minimerat – main_window.show() anropas EJ i main()
+Enkelklick (vänster) på ikon → toggla visa/dölj
+Högerklick → meny (Visa, Dölj, Avsluta)
+closeEvent (X-knapp) → minimera till systray, avsluta EJ
+Ikon: QPainter.RenderHint.Antialiasing, blå rundad "S" (64×64 px)
+Tooltip: f"Semesterlista v{APP_VERSION}"
+Notifikation vid start: "v{APP_VERSION} – Körs i systemfältet"
+text
+
+
+---
+
+## 10. EVENT-SYSTEM (EventBus)
+
+<!--
+Alla events som används i applikationen.
+-->
+
+### Standard-Events
+app:started → {"version": "2.2.0", "app_name": "Semesterlista"}
+app:shutting_down
+theme:changed → {"theme": "dark|light|system"}
+tab:shown → {"name": "plugin_id"}
+tab:hidden → {"name": "plugin_id"}
+plugin:loaded → {"name": "...", "version": "...", "id": "..."}
+plugin:unloaded → {"name": "..."}
+plugin:error → {"name": "...", "error": "..."}
+window:shown
+window:hidden
+settings:changed → {"key": "...", "value": "..."}
+
+text
+
+
+### Plugin-specifika Events
+hyresfakturering:pdf_generated → {filename, year,
+monthly_count, quarterly_count}
+hyresfakturering:file_opened → {file}
+hyresfakturering:data_reloaded → {monthly_count, quarterly_count}
+
+semesterlista:pdf_generated → {filename, year, mode, items_count,
+months_per_page, start_month,
+range_label, spans_year_boundary,
+start_year, end_year}
+semesterlista:view_shown → {mode}
+semesterlista:settings_changed → {settings dict}
+semesterlista:folder_opened → {path}
+
+text
+
+
+### EventBus API
+on(event, cb) prenumerera (beständig)
+once(event, cb) prenumerera (en gång)
+off(event, cb=None) avprenumerera
+emit(event, data=None) publicera
+get_subscribers(event) → List[Callable]
+has_subscribers(event) → bool
+subscriber_count(event) → int
+get_emit_count(event) → int
+list_all_events() → List[str]
+clear_all() → None
+
+text
+
+
+---
+
+## 11. INSTÄLLNINGAR – JSON-STRUKTUR
+
+<!--
+Exakt JSON-struktur för alla inställningsfiler.
+-->
+
+### data/settings.json
+```json
+{
+  "app_name": "Semesterlista",
+  "version": "2.2.0",
+  "theme": "system",
+  "language": "sv",
+  "window": {
+    "x": 95,
+    "y": 42,
+    "width": 1200,
+    "height": 800,
+    "maximized": false,
+    "min_size": {"width": 800, "height": 600}
+  },
+  "tabs": {
+    "visible": [],
+    "hidden": [],
+    "order": ["hyra", "lista"]
+  },
+  "systray": {
+    "minimize_to_tray": true,
+    "start_minimized": true,
+    "show_notifications": true,
+    "notification_duration_ms": 3000,
+    "close_to_tray": true
+  },
+  "plugins": {
+    "enabled": [],
+    "disabled": [],
+    "auto_load": true
+  },
+  "advanced": {
+    "debug_mode": false,
+    "log_to_file": false,
+    "log_path": "data/app.log",
+    "check_updates": true,
+    "autostart": false
+  }
+}
+data/plugins.json
+JSON
+
+{
+  "Hyresfakturering": {
+    "version": "2.2.0",
+    "enabled": true,
+    "settings": {
+      "year": 2026,
+      "last_file": "Hyresgäster.txt",
+      "last_used": "2026-06-05T10:07:36.623543"
+    },
+    "last_updated": "2026-06-05T10:07:36.623543"
+  },
+  "Semesterlista & Limokörning": {
+    "version": "2.2.0",
+    "enabled": true,
+    "settings": {
+      "default_mode": "Semesterlista",
+      "auto_open_pdf": true,
+      "default_year": 2026,
+      "last_file": "Anställda.txt",
+      "months_per_page": 3,
+      "start_month": 0,
+      "last_used": "2026-06-05T10:07:36.622580"
+    },
+    "last_updated": "2026-06-05T10:07:36.622580"
+  }
+}
+config.json (rot)
+JSON
+
+{
+  "app_name": "Semesterlista",
+  "version": "2.2.0",
+  "description": "Plugin-baserad desktopapplikation för semesterlistor och hyresfakturering",
+  "author": "Rickard Längkvist",
+  "copyright": "Rickard Längkvist 2025",
+  "python_min": "3.12",
+  "framework": "PySide6",
+  "data_path": "data",
+  "plugins_path": "plugins",
+  "log_path": "data/app.log",
+  "debug": false
+}
+12. FÄRGKODNING AV DAGAR – EXAKT DEFINITION
+<!-- KRITISKT AVSNITT – Korrekt färgkodning av dagar i PDF. Midsommarafton är GRÖN (halvdag), INTE röd (officiell helgdag). -->
+Röda dagar (RED) – Officiella helgdagar + Söndagar
+text
+
+RÖDA dagar = officiell helgdag (get_swedish_holidays) ELLER söndag (weekday==6)
+
+Officiella (13 st):
+  Nyårsdagen, Trettondedag jul, Långfredag, Påskdagen,
+  Annandag påsk, Första maj, Kristi himmelsfärd, Pingstdagen,
+  Nationaldagen, Midsommardagen (lördag närmast 24/6),
+  Alla helgons dag (lördag 31/10–6/11), Juldagen, Annandag jul
+
+EJ röda (vanliga misstag):
+  Midsommarafton  ← GRÖN halvdag
+  Julafton        ← GRÖN halvdag
+  Nyårsafton      ← GRÖN halvdag
+  Påskafton       ← Ej officiell
+  Pingstafton     ← Ej officiell
+Gröna dagar (GREEN) – Halvdagar
+text
+
+GRÖNA dagar = get_half_days() (6 st):
+  Skärtorsdag               Dagen före Långfredag
+  Valborg                   30 april
+  Midsommarafton            Fredagen närmast 24/6  ← GRÖN, EJ röd
+  Dag före Alla helgons dag Fredagen före Alla helgons dag
+  Julafton                  24 december
+  Nyårsafton                31 december
+Blå dagar (BLUE) – Lördagar
+text
+
+BLÅA dagar = lördag (weekday==5) som EJ är officiell helgdag
+OBS: Midsommardagen/Alla helgons dag är lördagar → RÖDA (helgdag trumfar)
+Orange linje – Veckoskifte
+text
+
+ORANGE LINEBEFORE = ny vecka (ny ISO-vecka börjar)
+Oberoende av bakgrundsfärg, gäller alla rader
+Prioritetsordning
+text
+
+1. RÖD   – Officiell helgdag (trumfar allt)
+2. RÖD   – Söndag (weekday==6)
+3. GRÖN  – Halvdag (get_half_days)
+4. BLÅ   – Lördag (weekday==5)
+5. INGEN – Vanlig vardag
++ ORANGE – Veckoskifte (oberoende)
+13. MANUELLT VAL AV STARTMÅNAD & ÅRSSKIFTE
+<!-- Fullständig beskrivning av startmånad och stöd för årsskifte. -->
+Beteende
+text
+
+QComboBox i SemesterlistaView (MONTH_OPTIONS, 14 alternativ):
+  Index 0:  "Standard (Januari)" → start_month=None → jan–dec valt år
+  Index 1:  "Januari"            → start_month=1
+  Index 6:  "Juni"               → start_month=6
+  Index 12: "December"           → start_month=12 → Dec→Jan nästa år
+
+Valt index sparas i plugin.settings["start_month"] (0–12)
+Återställs vid nästa start.
+Sidberäkning
+text
+
+_build_month_sequence(base_year, start_month):
+
+  start_month=None (standard), base_year=2026:
+    [(2026,1),...,(2026,12)]
+
+  start_month=12, base_year=2026:
+    [(2026,12),(2027,1),(2027,2),...,(2027,11)]
+    → Spänner över två år!
+    → Helgdagar hämtas för BÅDA åren
+
+  start_month=6, months_per_page=2:
+    Sida 1: Jun 2026, Jul 2026
+    Sida 2: Aug 2026, Sep 2026
+    Sida 3: Okt 2026, Nov 2026
+    Sida 4: Dec 2026, Jan 2027   ← Blandad sida möjlig!
+    Sida 5: Feb 2027, Mar 2027
+    ...
+Filnamn
+text
+
+Standard (jan–dec):  semesterlista_2026.pdf
+Manuell/årsskifte:   semesterlista_2026_12-2027_11.pdf
+Gränssnittsplacering
+text
+
+QGroupBox "Inställningar":
+  Rad 0: Läge          [Semesterlista ▼]
+  Rad 1: År            [2026 ↑↓]
+  Rad 2: Startmånad    [Standard (Januari) ▼]
+  Rad 3: Månader/blad  [3 ▼]
+  Rad 4: Fil           [Anställda.txt] [Bläddra...]
+14. AUTOSTART MED OS
+<!-- Fullständig beskrivning av autostart-funktionen. -->
+Menyplacering
+text
+
+Arkiv-menyn:
+  Inställningar...
+  ✓ Autostart vid inloggning   ← Checkable QAction
+  ─────────────────────────────
+  Avsluta  Ctrl+Q
+Plattformsspecifik implementation
+text
+
+Windows:
+  Lagras i: HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+  Nyckel: "Semesterlista" = "<sökväg till exe>"
+  pythonw.exe väljs automatiskt om tillgängligt (inga terminal)
+
+macOS:
+  Lagras i: ~/Library/LaunchAgents/com.semesterlista.plist
+  launchctl load/unload vid aktivering/avaktivering
+  RunAtLoad=true, KeepAlive=false
+
+Linux (XDG Autostart):
+  Lagras i: ~/.config/autostart/semesterlista.desktop
+  X-GNOME-Autostart-enabled=true
+  X-GNOME-Autostart-Delay=5
+  Terminal=false
+API
+text
+
+lock.get_autostart()          → bool
+lock.set_autostart(enabled)   → bool
+lock.get_autostart_info()     → str (plats på disk/register)
+lock.get_autostart_status_text() → "Aktiverad"/"Avaktiverad"
+lock.autostart_manager        → AutostartManager (property)
+
+AutostartManager:
+  is_enabled() → bool
+  enable()     → bool
+  disable()    → bool
+  set(bool)    → bool
+  get_status_text()   → str
+  get_platform_info() → str
+JSON-synk
+text
+
+settings_manager.set("advanced.autostart", True/False)
+Synkas vid start: saved_autostart != lock.get_autostart() → lock.set_autostart()
+15. SAMMANFATTNING – VAD HAR GJORTS
+text
+
+┌──────────────────────────────────────────────────────────────────┐
+│               UTFÖRT ARBETE – ALLA SESSIONER                     │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  SESSION 1 – GRUNDLÄGGANDE KONVERTERING (v1.3.0)                │
+│   1. core/event_bus.py           Trådsäkert, 11 metoder          │
+│   2. core/__init__.py            Lazy loading                    │
+│   3. core/settings_manager.py   Atomär JSON, punktnotation       │
+│   4. core/single_instance.py    QSharedMemory + socket           │
+│   5. core/theme_manager.py      3 teman, QSS                     │
+│   6. core/plugin_base.py        Brygga                           │
+│   7. plugins/base_plugin.py     ABC                              │
+│   8. plugins/hyra/plugin.py     tkinter→PySide6                 │
+│   9. plugins/lista/plugin.py    tkinter→PySide6, 270mm, wrap()   │
+│  10. main.py                    MainWindow, SystrayManager        │
+│  11. data/settings.json         Standardvärden                   │
+│  12. data/plugins.json          Plugin-inställningar              │
+│  13. config.json (rot)                                           │
+│                                                                  │
+│  SESSION 2 – SPEC v2.1.0                                        │
+│  14. Manuell startmånad spec                                     │
+│  15. Korrigerad färgkodning spec (midsommarafton=grön)           │
+│  16. Sektion 12 + 13 tillagda i spec                            │
+│                                                                  │
+│  SESSION 3 – KOD + SPEC v2.2.0                                  │
+│  17. plugins/lista/plugin.py  start_month kod + färgfix          │
+│       _build_month_sequence() – stöd för årsskifte               │
+│       get_swedish_holidays()  – korrekt implementation           │
+│       get_half_days()         – midsommarafton=grön              │
+│       10 automatiska tester                                      │
+│       Filnamn: semesterlista_2026_12-2027_11.pdf                 │
+│  18. plugins/lista/__init__.py  v2.2.0                           │
+│  19. plugins/hyra/plugin.py     v2.2.0, last_file sparas         │
+│  20. plugins/hyra/__init__.py   v2.2.0                           │
+│  21. plugins/base_plugin.py     v2.2.0, fullständig docstring    │
+│  22. plugins/__init__.py        v2.2.0, AutostartManager export  │
+│  23. core/single_instance.py    v2.2.0, AutostartManager klass   │
+│       Windows/macOS/Linux autostart                              │
+│       _get_executable_path() – pythonw.exe                       │
+│  24. core/theme_manager.py      v2.2.0, inverterade knappar      │
+│       Ljust=mörka knappar+vit text, Mörkt=ljusa+svart text       │
+│       20 widget-typer i QSS                                      │
+│  25. core/settings_manager.py   v2.2.0                           │
+│       DEFAULT_PLUGIN_SETTINGS, _merge_plugin_defaults()          │
+│       autostart i advanced-settings                              │
+│  26. core/event_bus.py          v2.2.0, logging istället print   │
+│  27. core/__init__.py           v2.2.0, AutostartManager export  │
+│  28. core/plugin_base.py        v2.2.0, fullständig docstring    │
+│  29. main.py                    v2.2.0, AutostartManager i meny  │
+│       Autostart-menyval, COPYRIGHT_YEAR dynamiskt                │
+│       Hög DPI, lock=SingleInstanceLock som parameter             │
+│  30. data/settings.json         v2.2.0, autostart=false          │
+│  31. data/plugins.json          v2.2.0, start_month=0            │
+│  32. config.json (rot)          v2.2.0                           │
+│  33. Anställda.txt              Exempelfil                        │
+│                                                                  │
+│  TOTALT: 33 levererade komponenter                              │
+│  VERSIONER: Synkade till v2.2.0 i samtliga moduler              │
+└──────────────────────────────────────────────────────────────────┘
+16. VAD SOM ÄR KVAR ATT GÖRA
+text
+
+┌─────┬──────────────────────────────────────────────────┬──────────┐
+│  #  │ Uppgift                                          │ Status   │
+├─────┼──────────────────────────────────────────────────┼──────────┤
+│  1  │ requirements.txt                                 │ ❌       │
+│  2  │ Fordon.txt (exempeldatafil)                      │ ❌       │
+│  3  │ Hyresgäster.txt (exempeldatafil)                 │ ❌       │
+│  4  │ resources/icons/ (app-ikoner 16/32/48/256px)     │ ❌       │
+│  5  │ resources/themes/ (dark.qss, light.qss)          │ ❌       │
+│  6  │ Testning på Windows med pythonw.exe              │ ❌       │
+│  7  │ Wayland-fallback för systray (Linux)             │ ❌       │
+└─────┴──────────────────────────────────────────────────┴──────────┘
+17. CHECKLISTA (50 Punkter)
+text
+
+[✔]  1. main.py – Entry point, dubbelklickbar, inget terminalfönster
+[✔]  2. main.py – hide_console_window() på Windows
+[✔]  3. main.py – Single-instance-lock innan QApplication skapas
+[✔]  4. main.py – Startar ALLTID minimerat (show() anropas ej)
+[✔]  5. core/__init__.py – Paket-initiering, exporterar nyckelklasser
+[✔]  6. main.py – MainWindow(QMainWindow) med komplett UI
+[✔]  7. main.py – _init_ui(): central widget, tabwidget, statusbar
+[✔]  8. main.py – _init_menu_bar(): Arkiv, Visa, Utseende, Hjälp
+[✔]  9. main.py – _load_plugins(): dynamisk laddning från plugins/
+[✔] 10. main.py – Visa/Dölj tabbar via "Visa"-meny (checkboxes)
+[✔] 11. main.py – Högerklick på tabb → "Dölj [namn]"
+[✔] 12. main.py – Mushjulsscroll på QTabWidget (eventFilter)
+[✔] 13. main.py – Dynamisk storlek (fungerar på alla skärmar)
+[✔] 14. main.py – _save_window_state() / _restore_window_state()
+[✔] 15. main.py – closeEvent → minimera till systray (inte avsluta)
+[✔] 16. main.py – Avsluta ENDAST via "Avsluta" i meny/systray
+[✔] 17. core/event_bus.py – Alla 11 metoder + logging
+[✔] 18. core/settings_manager.py – JSON load/save atomärt
+[✔] 19. core/settings_manager.py – Punktnotation nästlade settings
+[✔] 20. core/settings_manager.py – Plugin-specifika inställningar
+[✔] 21. core/settings_manager.py – DEFAULT_PLUGIN_SETTINGS + merge
+[✔] 22. core/single_instance.py – QSharedMemory + QLocalServer
+[✔] 23. core/single_instance.py – bring-to-front vid dubbelstart
+[✔] 24. core/single_instance.py – Fallback socket-metod
+[✔] 25. core/single_instance.py – AutostartManager (Win/Mac/Linux)
+[✔] 26. main.py – QSystemTrayIcon med ikon (Antialiasing)
+[✔] 27. main.py – Enkelklick = visa/dölj fönster
+[✔] 28. main.py – Högerklick = meny (Visa, Dölj, Avsluta)
+[✔] 29. main.py – Notifikationer vid start
+[ ] 30. main.py – Fallback om systray ej tillgänglig (Wayland)
+[✔] 31. main.py – Autostart-menyval (Arkiv → Autostart)
+[✔] 32. core/theme_manager.py – 3 teman: dark, light, system
+[✔] 33. core/theme_manager.py – Mörkt: ljusa knappar + svart FET
+[✔] 34. core/theme_manager.py – Ljust: mörka knappar + vit FET
+[✔] 35. core/theme_manager.py – Inverterade knappar/tabbar
+[✔] 36. core/theme_manager.py – System-tema följer OS
+[✔] 37. core/theme_manager.py – QSS 20 widget-typer, alla tillstånd
+[✔] 38. plugins/base_plugin.py – Abstrakt basklass (ABC)
+[✔] 39. plugins/base_plugin.py – get_name/version/tab_widget
+[ ] 40. resources/ – Ikoner (16/32/48/256px)
+[ ] 41. resources/ – dark.qss och light.qss
+[✔] 42. data/ – settings.json med standardvärden + autostart
+[✔] 43. data/ – plugins.json med plugin-inställningar + start_month
+[✔] 44. config.json (rot) – korrekt format v2.2.0
+[ ] 45. requirements.txt – PySide6>=6.7.0, reportlab
+[✔] 46. lista/plugin.py – Val av 2 eller 3 månader per blad
+[✔] 47. lista/plugin.py – Autoskalning _apply_table_scaling()
+[✔] 48. lista/plugin.py – Manuell startmånad + årsskifte
+[✔] 49. lista/plugin.py – Midsommarafton = grön (ej röd)
+[✔] 50. lista/plugin.py – 10 automatiska tester
+
+STATUS: 44 av 50 klara (88%)
+18. KÄNDA FEL/BUGGAR & ÅTGÄRDSPLAN
+text
+
+┌─────┬──────────────────────────────────────┬───────┬──────────────────────────────┐
+│  #  │ Bug/Fel                              │ Allv. │ Åtgärdsplan                  │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  1  │ Terminalfönster vid .py-start        │ MED   │ pythonw.exe / .pyw /         │
+│     │ (Windows)                            │       │ ctypes HideWindow ✅          │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  2  │ QSystemTrayIcon på Wayland (Linux)   │ HÖG   │ AyatanaAppIndicator3         │
+│     │ fungerar ej                          │       │ eller visa fönster normalt   │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  3  │ QSharedMemory kvar efter krasch      │ LÅG   │ _cleanup_stale_lock() ✅     │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  4  │ Plugin med syntaxfel                 │ HÖG   │ try/except i load_plugin ✅  │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  5  │ Temabyte tappar custom QSS           │ MED   │ _apply_theme() kopplas till  │
+│     │                                      │       │ theme_changed signal ✅       │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  6  │ Högerklick på tabb – fel index       │ LÅG   │ tabBar().tabAt(pos) ✅       │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  7  │ JSON-korruption vid avbruten skrivn. │ LÅG   │ Atomär .tmp→rename ✅        │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  8  │ EventBus callback exceptions         │ LÅG   │ logger.error + exc_info ✅   │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│  9  │ EventBus race conditions             │ MED   │ threading.Lock ✅            │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 10  │ Hög DPI – suddiga widgets            │ MED   │ PassThrough policy ✅        │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 11  │ HTML-artefakter vid copy/paste       │ HÖG   │ ⚠️ Använd copy-knappen      │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 12  │ Midsommarafton felaktigt röd         │ HÖG   │ Fixat i v2.2.0 ✅            │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 13  │ Ingen manuell startmånad             │ MED   │ Implementerat i v2.2.0 ✅    │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 14  │ Autostart ej tillgängligt            │ LÅG   │ Implementerat i v2.2.0 ✅    │
+│     │                                      │       │ Win/macOS/Linux              │
+├─────┼──────────────────────────────────────┼───────┼──────────────────────────────┤
+│ 15  │ Knappar osynliga vid temabyte        │ HÖG   │ Fixat i v2.2.0 ✅            │
+│     │                                      │       │ Inverterade knappar alltid   │
+└─────┴──────────────────────────────────────┴───────┴──────────────────────────────┘
+19. FRAMTIDSPLAN
+text
+
+Version 2.2.0 – KLAR (88%)
+  [✔] EventBus + logging
+  [✔] Autostart Win/macOS/Linux
+  [✔] Manuell startmånad + stöd för årsskifte
+  [✔] Korrigerad färgkodning (midsommarafton=grön)
+  [✔] Inverterade knappar (alltid tydliga)
+  [✔] 20 widget-typer i QSS
+  [✔] DEFAULT_PLUGIN_SETTINGS + auto-merge
+  [✔] Dynamiskt copyright-år
+  [✔] Hög DPI
+
+Version 2.3.0 – FÖRBÄTTRINGAR
+  [ ] requirements.txt
+  [ ] Fordon.txt + Hyresgäster.txt (exempelfiler)
+  [ ] Wayland-fallback (Linux systray)
+  [ ] resources/icons/ (16/32/48/256px)
+  [ ] resources/themes/ (dark.qss, light.qss)
+  [ ] Export/Import av inställningar (UI)
+  [ ] Loggning till fil (log_to_file=true)
+  [ ] First-run wizard
+  [ ] Snabbkommandon (QShortcut)
+
+Version 2.4.0 – AVANCERAT
+  [ ] Fler språk (i18n)
+  [ ] Plugin-sandbox
+  [ ] Prestandaövervakning
+  [ ] Crash reporter
+  [ ] Plugin-paketering (zip)
+
+Version 3.0.0 – FRAMTID
+  [ ] Webbgränssnitt (FastAPI + React)
+  [ ] Molnsynkronisering
+  [ ] Plugin-marknad
+  [ ] Profil-/användarhantering (på begäran)
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.2.0 | Datum: 2026-06-05 | Status: 44/50 (88%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

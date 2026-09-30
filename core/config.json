@@ -1,0 +1,41 @@
+{
+  "app_name": "Semesterlista",
+  "version": "2.2.0",
+  "theme": "system",
+  "language": "sv",
+  "window": {
+    "x": 100,
+    "y": 100,
+    "width": 1200,
+    "height": 800,
+    "maximized": false,
+    "min_size": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "tabs": {
+    "visible": [],
+    "hidden": [],
+    "order": []
+  },
+  "systray": {
+    "minimize_to_tray": true,
+    "start_minimized": true,
+    "show_notifications": true,
+    "notification_duration_ms": 3000,
+    "close_to_tray": true
+  },
+  "plugins": {
+    "enabled": [],
+    "disabled": [],
+    "auto_load": true
+  },
+  "advanced": {
+    "debug_mode": false,
+    "log_to_file": false,
+    "log_path": "data/app.log",
+    "check_updates": true,
+    "autostart": false
+  }
+}
