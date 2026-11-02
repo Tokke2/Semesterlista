@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.5.0"
+MODULE_VERSION: str = "2.10.0"
 
 #: Mapp (relativt appens rot) där bilder letas upp
 ASSET_DIR_NAME: str = "assets"
@@ -79,9 +79,21 @@ MM: float = 72.0 / 25.4
 #: Upplösning när SVG rasteriseras med Qt
 RASTER_DPI: int = 300
 
-#: Standardstorlek på logotypen i PDF (mm)
+#: Standardstorlek på logotypen i PDF (mm) när den laddas
 DEFAULT_MAX_WIDTH_MM: float = 35.0
 DEFAULT_MAX_HEIGHT_MM: float = 16.0
+
+#: Automatisk storlek i PDF:en (v2.10.0) – andel av sidans bredd/höjd
+AUTO_WIDTH_RATIO: float = 0.15
+AUTO_HEIGHT_RATIO: float = 0.08
+
+#: Tak för den automatiska storleken (mm) – gäller även stora sidor
+AUTO_MAX_WIDTH_MM: float = 60.0
+AUTO_MAX_HEIGHT_MM: float = 25.0
+
+#: Minsta ruta som logotypen får ritas i (punkter) – gäller även små sidor
+AUTO_MIN_WIDTH_PT: float = 36.0
+AUTO_MIN_HEIGHT_PT: float = 12.0
 
 #: Standardmarginal från sidkanten (mm)
 DEFAULT_MARGIN_MM: float = 8.0
@@ -441,12 +453,60 @@ class PdfLogo:
             mask="auto",
         )
 
+    def auto_size(
+        self,
+        page_width: float,
+        page_height: float,
+        width_ratio: float = AUTO_WIDTH_RATIO,
+        height_ratio: float = AUTO_HEIGHT_RATIO,
+        max_width_mm: float = AUTO_MAX_WIDTH_MM,
+        max_height_mm: float = AUTO_MAX_HEIGHT_MM,
+    ) -> Tuple[float, float]:
+        """
+        Beräkna logotypens storlek för en sida (v2.10.0).
+
+        Logotypen får plats i en ruta som är en andel av sidans bredd och
+        höjd (med ett tak i mm) och skalas **både upp och ned** så att den
+        fyller rutan utan att förvrängas. Proportionerna behålls alltid.
+
+        Args:
+            page_width / page_height: Sidans storlek i punkter.
+            width_ratio / height_ratio: Andel av sidan som logotypen får ta.
+            max_width_mm / max_height_mm: Tak i millimeter.
+
+        Returns:
+            (bredd, höjd) i punkter.
+        """
+        page_w = max(float(page_width), 1.0)
+        page_h = max(float(page_height), 1.0)
+
+        # Rutan som logotypen måste rymmas i (min-storleken gäller rutan,
+        # så att logotypen aldrig hamnar utanför den eller förvrängs)
+        box_w = max(
+            min(page_w * float(width_ratio), float(max_width_mm) * MM),
+            AUTO_MIN_WIDTH_PT,
+        )
+        box_h = max(
+            min(page_h * float(height_ratio), float(max_height_mm) * MM),
+            AUTO_MIN_HEIGHT_PT,
+        )
+
+        natural_w = float(self.width) if self.width else 1.0
+        natural_h = float(self.height) if self.height else 1.0
+        if natural_w <= 0 or natural_h <= 0:
+            natural_w = natural_h = 1.0
+
+        # Skala proportionellt så att logotypen precis får plats i rutan
+        scale = min(box_w / natural_w, box_h / natural_h)
+        return natural_w * scale, natural_h * scale
+
     def draw_corner(
         self,
         canvas: Any,
         doc: Any,
         margin_mm: float = DEFAULT_MARGIN_MM,
         corner: str = "right",
+        auto_size: bool = True,
     ) -> None:
         """
         Rita logotypen i övre högra (eller vänstra) hörnet på sidan.
@@ -456,6 +516,7 @@ class PdfLogo:
             doc:       SimpleDocTemplate/BaseDocTemplate (för sidstorlek).
             margin_mm: Marginal till sidkanten.
             corner:    "right" eller "left".
+            auto_size: True = storleken anpassas till sidan (v2.10.0).
         """
         page_size = getattr(doc, "pagesize", None) or getattr(canvas, "_pagesize", None)
         if not page_size:
@@ -464,15 +525,20 @@ class PdfLogo:
         page_w, page_h = float(page_size[0]), float(page_size[1])
         margin = float(margin_mm) * MM
 
+        if auto_size:
+            width, height = self.auto_size(page_w, page_h)
+        else:
+            width, height = self.width, self.height
+
         if corner == "left":
             x = margin
         else:
-            x = page_w - margin - self.width
-        y = page_h - margin - self.height
+            x = page_w - margin - width
+        y = page_h - margin - height
 
         canvas.saveState()
         try:
-            self.draw_on(canvas, x, y)
+            self.draw_on(canvas, x, y, width=width, height=height)
         finally:
             canvas.restoreState()
 

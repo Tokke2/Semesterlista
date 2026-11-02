@@ -1,6 +1,6 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02 (v2.9.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-02 (v2.10.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -9,8 +9,10 @@ Status per 2026-11-02 (v2.9.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
 2. **[KLART] SVG-logotyp från undermapp** – bilder läses rekursivt från
    `assets/` (t.ex. `assets/logotyper/`), väljs i appen och bäddas in i PDF:en
    på varje sida (vektor via `svglib`, annars 300 dpi via Qt).
-3. **[FÖRSLAG] Logotypens placering och storlek** – välj hörn (vänster/höger,
-   uppe/nere) och maxstorlek per flik i stället för dagens fasta värden.
+3. **[KLART] Logotypens placering och storlek** – storleken anpassas
+   automatiskt efter sidan (`PdfLogo.auto_size`, v2.10.0): 15 % av bredden /
+   8 % av höjden, tak 60 × 25 mm och alltid bevarade proportioner. Valbar
+   storlek per flik återstår som förslag.
 4. **[FÖRSLAG] Sidhuvud/sidfot i PDF:en** – företagsnamn, utskriftsdatum,
    "Sida 2 av 5" och logotyp tillsammans. Höjer intrycket på utskrifter.
 5. **[FÖRSLAG] Två logotyper samtidigt** – t.ex. företag uppe till vänster och
@@ -25,6 +27,19 @@ Status per 2026-11-02 (v2.9.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
    systemfältsikon (`QIcon`), så appen känns företagsanpassad.
 10. **[FÖRSLAG] Sökfält i logotypdialogen** – filtrera på namn/mapp när det
     finns många bilder i `assets/`.
+
+## Logotypväljaren (v2.10.0)
+
+- **[KLART] Dropdown i stället för dialog** – `core/logo_picker.py` listar
+  alla bilder i `assets/` + undermappar direkt i vyn (Semesterlista och Hyra).
+- **[KLART] Förhandsgranskning som skalar sig själv** – bilden anpassas till
+  ytan i både höjd och bredd, utan att proportionerna ändras.
+- **[KLART] Uppdatera lista** – nya bilder i `assets/` syns direkt.
+- **[KLART] Inställningar… och Sök efter uppdatering… i systemfältets meny.**
+- **[FÖRSLAG] Sökfält i dropdownen** – filtrera på namn/mapp när `assets/`
+  innehåller många bilder (punkt 10 nedan).
+- **[FÖRSLAG] Automatisk kopiering till `assets/logotyper/`** när man väljer
+  en bild utanför mappen (punkt 7 nedan).
 
 ## PDF & utskrift
 

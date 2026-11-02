@@ -11,10 +11,14 @@ FIXAT v2.8.1:     Årbytet tömde hela sidan. Vyn byggdes om med en ny
                    kvartalskorten byts ut på plats (fokus ligger kvar i
                    årväljaren).
 
+UPPDATERAD v2.10.0: Logotypen väljs i en dropdown-lista (core/logo_picker.py)
+                   med alla bilder i appens assets-mapp (även undermappar)
+                   och ritas i övre högra hörnet på varje sida med en
+                   storlek som anpassas automatiskt (PdfLogo.auto_size).
+
 UPPDATERAD v2.5.0: Fliken heter "Hyra" (TAB_ORDER 10).
-                   Logotyp i PDF:en: "Välj logotyp…" hämtar en bild från
-                   appens assets-mapp (även undermappar) och ritar den i
-                   övre högra hörnet på varje sida.
+                   Logotyp i PDF:en: en bild från appens assets-mapp
+                   (även undermappar) ritas i övre högra hörnet på varje sida.
                    Inställningarna sparas per plugin (self.settings).
 
 UPPDATERAD v2.2.0: Synkad med settings_manager.py v2.2.0,
@@ -56,11 +60,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QSpinBox,
     QFrame,
-    QScrollArea,
     QMessageBox,
     QSizePolicy,
-    QFileDialog,
-    QApplication,
 )
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QFont
@@ -84,7 +85,7 @@ from core.pdf_assets import (
     logo_for_settings,
     make_logo_canvas,
 )
-from core.roster import RosterError, RosterFile, resolve_path
+from core.roster import RosterError, RosterFile
 
 from plugins.base_plugin import BasePlugin
 
@@ -101,7 +102,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.9.0",
+    "version":     "2.10.0",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -388,7 +389,6 @@ class HyraMainView(QWidget):
 
         main_layout.addLayout(self._create_top_panel())
         main_layout.addLayout(self._create_file_info_row())
-        self._update_logo_label()
 
         self._quarter_group = self._create_quarter_info_panel()
         main_layout.addWidget(self._quarter_group)
@@ -427,20 +427,19 @@ class HyraMainView(QWidget):
         layout.addWidget(file_label)
         layout.addStretch()
 
-        # Logotyp i PDF:en (v2.4.0) – väljs från assets-mappen
-        self.logo_status = QLabel("")
-        self.logo_status.setFont(QFont("Helvetica", 9))
-        self.logo_status.setStyleSheet("color: #666;")
-        layout.addWidget(self.logo_status)
+        # Logotyp i PDF:en (v2.10.0) – dropdown med assets/ + undermappar
+        from core.logo_picker import LogoPicker
 
-        self.logo_btn = QPushButton("🖼️ " + i18n.t("logo.choose"))
-        self.logo_btn.setToolTip(i18n.t("logo.dialog_hint"))
-        self.logo_btn.clicked.connect(self._choose_logo)
-        layout.addWidget(self.logo_btn)
-
-        self.logo_clear_btn = QPushButton(i18n.t("logo.clear"))
-        self.logo_clear_btn.clicked.connect(self._clear_logo)
-        layout.addWidget(self.logo_clear_btn)
+        self.logo_picker = LogoPicker(
+            current=self.plugin.settings.get("logo_svg") or "",
+            parent=self,
+            show_preview=False,
+        )
+        self.logo_picker.changed.connect(self._on_logo_changed)
+        logo_label = QLabel(i18n.t("logo.label"))
+        logo_label.setFont(QFont("Helvetica", 9))
+        layout.addWidget(logo_label)
+        layout.addWidget(self.logo_picker)
 
         edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
         edit_btn.clicked.connect(self.plugin._manage_tenants)
@@ -462,46 +461,11 @@ class HyraMainView(QWidget):
         """Sökvägen till vald logotyp ('' om ingen är vald)."""
         return str(self.plugin.settings.get("logo_svg") or "")
 
-    def _update_logo_label(self) -> None:
-        """Visa vald logotyp i fil-raden."""
-        if not hasattr(self, "logo_status"):
-            return
-
-        value = self._logo_path()
-        if not value:
-            self.logo_status.setStyleSheet("color: #666;")
-            self.logo_status.setText(i18n.t("logo.no_logo"))
-            return
-
-        path = resolve_path(value)
-        if not path.exists():
-            self.logo_status.setStyleSheet("color: #c0392b;")
-            self.logo_status.setText(i18n.t("logo.missing_file", path=path.name))
-            return
-
-        self.logo_status.setStyleSheet("color: #666;")
-        self.logo_status.setText(i18n.t("logo.selected", name=path.name))
-
-    def _choose_logo(self) -> None:
-        """Öppna logotypväljaren (assets-mappen + undermappar)."""
-        from core.logo_dialog import choose_logo
-
-        changed, path = choose_logo(self, current=self._logo_path())
-        if not changed:
-            return
-
-        self.plugin.settings["logo_svg"] = path
+    def _on_logo_changed(self, path: str) -> None:
+        """Spara vald logotyp direkt (v2.10.0) – storleken sköts automatiskt."""
+        self.plugin.settings["logo_svg"] = str(path or "")
         self.plugin._save_settings()
-        self._update_logo_label()
-
-    def _clear_logo(self) -> None:
-        """Ta bort logotypen från PDF-exporten."""
-        if not self._logo_path():
-            return
-
-        self.plugin.settings["logo_svg"] = ""
-        self.plugin._save_settings()
-        self._update_logo_label()
+        logger.info(f"Logotyp för PDF: {path or 'ingen'}")
 
     def _create_quarter_info_panel(self) -> QGroupBox:
         """Skapa färgkodad info-panel för kvartalsfakturor."""
@@ -1014,7 +978,7 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.9.0"
+    VERSION:     str = "2.10.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 

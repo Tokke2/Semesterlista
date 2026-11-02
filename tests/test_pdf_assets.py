@@ -23,6 +23,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.pdf_assets import (  # noqa: E402
     ASSET_DIR_NAME,
+    AUTO_HEIGHT_RATIO,
+    AUTO_MAX_HEIGHT_MM,
+    AUTO_MAX_WIDTH_MM,
+    AUTO_MIN_HEIGHT_PT,
+    AUTO_MIN_WIDTH_PT,
+    AUTO_WIDTH_RATIO,
+    MM,
     AssetError,
     AssetFile,
     PdfLogo,
@@ -34,6 +41,11 @@ from core.pdf_assets import (  # noqa: E402
     make_page_logo_drawer,
     scan_assets,
 )
+
+#: A4 i punkter (liggande = 842 × 595)
+A4_LANDSCAPE_W = 842.0
+A4_LANDSCAPE_H = 595.0
+A4_H = 842.0
 
 try:  # reportlab är en vanlig beroende men kan saknas i testmiljö
     from reportlab.pdfgen import canvas as rl_canvas  # noqa: F401
@@ -246,6 +258,100 @@ class PdfLogoTests(AssetsFixture):
         self.assertTrue(out.exists())
         self.assertGreaterEqual(len(calls), 2)
         self.assertEqual(calls[0], (8.0, "right"))
+
+
+class PdfLogoAutoSizeTests(unittest.TestCase):
+    """Automatisk storlek på logotypen i PDF:en (v2.10.0)."""
+
+    def _logo(self, width: float, height: float) -> PdfLogo:
+        """PdfLogo med given naturlig storlek (utan att läsa någon fil)."""
+        logo = PdfLogo.__new__(PdfLogo)
+        logo.width = width
+        logo.height = height
+        return logo
+
+    def _box(self, page_w: float, page_h: float) -> tuple:
+        box_w = max(min(page_w * float(AUTO_WIDTH_RATIO), AUTO_MAX_WIDTH_MM * MM),
+                    AUTO_MIN_WIDTH_PT)
+        box_h = max(min(page_h * float(AUTO_HEIGHT_RATIO), AUTO_MAX_HEIGHT_MM * MM),
+                    AUTO_MIN_HEIGHT_PT)
+        return box_w, box_h
+
+    def test_landscape_and_portrait_fit_the_page(self) -> None:
+        logo = self._logo(200.0, 80.0)  # proportion 2.5
+
+        for page_w, page_h in ((A4_LANDSCAPE_W, A4_LANDSCAPE_H), (A4_LANDSCAPE_H, A4_H)):
+            width, height = logo.auto_size(page_w, page_h)
+            box_w, box_h = self._box(page_w, page_h)
+            self.assertLessEqual(width, box_w + 0.01)
+            self.assertLessEqual(height, box_h + 0.01)
+            self.assertGreater(width, 0.0)
+            self.assertAlmostEqual(width / height, 2.5, places=3)
+
+    def test_landscape_logo_is_wider_than_portrait(self) -> None:
+        logo = self._logo(200.0, 80.0)
+        land_w, land_h = logo.auto_size(A4_LANDSCAPE_W, A4_LANDSCAPE_H)
+        port_w, port_h = logo.auto_size(A4_LANDSCAPE_H, A4_H)
+        self.assertGreater(land_w, port_w)
+        self.assertGreater(land_h, port_h)
+
+    def test_proportions_are_kept_for_extreme_shapes(self) -> None:
+        for natural_w, natural_h in ((240.0, 20.0), (20.0, 160.0), (50.0, 50.0), (8.0, 6.0)):
+            logo = self._logo(natural_w, natural_h)
+            for page_w, page_h in ((A4_LANDSCAPE_W, A4_LANDSCAPE_H),
+                                   (A4_LANDSCAPE_H, A4_H),
+                                   (200.0, 200.0)):
+                width, height = logo.auto_size(page_w, page_h)
+                box_w, box_h = self._box(page_w, page_h)
+                self.assertAlmostEqual(
+                    width / height, natural_w / natural_h, places=3,
+                    msg=f"{natural_w}x{natural_h} på {page_w}x{page_h}",
+                )
+                self.assertLessEqual(width, box_w + 0.01)
+                self.assertLessEqual(height, box_h + 0.01)
+
+    def test_never_larger_than_the_caps(self) -> None:
+        logo = self._logo(100.0, 50.0)
+        width, height = logo.auto_size(6000.0, 6000.0)
+        self.assertLessEqual(width, AUTO_MAX_WIDTH_MM * MM + 0.01)
+        self.assertLessEqual(height, AUTO_MAX_HEIGHT_MM * MM + 0.01)
+        self.assertAlmostEqual(width / height, 2.0, places=3)
+
+    def test_tiny_page_is_bounded_by_the_minimum_box(self) -> None:
+        # Även en liten sida ger en ruta på minst 36 × 12 pt – logotypen
+        # ryms alltid i den och förvrängs aldrig.
+        logo = self._logo(100.0, 50.0)
+        width, height = logo.auto_size(10.0, 10.0)
+        self.assertLessEqual(width, AUTO_MIN_WIDTH_PT + 0.01)
+        self.assertLessEqual(height, AUTO_MIN_HEIGHT_PT + 0.01)
+        self.assertAlmostEqual(width / height, 2.0, places=3)
+        self.assertGreater(width, 0.0)
+
+    def test_natural_size_is_kept_when_disabled(self) -> None:
+        logo = self._logo(100.0, 50.0)
+        drawn = []
+
+        def _fake_draw(_canvas, _x, _y, width=None, height=None):
+            drawn.append((width, height))
+
+        logo.draw_on = _fake_draw  # type: ignore[method-assign]
+
+        class _Canvas:
+            _pagesize = (A4_LANDSCAPE_W, A4_LANDSCAPE_H)
+
+        class _Doc:
+            pagesize = (A4_LANDSCAPE_W, A4_LANDSCAPE_H)
+
+        canvas = _Canvas()
+        canvas.saveState = canvas.restoreState = lambda: None
+
+        logo.draw_corner(canvas, _Doc(), margin_mm=8.0, auto_size=False)
+        self.assertEqual(drawn[-1], (logo.width, logo.height))
+
+        logo.draw_corner(canvas, _Doc(), margin_mm=8.0, auto_size=True)
+        expected = logo.auto_size(A4_LANDSCAPE_W, A4_LANDSCAPE_H)
+        self.assertAlmostEqual(drawn[-1][0], expected[0], places=3)
+        self.assertAlmostEqual(drawn[-1][1], expected[1], places=3)
 
 
 if __name__ == "__main__":

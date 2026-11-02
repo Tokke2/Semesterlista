@@ -26,9 +26,10 @@ NYTT v2.6.0:
 NYTT v2.5.0:
   - Fliken visar ett LÅST läge (Semesterlista). Limokörning har fått en
     egen flik: plugins/fordon (FIXED_MODE = "Limokörning").
-  - Logotyp i PDF:en: knappen "Välj logotyp…" hämtar en SVG/PNG/JPG från
-    appens assets-mapp (även undermappar) via core/logo_dialog.py och
-    core/pdf_assets.py. Logotypen ritas på varje sida.
+  - Logotyp i PDF:en: väljs i en dropdown-lista (v2.10.0) med alla
+    bilder i appens assets-mapp (även undermappar) via core/logo_picker.py.
+    Logotypen ritas på varje sida i en storlek som anpassas automatiskt
+    efter sidan (core/pdf_assets.py, PdfLogo.auto_size).
   - Inställningarna sparas per plugin (settings-fordon.json för Fordon)
     så att flikarna inte skriver över varandra.
 
@@ -171,7 +172,7 @@ DEFAULT_MONTHS_PER_PAGE: int = 3
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.9.0",
+    "version": "2.10.0",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -1635,29 +1636,16 @@ class SemesterlistaView(QWidget):
         self.count_label.setFont(QFont("Helvetica", 9))
         form_layout.addWidget(self.count_label, 6, 0, 1, 2)
 
-        # Logotyp i PDF:en (v2.4.0) – väljs från assets-mappen
+        # Logotyp i PDF:en (v2.10.0) – dropdown med bilderna i assets/ + undermappar
         logo_label = QLabel(i18n.t("logo.label"))
         logo_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(logo_label, 7, 0)
 
-        logo_row = QHBoxLayout()
-        self.logo_status = QLabel("")
-        self.logo_status.setFont(QFont("Helvetica", 9))
-        self.logo_status.setStyleSheet("color: #666;")
-        logo_row.addWidget(self.logo_status, 1)
+        from core.logo_picker import LogoPicker
 
-        self.logo_btn = QPushButton("🖼️ " + i18n.t("logo.choose"))
-        self.logo_btn.setToolTip(i18n.t("logo.dialog_hint"))
-        self.logo_btn.clicked.connect(self._choose_logo)
-        logo_row.addWidget(self.logo_btn)
-
-        self.logo_clear_btn = QPushButton(i18n.t("logo.clear"))
-        self.logo_clear_btn.clicked.connect(self._clear_logo)
-        logo_row.addWidget(self.logo_clear_btn)
-
-        form_layout.addLayout(logo_row, 7, 1)
-
-        self._update_logo_label()
+        self.logo_picker = LogoPicker(current=self._logo_path(), parent=self)
+        self.logo_picker.changed.connect(self._on_logo_changed)
+        form_layout.addWidget(self.logo_picker, 7, 1)
         self._on_mode_change(self.mode_combo.currentText())
         self._update_list_count()
         return group
@@ -1762,46 +1750,16 @@ class SemesterlistaView(QWidget):
         """Sökvägen till vald logotyp ('' om ingen är vald)."""
         return str(self.plugin.settings.get("logo_svg") or "")
 
-    def _update_logo_label(self) -> None:
-        """Visa vald logotyp i formuläret."""
-        if not hasattr(self, "logo_status"):
-            return
+    def _on_logo_changed(self, path: str) -> None:
+        """
+        Spara logotypen direkt när den väljs i dropdown-listan (v2.10.0).
 
-        value = self._logo_path()
-        if not value:
-            self.logo_status.setStyleSheet("color: #666;")
-            self.logo_status.setText(i18n.t("logo.no_logo"))
-            return
-
-        path = resolve_path(value)
-        if not path.exists():
-            self.logo_status.setStyleSheet("color: #c0392b;")
-            self.logo_status.setText(i18n.t("logo.missing_file", path=path.name))
-            return
-
-        self.logo_status.setStyleSheet("color: #666;")
-        self.logo_status.setText(i18n.t("logo.selected", name=path.name))
-
-    def _choose_logo(self) -> None:
-        """Öppna logotypväljaren (assets-mappen + undermappar)."""
-        from core.logo_dialog import choose_logo
-
-        changed, path = choose_logo(self, current=self._logo_path())
-        if not changed:
-            return
-
-        self.plugin.settings["logo_svg"] = path
+        Logotypen skalas automatiskt i PDF:en – ingen storleksinställning
+        behövs.
+        """
+        self.plugin.settings["logo_svg"] = str(path or "")
         self.plugin._save_settings()
-        self._update_logo_label()
-
-    def _clear_logo(self) -> None:
-        """Ta bort logotypen från PDF-exporten."""
-        if not self._logo_path():
-            return
-
-        self.plugin.settings["logo_svg"] = ""
-        self.plugin._save_settings()
-        self._update_logo_label()
+        logger.info(f"Logotyp för PDF: {path or 'ingen'}")
 
     def _browse_file(self) -> None:
         """Öppna filväljardialog."""
@@ -1937,7 +1895,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.9.0"
+    VERSION: str = "2.10.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 

@@ -8,6 +8,20 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.10.0: LOGOTYP I DROPDOWN + AUTOMATISK STORLEK I PDF.
+                   Nytt: core/logo_picker.py – väljaren är en dropdown med
+                   alla bilder i assets/ och dess undermappar,
+                   förhandsgranskning som skalar sig själv och knappen
+                   "Infoga SVG…" för bilder utanför assets/. Valet sparas
+                   direkt i pluginets inställningar.
+                   Nytt: PdfLogo.auto_size() – logotypen får 15 % av
+                   sidbredden / 8 % av sidhöjden (tak 60 × 25 mm, minsta
+                   ruta 36 × 12 pt) och proportionerna behålls på både
+                   liggande och stående sidor.
+                   Nytt i systemfältets högerklicksmeny: Inställningar…,
+                   Sök efter uppdatering… och Om <app> v<version>…. Visa
+                   och Dölj speglar fönstrets läge (Visa är standardval).
+                   APP_VERSION bumpat till 2.10.0.
 UPPDATERAD v2.9.0: UPPDATERING FRÅN GITHUB RELEASES.
                    Nytt: core/updater.py, knappen Hjälp → Sök efter
                    uppdatering… och gruppen Uppdatering under
@@ -255,7 +269,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.9.0"
+APP_VERSION: str = "2.10.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1334,7 +1348,12 @@ class SystrayManager:
     Hanterar systemfältsikonen och dess interaktioner.
 
     Enkelklick (vänster) → visa/dölj fönster
-    Högerklick           → meny (Visa, Dölj, Avsluta)
+    Högerklick           → meny (v2.10.0):
+                             Visa / Dölj      – speglar fönstrets läge
+                             Inställningar…
+                             Sök efter uppdatering…
+                             Om {app} v{version}…
+                             Avsluta
     Tooltip              → f"{app_name} v{APP_VERSION}"
 
     v2.3.0: Alla texter hämtas via core/i18n.py och kan byggas om
@@ -1377,10 +1396,35 @@ class SystrayManager:
 
         self._tray_menu.addSeparator()
 
+        # Inställningar och uppdatering direkt från systemfältet (v2.10.0)
+        self._settings_action = self._tray_menu.addAction(
+            i18n.t("tray.settings")
+        )
+        self._settings_action.triggered.connect(
+            lambda: self._main_window._open_settings()
+        )
+
+        self._update_action = self._tray_menu.addAction(
+            i18n.t("tray.check_updates")
+        )
+        self._update_action.triggered.connect(
+            lambda: self._main_window._open_settings(check_updates=True)
+        )
+
+        self._about_action = self._tray_menu.addAction(
+            i18n.t("tray.about", app=self._app_name, version=APP_VERSION)
+        )
+        self._about_action.triggered.connect(self._main_window._show_about)
+
+        self._tray_menu.addSeparator()
+
         self._quit_action = self._tray_menu.addAction(i18n.t("tray.quit"))
         self._quit_action.triggered.connect(
             self._main_window._quit_application
         )
+
+        # Visa/Dölj speglar fönstrets läge när menyn öppnas
+        self._tray_menu.aboutToShow.connect(self._sync_actions)
 
         self._tray_icon.setContextMenu(self._tray_menu)
         self._tray_icon.activated.connect(self._on_tray_activated)
@@ -1396,7 +1440,27 @@ class SystrayManager:
         self._tray_icon.setToolTip(f"{self._app_name} v{APP_VERSION}")
         self._show_action.setText(i18n.t("tray.show", app=self._app_name))
         self._hide_action.setText(i18n.t("tray.hide"))
+        self._settings_action.setText(i18n.t("tray.settings"))
+        self._update_action.setText(i18n.t("tray.check_updates"))
+        self._about_action.setText(
+            i18n.t("tray.about", app=self._app_name, version=APP_VERSION)
+        )
         self._quit_action.setText(i18n.t("tray.quit"))
+
+    def _sync_actions(self) -> None:
+        """
+        Anpassa menyn efter fönstrets läge (v2.10.0).
+
+        Är fönstret synligt är *Visa* overksamt och tvärtom, så att menyn
+        alltid visar vad som faktiskt går att göra. *Visa* är dessutom
+        menyns standardval (fet stil).
+        """
+        visible = self._main_window.isVisible()
+        self._show_action.setEnabled(not visible)
+        self._hide_action.setEnabled(visible)
+        self._tray_menu.setDefaultAction(
+            self._hide_action if visible else self._show_action
+        )
 
     def _on_tray_activated(self, reason) -> None:
         """

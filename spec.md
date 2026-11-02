@@ -45,6 +45,7 @@
     - 4.20 core/logging_setup.py
     - 4.21 core/settings_dialog.py
     - 4.22 core/updater.py
+    - 4.23 core/logo_picker.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -64,6 +65,7 @@
 22. Loggning & Felsökning (v2.8.0)
 23. Uppdatering från GitHub (v2.9.0)
 21. Flikar & Logotyp i PDF (v2.5.0)
+24. Logotyp-Dropdown & Automatisk Storlek (v2.10.0)
 
 ---
 
@@ -117,7 +119,8 @@ Semesterlista/ ← Rotmapp
 │ ├── roster.py ← Listor: anställda/fordon/hyresgäster ← NY v2.4.0
 │ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
 │ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
-│ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0
+│ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0 (ersatt)
+│ ├── logo_picker.py ← Dropdown för logotypen i vyerna ← NY v2.10.0
 │ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
 │ ├── logging_setup.py ← Detaljerad loggning + felhakar ← NY v2.8.0
 │ ├── settings_dialog.py ← Inställningar (4 flikar) ← NY v2.8.0
@@ -1249,10 +1252,17 @@ KLASSER
 | `find_asset(namn, root=None)` | Sök på relativ sökväg, filnamn eller stam |
 | `PdfLogo.load(path, max_width_mm=35, max_height_mm=16)` | Laddar SVG/PNG/JPG, bevarar proportioner |
 | `PdfLogo.draw_on(canvas, x, y)` | Ritar på en reportlab-canvas |
-| `PdfLogo.draw_corner(canvas, doc, margin_mm=8, corner="right")` | Övre högra hörnet |
+| `PdfLogo.auto_size(page_w, page_h, …)` | Automatisk storlek för sidan, proportionerna behålls (v2.10.0) |
+| `PdfLogo.draw_corner(canvas, doc, margin_mm=8, corner="right", auto_size=True)` | Övre högra hörnet, automatiskt skalad (v2.10.0) |
 | `make_logo_canvas(logo, ...)` | Canvas-klass som ritar logotypen på **varje** sida |
 | `make_page_logo_drawer(logo, ...)` | onPage-callback (för reportlab-versioner som stöder det) |
 | `logo_for_settings(settings, key="logo_svg")` | Läser vald logotyp från inställningarna |
+
+**Automatisk storlek (v2.10.0):** logotypen ritas i en ruta som är
+15 % av sidans bredd och 8 % av höjden, med taket 60 × 25 mm och en
+minsta ruta på 36 × 12 pt. Rutan skalas alltid proportionellt – både upp
+och ned – så att logotypen aldrig förvrängs, oavsett om sidan är
+liggande eller stående.
 
 **SVG-hantering (två vägar):**
 1. `svglib` installerat → `svg2rlg()` → vektorgrafik i PDF:en (bäst kvalitet).
@@ -1475,6 +1485,40 @@ alla `UpdateError` med ett begripligt meddelande – appen fortsätter köra.
 
 ---
 
+### 4.23 `core/logo_picker.py` ✅ v2.10.0
+
+**Ansvar:** En liten widget som ersätter den gamla logotypdialogen
+(`core/logo_dialog.py`, kvar av bakåtkompatibilitet men inte längre
+anropad): dropdown + knappar + förhandsgranskning som skalar sig själv.
+
+```python
+from core.logo_picker import LogoPicker
+
+self.logo_picker = LogoPicker(current=settings.get("logo_svg", ""), parent=self)
+self.logo_picker.changed.connect(self._on_logo_changed)   # (str) → sökväg
+```
+
+| Medlem | Beskrivning |
+|--------|-------------|
+| `combo` | `QComboBox` – post 0 = **"Ingen logotyp"** (`data=""`), sedan alla bilder i `assets/` **och undermappar** med relativ sökväg som text |
+| `insert_button` | 🖼️ **Infoga SVG…** – väljer en bild även utanför `assets/` (läggs då till i listan med markeringen *(utanför assets)*) |
+| `rescan_button` | **Uppdatera lista** – läser om mappen |
+| `preview` | `QLabel` som visar bilden i `PREVIEW_HEIGHT` (56 px) höjd; skalas med `KeepAspectRatio` vid `resizeEvent`/`showEvent` |
+| `changed = Signal(str)` | Ny sökväg (`""` = ingen logotyp) |
+| `refresh(emit=False)` | Bygger om listan, behåller valet |
+| `set_current(path, emit=True, add_missing=True)` | Markerar en sökväg i listan |
+| `clear()` | Tillbaka till "Ingen logotyp" |
+| `current_path()` / `assets()` | Vald sökväg / hittade bilder |
+
+Vyn sparar valet direkt i `plugin.settings["logo_svg"]` (relativ eller
+absolut sökväg). PDF:en skalar sedan logotypen automatiskt för varje
+sida via `PdfLogo.auto_size()`.
+
+`show_preview=False` används av **Hyra**-vyn, som visar väljaren i
+verktygsraden där det inte finns plats för en förhandsgranskning.
+
+---
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -1638,7 +1682,16 @@ fönstret och aktivitetsfältet. På Windows sätts AppUserModelID
 aktivitetshanteraren visar appens ikon i stället för Python-ikonen.
 Startar ALLTID minimerat – main_window.show() anropas EJ i main()
 Enkelklick (vänster) på ikon → toggla visa/dölj
-Högerklick → meny (Visa, Dölj, Avsluta)
+Högerklick → meny (v2.10.0):
+  Visa <app>                → standardval (fet); inaktiverat när fönstret syns
+  Dölj                      → inaktiverat när fönstret är dolt
+  ─────────
+  Inställningar…            → öppnar Inställningar (Ctrl+,)
+  Sök efter uppdatering…    → Inställningar → Avancerat + söker direkt
+  Om <app> v<version>…      → samma Om-ruta som Hjälp-menyn
+  ─────────
+  Avsluta
+Statusraden (Visa/Dölj) uppdateras i aboutToShow → _sync_actions()
 closeEvent (X-knapp) → minimera till systray, avsluta EJ
 Ikon: QPainter.RenderHint.Antialiasing, blå rundad "S" (64×64 px)
 Tooltip: f"Semesterlista v{APP_VERSION}"
@@ -2446,4 +2499,62 @@ täcks av 7 tester i `tests/test_settings_dialog.py`.
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.9.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+## 24. LOGOTYP-DROPDOWN & AUTOMATISK STORLEK (v2.10.0)
+
+### 24.1 Knappen
+
+Logotypen väljs i en dropdown som listar **alla bilder i appens mapp
+`assets/` och dess undermappar** (t.ex. `logotyper/exempel-logotyp.svg`).
+Widgeten är `core/logo_picker.py::LogoPicker` och finns i två vyer:
+
+| Vy | Placering | Förhandsgranskning |
+|----|-----------|--------------------|
+| **Semesterlista / Limokörning** | Egen rad i inställningsrutan, under *Fil med anställda* | Ja (56 px hög, skalas med fönstret) |
+| **Hyra** | I verktygsraden före *Hantera hyresgäster…* | Nej (`show_preview=False`) |
+
+Knappar: **🖼️ Infoga SVG…** (välj bild utanför `assets/`), **Uppdatera
+lista** (läs om mappen). Valet sparas direkt som `logo_svg` i pluginets
+inställningar – ingen separat *Spara*-knapp.
+
+### 24.2 Automatisk storlek i PDF:en
+
+`PdfLogo.auto_size(page_w, page_h)` räknar ut storleken för **varje sida**:
+
+| Regel | Värde |
+|-------|-------|
+| Ruta – bredd | 15 % av sidans bredd |
+| Ruta – höjd | 8 % av sidans höjd |
+| Tak | 60 × 25 mm (gäller även stora sidor) |
+| Minsta ruta | 36 × 12 pt (gäller även små sidor) |
+| Proportioner | Bevaras alltid – skalas både upp och ned |
+
+Resultat för A4 (exempellogotyp 2,5:1):
+
+| Sidlayout | Sida (pt) | Logotyp (pt) | Logotyp (mm) |
+|-----------|-----------|--------------|--------------|
+| Liggande | 842 × 595 | 119,0 × 47,6 | 42,0 × 16,8 |
+| Stående | 595 × 842 | 89,2 × 35,7 | 31,5 × 12,6 |
+
+Marginalen till sidkanten är 6 mm i Semesterlista och 8 mm i Hyra.
+`draw_corner(..., auto_size=False)` finns kvar för att rita logotypen i
+sin naturliga storlek (används av testerna).
+
+### 24.3 Tester
+
+`tests/test_logo_picker.py` (14 tester): listan fylls från `assets/` +
+undermappar, post 0 = *Ingen logotyp*, val/`clear()`/`refresh()` och
+`changed`-signalen, fil utanför `assets/`, trasig fil → feltext,
+förhandsgranskningen skalas proportionellt och följer ytan.
+
+`tests/test_pdf_assets.py::PdfLogoAutoSizeTests` (7 tester): liggande och
+stående A4, extremt breda/höga logotyper, tak och minsta ruta, samt
+`draw_corner` med `auto_size` av/på.
+
+`tests/test_systray.py` (10 tester): menyns innehåll och ordning,
+*Inställningar…*/*Sök efter uppdatering…*/*Om …* kopplade till rätt
+metoder, *Visa*/*Dölj* som speglar fönstrets läge (även standardvalet) och
+att texterna följer språkbytet.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.10.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

@@ -212,6 +212,18 @@ class HyraYearChangeTests(unittest.TestCase):
         self.assertGreaterEqual(self.view.layout().count(), 4)
         self.assertTrue(self._quarter_group_in_layout())
 
+    def test_logo_dropdown_is_present(self) -> None:
+        """Logotypen väljs i en dropdown (v2.10.0) – utan förhandsgranskning."""
+        picker = getattr(self.view, "logo_picker", None)
+        self.assertIsNotNone(picker, "vyn ska ha en LogoPicker")
+        self.assertFalse(picker.preview.isVisible())
+        # Post 0 = ingen logotyp, resten kommer från assets/ (+ undermappar)
+        self.assertEqual(picker.combo.itemData(0), "")
+        self.assertEqual(
+            picker.combo.count(), 1 + len(picker.assets()),
+            "listan ska spegla bilderna i assets-mappen",
+        )
+
     def test_tenants_are_listed(self) -> None:
         """Månads- respektive kvartalshyresgäster hamnar i rätt ruta."""
         self.assertEqual(self.tenants.get_monthly_tenants(), ["Anna Andersson", "Bertil Berg"])

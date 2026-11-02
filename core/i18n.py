@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.3.0"
+MODULE_VERSION: str = "2.10.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -389,6 +389,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "logo.cancel":                     "Avbryt",
         "logo.selected":                   "Logotyp: {name}",
         "logo.missing_file":               "Saknas: {path}",
+        "logo.insert":                     "Infoga SVG…",
+        "logo.insert_tooltip":             "Infoga en logotyp från valfri fil i appens mappar (SVG rekommenderas).",
+        "logo.rescan_tooltip":             "Sök igenom assets-mappen och dess undermappar igen.",
+        "logo.auto_size":                  "Storleken anpassas automatiskt – både i förhandsgranskningen och i PDF:en.",
+        "tray.settings":                   "Inställningar…",
+        "tray.check_updates":              "Sök efter uppdatering…",
+        "tray.about":                      "Om {app} v{version}…",
 
         # ── Semesterlista & Limokörning ───────────────────
         "lista.tab_name":                  "Semesterlista",
@@ -803,6 +810,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "logo.cancel":                     "Cancel",
         "logo.selected":                   "Logo: {name}",
         "logo.missing_file":               "Missing: {path}",
+        "logo.insert":                     "Insert SVG…",
+        "logo.insert_tooltip":             "Insert a logo from any file in the app folders (SVG recommended).",
+        "logo.rescan_tooltip":             "Scan the assets folder and its subfolders again.",
+        "logo.auto_size":                  "The size adapts automatically – in the preview and in the PDF.",
+        "tray.settings":                   "Settings…",
+        "tray.check_updates":              "Check for updates…",
+        "tray.about":                      "About {app} v{version}…",
 
         # ── Vacation schedule & Limo runs ─────────────────
         "lista.tab_name":                  "Vacation Schedule",

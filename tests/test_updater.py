@@ -76,7 +76,7 @@ class VersionTests(unittest.TestCase):
     """Versionstolkning och jämförelse."""
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.9.0")
+        self.assertEqual(MODULE_VERSION, "2.10.0")
 
     def test_parse_version(self) -> None:
         cases = {
