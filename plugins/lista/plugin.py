@@ -6,6 +6,14 @@ Semesterlista & Limokörning Plugin – UPPDATERAD (PySide6 + BasePlugin)
 
 Plugin för att generera semesterlistor och limokörningsscheman i PDF-format.
 
+NYTT v2.6.0:
+  - Sidlayout: liggande (standard, 270 mm tabell) eller stående A4
+    (190 mm tabell) – väljs i vyn och sparas i inställningarna.
+  - Månader per blad: 1, 2 eller 3 (tidigare bara 2 och 3).
+  - Startmånad väljs som förut (Standard = jan–dec, eller valfri månad
+    som kan gå över årsskifte).
+  - Validering av layout och månadsval innan PDF:en skapas.
+
 NYTT v2.5.0:
   - Fliken visar ett LÅST läge (Semesterlista). Limokörning har fått en
     egen flik: plugins/fordon (FIXED_MODE = "Limokörning").
@@ -124,10 +132,37 @@ NAME_COL_WIDTH = 70
 MIN_DAY_COL_WIDTH = 8
 FONT_SIZE = 7
 
+# ── Sidlayout (v2.6.0) ─────────────────────────────────
+# Användaren väljer liggande (standard) eller stående A4.
+ORIENTATION_LANDSCAPE: str = "Liggande"
+ORIENTATION_PORTRAIT: str = "Stående"
+ORIENTATIONS: List[str] = [ORIENTATION_LANDSCAPE, ORIENTATION_PORTRAIT]
+DEFAULT_ORIENTATION: str = ORIENTATION_LANDSCAPE
+
+#: Marginal (mm) och tabellbredd (mm) per layout
+LAYOUT_SETTINGS: Dict[str, Dict[str, float]] = {
+    # Liggande A4: 297 × 210 mm
+    ORIENTATION_LANDSCAPE: {
+        "side_margin_mm": 13.5,
+        "top_margin_mm": 12.0,
+        "table_width_mm": 270.0,
+    },
+    # Stående A4: 210 × 297 mm
+    ORIENTATION_PORTRAIT: {
+        "side_margin_mm": 10.0,
+        "top_margin_mm": 12.0,
+        "table_width_mm": 190.0,
+    },
+}
+
+#: Antal månader per blad som går att välja (v2.6.0)
+MONTHS_PER_PAGE_OPTIONS: List[int] = [1, 2, 3]
+DEFAULT_MONTHS_PER_PAGE: int = 3
+
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -172,6 +207,56 @@ MONTH_OPTIONS: List[str] = [
 # ══════════════════════════════════════════════════════════
 # HJÄLPFUNKTIONER (modulnivå)
 # ══════════════════════════════════════════════════════════
+
+def normalize_orientation(orientation: Any) -> str:
+    """
+    Returnera en giltig sidlayout.
+
+    Okända värden (t.ex. gamla inställningar) blir liggande.
+    """
+    value = str(orientation or "").strip()
+    return value if value in LAYOUT_SETTINGS else DEFAULT_ORIENTATION
+
+
+def page_geometry(orientation: str) -> tuple[tuple[float, float], float]:
+    """
+    Sidstorlek och tabellbredd för vald layout.
+
+    Args:
+        orientation: "Liggande" eller "Stående".
+
+    Returns:
+        (pagesize_pt, tabellbredd_pt) – t.ex. ((841.89, 595.27), 765.35).
+
+    Exempel:
+        page_geometry("Stående")   # A4 porträtt, 190 mm tabell
+        page_geometry("Liggande")  # A4 landskap, 270 mm tabell
+    """
+    layout = LAYOUT_SETTINGS[normalize_orientation(orientation)]
+    pagesize = (
+        A4 if normalize_orientation(orientation) == ORIENTATION_PORTRAIT
+        else landscape(A4)
+    )
+    return pagesize, layout["table_width_mm"] * mm
+
+
+def orientation_label(orientation: Any) -> str:
+    """
+    Översatt etikett för en sidlayout.
+
+    Exempel: orientation_label("Stående") → "Stående (A4)".
+    """
+    value = normalize_orientation(orientation)
+    key = (
+        "lista.orientation.landscape"
+        if value == ORIENTATION_LANDSCAPE
+        else "lista.orientation.portrait"
+    )
+    try:
+        return i18n.t(key)
+    except Exception:  # pragma: no cover – i18n saknas
+        return value
+
 
 def get_documents_folder() -> str:
     """Returnerar sökvägen till användarens Dokument-mapp."""
@@ -400,10 +485,30 @@ class SettingsDialog(QDialog):
         months_row.addWidget(QLabel("Månader per blad:"))
         months_row.addStretch()
         self.months_per_page_combo = QComboBox()
-        self.months_per_page_combo.addItems(["2", "3"])
+        self.months_per_page_combo.addItems(
+            [str(value) for value in MONTHS_PER_PAGE_OPTIONS]
+        )
         self.months_per_page_combo.setMinimumWidth(220)
+        self.months_per_page_combo.setToolTip(
+            "1, 2 eller 3 månader per blad i PDF:en."
+        )
         months_row.addWidget(self.months_per_page_combo)
         main_layout.addLayout(months_row)
+
+        # Sidlayout (v2.6.0)
+        orientation_row = QHBoxLayout()
+        orientation_row.addWidget(QLabel("Sidlayout:"))
+        orientation_row.addStretch()
+        self.orientation_combo = QComboBox()
+        for value in ORIENTATIONS:
+            self.orientation_combo.addItem(orientation_label(value), value)
+        self.orientation_combo.setMinimumWidth(220)
+        self.orientation_combo.setToolTip(
+            "Liggande = breda tabeller (standard).\n"
+            "Stående = vanlig A4 för pärm/utskrift."
+        )
+        orientation_row.addWidget(self.orientation_combo)
+        main_layout.addLayout(orientation_row)
 
         start_row = QHBoxLayout()
         start_label = QLabel("Standardstartmånad:")
@@ -445,10 +550,20 @@ class SettingsDialog(QDialog):
         if idx >= 0:
             self.mode_combo.setCurrentIndex(idx)
 
-        months_per_page = str(self.plugin.settings.get("months_per_page", 3))
+        months_per_page = str(
+            self.plugin.settings.get(
+                "months_per_page", DEFAULT_MONTHS_PER_PAGE
+            )
+        )
         idx2 = self.months_per_page_combo.findText(months_per_page)
         if idx2 >= 0:
             self.months_per_page_combo.setCurrentIndex(idx2)
+
+        orientation_idx = self.orientation_combo.findData(
+            normalize_orientation(self.plugin.settings.get("orientation"))
+        )
+        if orientation_idx >= 0:
+            self.orientation_combo.setCurrentIndex(orientation_idx)
 
         saved_start = self.plugin.settings.get("start_month", 0)
         if isinstance(saved_start, int) and 0 <= saved_start <= 12:
@@ -463,6 +578,7 @@ class SettingsDialog(QDialog):
             self.months_per_page_combo.currentText()
         )
         self.plugin.settings["start_month"] = self.start_month_combo.currentIndex()
+        self.plugin.settings["orientation"] = self.orientation_combo.currentData()
         self.plugin._save_settings()
         QMessageBox.information(self, "Info", "Inställningar sparade!")
         self.accept()
@@ -645,8 +761,9 @@ class PDFGenerator:
         year_str: str,
         file_path: str,
         mode: str,
-        months_per_page: int = 3,
+        months_per_page: int = DEFAULT_MONTHS_PER_PAGE,
         start_month: Optional[int] = None,
+        orientation: str = DEFAULT_ORIENTATION,
     ) -> bool:
         """
         Generera PDF.
@@ -655,9 +772,10 @@ class PDFGenerator:
             year_str:        Årstal som sträng, t.ex. "2026"
             file_path:       Sökväg till txt-fil
             mode:            "Semesterlista" eller "Limokörning"
-            months_per_page: 2 eller 3
+            months_per_page: 1, 2 eller 3 månader per blad
             start_month:     None/0 = standardläge (jan–dec valt år)
                              1–12 = manuell startmånad
+            orientation:     "Liggande" (standard) eller "Stående"
         """
         if start_month is not None and start_month != 0:
             if start_month < 1 or start_month > 12:
@@ -665,7 +783,11 @@ class PDFGenerator:
         else:
             start_month = None
 
-        errors = self._validate_inputs(year_str, file_path, mode)
+        orientation = normalize_orientation(orientation)
+
+        errors = self._validate_inputs(
+            year_str, file_path, mode, months_per_page, orientation
+        )
         if errors:
             QMessageBox.critical(None, "Fel", "\n".join(errors))
             return False
@@ -687,6 +809,7 @@ class PDFGenerator:
                 mode=mode,
                 months_per_page=months_per_page,
                 start_month=start_month,
+                orientation=orientation,
             )
         except Exception as e:
             logger.error(f"Fel vid PDF-generering: {e}")
@@ -711,9 +834,20 @@ class PDFGenerator:
         year_str: str,
         file_path: str,
         mode: str,
+        months_per_page: int = DEFAULT_MONTHS_PER_PAGE,
+        orientation: str = DEFAULT_ORIENTATION,
     ) -> List[str]:
         """Validera indata innan PDF-generering."""
         errors: List[str] = []
+
+        if months_per_page not in MONTHS_PER_PAGE_OPTIONS:
+            errors.append(
+                "Månader per blad måste vara "
+                + ", ".join(str(value) for value in MONTHS_PER_PAGE_OPTIONS)
+            )
+
+        if orientation not in ORIENTATIONS:
+            errors.append("Sidlayout måste vara Liggande eller Stående")
 
         try:
             year = int(year_str)
@@ -750,8 +884,11 @@ class PDFGenerator:
             )
             return []
 
-    def _create_legend_with_colors(self) -> Table:
-        """Skapa färgförklaringstabell för PDF."""
+    def _create_legend_with_colors(
+        self,
+        table_width_pt: float = TABLE_WIDTH_PT,
+    ) -> Table:
+        """Skapa färgförklaringstabell för PDF (skalas till sidbredden)."""
         light_coral = colors.Color(0.94, 0.5, 0.5)
         light_blue = colors.Color(0.68, 0.85, 0.9)
         light_green = colors.Color(0.56, 0.93, 0.56)
@@ -781,29 +918,46 @@ class PDFGenerator:
             ("BOX", (4, 0), (4, 0), 0.5, colors.black),
             ("BOX", (6, 0), (6, 0), 0.5, colors.black),
         ]))
+        self._apply_table_scaling(legend_table, table_width_pt)
         return legend_table
 
     @staticmethod
-    def _calc_column_widths(days_in_month: int) -> tuple[float, float]:
+    def _calc_column_widths(
+        days_in_month: int,
+        table_width_pt: float = TABLE_WIDTH_PT,
+    ) -> tuple[float, float]:
         """
         Beräkna kolumnbredder baserat på antal dagar i månaden.
+
+        Args:
+            days_in_month:  Antal dagar (28–31).
+            table_width_pt: Tillgänglig tabellbredd i punkter
+                            (270 mm liggande, 190 mm stående).
 
         Returns:
             (namnkolumn_bredd, dagkolumn_bredd) i punkter.
         """
-        available = TABLE_WIDTH_PT - NAME_COL_WIDTH
+        available = table_width_pt - NAME_COL_WIDTH
         day_width = available / days_in_month
         return float(NAME_COL_WIDTH), float(day_width)
 
     @staticmethod
-    def _apply_table_scaling(table: Table) -> None:
+    def _apply_table_scaling(
+        table: Table,
+        table_width_pt: float = TABLE_WIDTH_PT,
+    ) -> None:
         """
-        Skala tabellen så att den exakt fyller 270mm.
+        Skala tabellen så att den exakt fyller angiven bredd.
+
+        Args:
+            table:          reportlab-tabell.
+            table_width_pt: Mål-bredd i punkter (270 mm liggande,
+                            190 mm stående).
         """
         table.wrap(0, 0)
         current_width = sum(table._colWidths)
         if current_width > 0:
-            scale = TABLE_WIDTH_PT / current_width
+            scale = table_width_pt / current_width
             table._argW = [w * scale for w in table._colWidths]
 
     @staticmethod
@@ -850,7 +1004,7 @@ class PDFGenerator:
         chunk_size: int,
     ) -> List[List[tuple[int, int]]]:
         """
-        Dela upp månadsekvens i sidor om 2 eller 3 månader.
+        Dela upp månadsekvens i blad om 1, 2 eller 3 månader.
         """
         return [
             sequence[i:i + chunk_size]
@@ -929,11 +1083,17 @@ class PDFGenerator:
         data_list: List[str],
         year: int,
         mode: str,
-        months_per_page: int = 3,
+        months_per_page: int = DEFAULT_MONTHS_PER_PAGE,
         start_month: Optional[int] = None,
+        orientation: str = DEFAULT_ORIENTATION,
     ) -> bool:
         """
         Generera PDF med färgkodade kalendertabeller.
+
+        Layout (v2.6.0):
+            orientation="Liggande" → A4 liggande, 270 mm tabell (standard)
+            orientation="Stående"  → A4 stående, 190 mm tabell
+            months_per_page=1/2/3  → antal månader per blad
 
         Standardläge:
             start_month=None → jan–dec valt år
@@ -962,9 +1122,12 @@ class PDFGenerator:
             title_prefix = "Limokörningsschema"
             header = "Fordon"
 
-        # Marginaler – centrera 270mm på 297mm sida → 13.5mm per sida
-        side_margin = (297.0 - 270.0) / 2.0
-        top_margin = 12.0
+        # Sidlayout (v2.6.0) – liggande (standard) eller stående A4
+        orientation = normalize_orientation(orientation)
+        layout = LAYOUT_SETTINGS[orientation]
+        pagesize, table_width_pt = page_geometry(orientation)
+        side_margin = layout["side_margin_mm"]
+        top_margin = layout["top_margin_mm"]
 
         # Logotyp (v2.4.0) – ritas i övre högra hörnet på varje sida.
         # Används som canvasmaker eftersom onFirstPage/onLaterPages inte
@@ -976,7 +1139,7 @@ class PDFGenerator:
 
         doc = SimpleDocTemplate(
             filename,
-            pagesize=landscape(A4),
+            pagesize=pagesize,
             rightMargin=side_margin * mm,
             leftMargin=side_margin * mm,
             topMargin=top_margin * mm,
@@ -1017,12 +1180,14 @@ class PDFGenerator:
             page_title = self._format_page_title(title_prefix, page_months)
             elements.append(Paragraph(page_title, styles["Title"]))
             elements.append(Spacer(1, 3))
-            elements.append(self._create_legend_with_colors())
+            elements.append(self._create_legend_with_colors(table_width_pt))
             elements.append(Spacer(1, 6))
 
             for month_year, month_num in page_months:
                 days_in_month = calendar.monthrange(month_year, month_num)[1]
-                name_w, day_w = self._calc_column_widths(days_in_month)
+                name_w, day_w = self._calc_column_widths(
+                    days_in_month, table_width_pt
+                )
 
                 official_holidays = official_holidays_by_year[month_year]
                 half_days = half_days_by_year[month_year]
@@ -1157,7 +1322,7 @@ class PDFGenerator:
                         current_week = week
 
                 table.setStyle(style)
-                self._apply_table_scaling(table)
+                self._apply_table_scaling(table, table_width_pt)
                 elements.append(table)
 
                 if (month_year, month_num) != page_months[-1]:
@@ -1177,7 +1342,8 @@ class PDFGenerator:
 
         logger.info(
             f"{title_prefix} genererad: {range_label} "
-            f"({months_per_page} mån/blad, start={start_text})"
+            f"({months_per_page} mån/blad, start={start_text}, "
+            f"layout={orientation})"
         )
 
         QMessageBox.information(
@@ -1187,7 +1353,8 @@ class PDFGenerator:
             f"Period: {range_label}\n"
             f"Fil: {filename}\n"
             f"Startval: {start_text}\n"
-            f"Månader per blad: {months_per_page}",
+            f"Månader per blad: {months_per_page}\n"
+            f"Sidlayout: {orientation}",
         )
 
         if self.plugin.settings.get("auto_open_pdf", True):
@@ -1199,6 +1366,7 @@ class PDFGenerator:
             "mode": mode,
             "items_count": len(data_list),
             "months_per_page": months_per_page,
+            "orientation": orientation,
             "start_month": selected_start_value,
             "range_label": range_label,
             "spans_year_boundary": any(
@@ -1285,8 +1453,11 @@ class SemesterlistaView(QWidget):
         Rad 1: Läge          [Semesterlista ▼]
         Rad 2: År            [2026 ↑↓]
         Rad 3: Startmånad    [Standard (Januari) ▼]
-        Rad 4: Månader/blad  [3 ▼]
-        Rad 5: Fil           [Anställda.txt] [Bläddra...]
+        Rad 4: Månader/blad  [1/2/3 ▼]
+        Rad 5: Sidlayout     [Liggande/Stående ▼]   ← v2.6.0
+        Rad 6: Fil           [Anställda.txt] [Bläddra...]
+        Rad 7: Antal poster
+        Rad 8: Logotyp
         """
         group = QGroupBox("Inställningar")
         form_layout = QGridLayout(group)
@@ -1352,17 +1523,49 @@ class SemesterlistaView(QWidget):
         months_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(months_label, 3, 0)
 
+        # 1, 2 eller 3 månader per blad (v2.6.0)
         self.months_per_page_combo = QComboBox()
-        self.months_per_page_combo.addItems(["2", "3"])
-        default_months = str(self.plugin.settings.get("months_per_page", 3))
+        self.months_per_page_combo.addItems(
+            [str(value) for value in MONTHS_PER_PAGE_OPTIONS]
+        )
+        self.months_per_page_combo.setToolTip(
+            "Antal månader som ritas på samma blad i PDF:en:\n"
+            "1 = en månad per sida (störst tabeller)\n"
+            "2 = två månader per sida\n"
+            "3 = tre månader per sida (standard)"
+        )
+        default_months = str(
+            self.plugin.settings.get(
+                "months_per_page", DEFAULT_MONTHS_PER_PAGE
+            )
+        )
         idx_m = self.months_per_page_combo.findText(default_months)
         if idx_m >= 0:
             self.months_per_page_combo.setCurrentIndex(idx_m)
         form_layout.addWidget(self.months_per_page_combo, 3, 1)
 
+        # Sidlayout: liggande eller stående A4 (v2.6.0)
+        layout_label = QLabel("Sidlayout:")
+        layout_label.setFont(QFont("Helvetica", 10))
+        form_layout.addWidget(layout_label, 4, 0)
+
+        self.orientation_combo = QComboBox()
+        for value in ORIENTATIONS:
+            self.orientation_combo.addItem(orientation_label(value), value)
+        self.orientation_combo.setToolTip(
+            "Liggande (A4) = breda tabeller, 270 mm (standard)\n"
+            "Stående (A4) = vanlig A4 för pärm/utskrift, 190 mm tabell"
+        )
+        orientation_idx = self.orientation_combo.findData(
+            normalize_orientation(self.plugin.settings.get("orientation"))
+        )
+        if orientation_idx >= 0:
+            self.orientation_combo.setCurrentIndex(orientation_idx)
+        form_layout.addWidget(self.orientation_combo, 4, 1)
+
         self.file_label = QLabel("Fil med anställda:")
         self.file_label.setFont(QFont("Helvetica", 10))
-        form_layout.addWidget(self.file_label, 4, 0)
+        form_layout.addWidget(self.file_label, 5, 0)
 
         file_row = QHBoxLayout()
         self.file_edit = QLineEdit()
@@ -1384,16 +1587,16 @@ class SemesterlistaView(QWidget):
         self.manage_btn.clicked.connect(self._manage_list)
         file_row.addWidget(self.manage_btn)
 
-        form_layout.addLayout(file_row, 4, 1)
+        form_layout.addLayout(file_row, 5, 1)
 
         self.count_label = QLabel("")
         self.count_label.setFont(QFont("Helvetica", 9))
-        form_layout.addWidget(self.count_label, 5, 0, 1, 2)
+        form_layout.addWidget(self.count_label, 6, 0, 1, 2)
 
         # Logotyp i PDF:en (v2.4.0) – väljs från assets-mappen
         logo_label = QLabel(i18n.t("logo.label"))
         logo_label.setFont(QFont("Helvetica", 10))
-        form_layout.addWidget(logo_label, 6, 0)
+        form_layout.addWidget(logo_label, 7, 0)
 
         logo_row = QHBoxLayout()
         self.logo_status = QLabel("")
@@ -1410,7 +1613,7 @@ class SemesterlistaView(QWidget):
         self.logo_clear_btn.clicked.connect(self._clear_logo)
         logo_row.addWidget(self.logo_clear_btn)
 
-        form_layout.addLayout(logo_row, 6, 1)
+        form_layout.addLayout(logo_row, 7, 1)
 
         self._update_logo_label()
         self._on_mode_change(self.mode_combo.currentText())
@@ -1631,6 +1834,9 @@ class SemesterlistaView(QWidget):
         file_path = self.file_edit.text()
         mode = self.mode_combo.currentText()
         months_per_page = int(self.months_per_page_combo.currentText())
+        orientation = normalize_orientation(
+            self.orientation_combo.currentData()
+        )
         start_index = self.start_month_combo.currentIndex()
 
         start_month: Optional[int]
@@ -1642,6 +1848,7 @@ class SemesterlistaView(QWidget):
         self.plugin.settings["last_file"] = file_path
         self.plugin.settings["default_mode"] = mode
         self.plugin.settings["months_per_page"] = months_per_page
+        self.plugin.settings["orientation"] = orientation
         self.plugin.settings["start_month"] = start_index
         self.plugin._save_settings()
 
@@ -1652,6 +1859,7 @@ class SemesterlistaView(QWidget):
             mode=mode,
             months_per_page=months_per_page,
             start_month=start_month,
+            orientation=orientation,
         )
 
         if success:
@@ -1687,7 +1895,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.5.0"
+    VERSION: str = "2.6.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 
@@ -1742,7 +1950,8 @@ class Plugin(BasePlugin):
             "auto_open_pdf": True,
             "default_year": datetime.now().year,
             "last_file": "",
-            "months_per_page": 3,
+            "months_per_page": DEFAULT_MONTHS_PER_PAGE,
+            "orientation": DEFAULT_ORIENTATION,
             "start_month": 0,
             "logo_svg": "",
         }

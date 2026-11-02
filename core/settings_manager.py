@@ -107,7 +107,7 @@ class SettingsManager:
 
     DEFAULT_PLUGIN_SETTINGS: Dict[str, Any] = {
         "Hyresfakturering": {
-            "version": "2.5.0",
+            "version": "2.6.0",
             "enabled": True,
             "settings": {
                 "year": 2026,
@@ -117,13 +117,15 @@ class SettingsManager:
             },
         },
         "Semesterlista & Limokörning": {
-            "version": "2.5.0",
+            "version": "2.6.0",
             "enabled": True,
             "settings": {
                 "default_mode": "Semesterlista",
                 "auto_open_pdf": True,
                 "last_file": "Anställda.txt",
                 "months_per_page": 3,
+                # Sidlayout (v2.6.0): "Liggande" (standard) eller "Stående"
+                "orientation": "Liggande",
                 "start_month": 0,
                 "logo_svg": "",
                 # start_month: 0 = Standard (jan–dec valt år)
@@ -135,13 +137,14 @@ class SettingsManager:
         },
         # Egen flik för fordon/limokörning (v2.5.0)
         "Fordon": {
-            "version": "2.5.0",
+            "version": "2.6.0",
             "enabled": True,
             "settings": {
                 "default_mode": "Limokörning",
                 "auto_open_pdf": True,
                 "last_file": "Fordon.txt",
                 "months_per_page": 2,
+                "orientation": "Liggande",
                 "start_month": 0,
                 "logo_svg": "",
             },

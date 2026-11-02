@@ -293,6 +293,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.saved":                  "Inställningar sparade.",
         "settings.no_plugins":             "Inga plugins hittades.",
 
+        # ── Sidlayout (v2.6.0) ────────────────────────────
+        "lista.orientation.landscape":     "Liggande (A4)",
+        "lista.orientation.portrait":      "Stående (A4)",
+
         # ── Flikar: Hyra, Semesterlista, Fordon ───────────
         "fordon.tab_name":                 "Fordon",
         "fordon.plugin_description":       "Limokörningsscheman per fordon som PDF",
@@ -636,6 +640,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.plugin_restart_hint":    "Changing plugins requires a restart.",
         "settings.saved":                  "Settings saved.",
         "settings.no_plugins":             "No plugins found.",
+
+        # ── Page layout (v2.6.0) ──────────────────────────
+        "lista.orientation.landscape":     "Landscape (A4)",
+        "lista.orientation.portrait":      "Portrait (A4)",
 
         # ── Tabs: Rent, Vacation, Vehicles ────────────────
         "fordon.tab_name":                 "Vehicles",

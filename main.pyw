@@ -8,6 +8,14 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.6.0: VALBAR SIDLAYOUT OCH 1–3 MÅNADER PER BLAD.
+                   Nytt: PDF:en kan skrivas ut liggande (A4, 270 mm
+                   tabell – standard) eller stående (A4, 190 mm).
+                   Nytt: 1, 2 eller 3 månader per blad (tidigare 2/3).
+                   Startmånad väljs som förut (standard jan–dec eller
+                   valfri månad, även över årsskifte).
+                   Valen sparas per flik och valideras före export.
+                   APP_VERSION bumpat till 2.6.0.
 UPPDATERAD v2.5.0: FLIKAR FÖR HYRA, SEMESTERLISTA OCH FORDON + SVG-LOGOTYP.
                    Nytt: fliken "Fordon" (plugins/fordon) – ärver
                    lista-pluginets vy men låser läget till Limokörning.
@@ -154,7 +162,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.5.0"
+APP_VERSION: str = "2.6.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt

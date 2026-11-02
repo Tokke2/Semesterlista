@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.5.0                                                             ║
+║  Version: 2.6.0                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -1325,18 +1325,43 @@ _get_executable_path() väljer pythonw.exe automatiskt om tillgängligt
 text
 
 
-### 5.5 PDF – Månader per blad + Manuell startmånad
+### 5.5 PDF – Sidlayout, månader per blad + manuell startmånad
+
+**Sidlayout (v2.6.0) – väljs i vyn, sparas per flik**
+
+| Layout | Sidstorlek | Marginal | Tabellbredd | När den passar |
+|--------|-----------|----------|-------------|----------------|
+| Liggande (standard) | A4 297 × 210 mm | 13,5 mm | 270 mm | breda dagkolumner, få personer |
+| Stående | A4 210 × 297 mm | 10 mm | 190 mm | pärm/arkivet, många rader |
+
+`page_geometry(orientation)` ger `(pagesize_pt, tabellbredd_pt)`;
+`_calc_column_widths(dagar, bredd)` och `_apply_table_scaling(tabell,
+bredd)` räknar om kolumnerna så att tabellen fyller exakt rätt bredd.
+Färgförklaringen skalas på samma sätt. Ogiltig/okänd layout faller
+tillbaka på liggande (`normalize_orientation()`).
+
+**Månader per blad (v2.6.0): 1, 2 eller 3**
+
+| Val | Blad för 12 månader | Kommentar |
+|-----|--------------------|-----------|
+| 1 | 12 | störst tabeller, en månad per sida |
+| 2 | 6 | två månader per sida |
+| 3 | 4 | standard, tre månader per sida |
+
+`MONTHS_PER_PAGE_OPTIONS = [1, 2, 3]`, `DEFAULT_MONTHS_PER_PAGE = 3`.
+Validering: andra värden avvisas med "Månader per blad måste vara 1, 2, 3".
+
+**Startmånad**
+
 Standardläge: start_month=None → jan–dec valt år
 Manuellt val: 12 sammanhängande månader, kan gå över årsskifte
 Exempel: Dec 2026 → Jan 2027 → ... → Nov 2027
-Tabellen är alltid 270mm bred (nästan hela liggande A4)
-Marginal = (297-270)/2 = 13.5mm per sida (centrerat)
-_calc_column_widths(days_in_month) beräknar korrekt dagbredd
-_apply_table_scaling() garanterar exakt 270mm via ReportLab wrap()
-Filnamn:
+
+**Filnamn**
+
 Standard: semesterlista_2026.pdf
 Manuell: semesterlista_2026_12-2027_11.pdf
-text
+Limokörning: limokorning_2026.pdf
 
 
 ---
@@ -2069,7 +2094,7 @@ proportionerna bevaras alltid.
 ### 21.4 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 62 tester
+python -m unittest discover -s tests -v      # 76 tester
 ```
 
 `tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
@@ -2078,4 +2103,4 @@ logotyp på varje sida via `canvasmaker` samt felhantering (`AssetError`).
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.5.0 | Datum: 2026-11-02 | Status: 49/50 (98%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.6.0 | Datum: 2026-11-02 | Status: 49/50 (98%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
