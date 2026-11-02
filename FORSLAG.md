@@ -64,12 +64,20 @@ Status per 2026-11-02 (v2.6.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
 25. **[FÖRSLAG] CI + GUI-tester** – GitHub Actions som kör de 62 testerna vid
     varje push, plus `pytest-qt` för flikar, logotypdialog och PDF-knappar.
 
-## Klart efter listan skrevs (v2.6.0)
+## Klart efter listan skrevs
+
+**v2.6.0**
 
 - **Valbar sidlayout** för semester-/fordons-PDF: liggande A4 (270 mm tabell)
   eller stående A4 (190 mm tabell).
 - **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
   startmånad – allt sparas per flik.
+
+**v2.7.0**
+
+- **Egen appikon överallt** (`assets/ikon` + `core/app_icon.py`): fönster,
+  systemfält, aktivitetsfält och aktivitetshanterare (Windows
+  AppUserModelID), dialoger och meddelanderutor.
 
 ## Rekommenderad ordning härnäst
 

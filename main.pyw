@@ -8,6 +8,13 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.7.0: GEMENSAM APP-IKON ÖVERALLT.
+                   Nytt: assets/ikon med SVG, PNG (16–256 px) och ICO samt
+                   core/app_icon.py. Ikonen används av fönstret,
+                   systemfältet och aktivitetsfältet (även
+                   aktivitetshanteraren via AppUserModelID på Windows).
+                   Reservikon ritas programmatiskt om bilderna saknas.
+                   APP_VERSION bumpat till 2.7.0.
 UPPDATERAD v2.6.0: VALBAR SIDLAYOUT OCH 1–3 MÅNADER PER BLAD.
                    Nytt: PDF:en kan skrivas ut liggande (A4, 270 mm
                    tabell – standard) eller stående (A4, 190 mm).
@@ -137,6 +144,7 @@ from core.settings_manager import SettingsManager
 from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
 from core import i18n
+from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
 from core.settings_dialog import SettingsDialog
 from plugins.base_plugin import BasePlugin
 
@@ -162,7 +170,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.6.0"
+APP_VERSION: str = "2.7.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -463,6 +471,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(
             self._settings_manager.get("app_name", "Semesterlista")
         )
+
+        # Appikon (v2.7.0) – samma ikon i fönster, systemfält och aktivitetsfält
+        try:
+            self.setWindowIcon(app_icon())
+        except Exception as exc:  # pragma: no cover – defensivt
+            logger.warning(f"Kunde inte sätta fönsterikon: {exc}")
+
         self.setMinimumSize(800, 600)
 
         central     = QWidget()
@@ -1154,31 +1169,14 @@ class SystrayManager:
         """
         Initiera systemfältshanteraren.
 
-        Skapar ikon programmatiskt: blå rundad fyrkant med "S" (64×64 px).
+        v2.7.0: Använder appikonen från assets/ikon (samma som fönstret
+                och aktivitetsfältet) i stället för en egenritad bokstav.
         """
         self._app:         QApplication = app
         self._main_window: MainWindow   = main_window
 
-        # Skapa ikon programmatiskt
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QColor("#0078D4"))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(4, 4, 56, 56, 12, 12)
-        painter.setPen(QColor("#FFFFFF"))
-        font = QFont("Arial", 28, QFont.Weight.Bold)
-        painter.setFont(font)
-        painter.drawText(
-            pixmap.rect(),
-            Qt.AlignmentFlag.AlignCenter,
-            "S",
-        )
-        painter.end()
-
-        icon = QIcon(pixmap)
+        # Samma ikon överallt (assets/ikon, annars programmatiskt ritad)
+        icon = app_icon()
 
         self._app_name: str = main_window._app_name()
 
@@ -1292,6 +1290,12 @@ def main() -> None:
     app.setApplicationName(app_name)
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Rickard Längkvist")
+    app.setApplicationDisplayName(app_name)
+
+    # Appikon överallt (v2.7.0): aktivitetshanterare/fält, tray, fönster.
+    # AppUserModelID måste sättas innan fönstret skapas (Windows).
+    set_windows_app_user_model_id()
+    apply_app_icon(app)
 
     # Hög DPI-stöd
     app.setHighDpiScaleFactorRoundingPolicy(

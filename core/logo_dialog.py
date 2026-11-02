@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Logotypväljare (v2.5.0)
+Logotypväljare (v2.7.0)
 =======================
 
 Dialog som visar alla bilder som ligger i appens assets-mapp (även
@@ -48,7 +48,7 @@ from core.pdf_assets import AssetFile, assets_root, ensure_assets_dir, scan_asse
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.5.0"
+MODULE_VERSION: str = "2.7.0"
 
 #: Data-roll för den valda sökvägen på listobjekt
 _PATH_ROLE = Qt.ItemDataRole.UserRole
@@ -75,6 +75,14 @@ class LogoDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("logo.dialog_title"))
         self.setMinimumSize(680, 440)
+
+        # Samma appikon som huvudfönstret (v2.7.0)
+        try:
+            from core.app_icon import app_icon
+
+            self.setWindowIcon(app_icon())
+        except Exception:  # pragma: no cover – defensivt
+            pass
 
         self._root = Path(root) if root is not None else assets_root()
         self._assets: List[AssetFile] = []

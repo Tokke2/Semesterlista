@@ -118,6 +118,23 @@ class ScanAssetsTests(AssetsFixture):
         self.assertEqual(len(found), 2)
         self.assertTrue(all(asset.is_svg for asset in found))
 
+    def test_ignores_app_icon_folder(self) -> None:
+        """Appikonen i assets/ikon ska inte erbjudas som logotyp (v2.7.0)."""
+        icon_dir = self.root / "ikon"
+        icon_dir.mkdir()
+        (icon_dir / "appikon-64.png").write_text("x", encoding="utf-8")
+        (icon_dir / "appikon.svg").write_text(SVG_SAMPLE, encoding="utf-8")
+
+        found = scan_assets(self.root)
+        relatives = {asset.relative for asset in found}
+        self.assertNotIn("ikon/appikon.svg", relatives)
+        self.assertNotIn("ikon/appikon-64.png", relatives)
+        self.assertIn("foretag.svg", relatives)
+
+        # Går att tvinga fram om man verkligen vill
+        forced = scan_assets(self.root, exclude_dirs=())
+        self.assertIn("ikon/appikon.svg", {asset.relative for asset in forced})
+
     def test_missing_folder_returns_empty(self) -> None:
         self.assertEqual(scan_assets(Path(self._tmp.name) / "finns-inte"), [])
 

@@ -107,7 +107,7 @@ class SettingsManager:
 
     DEFAULT_PLUGIN_SETTINGS: Dict[str, Any] = {
         "Hyresfakturering": {
-            "version": "2.6.0",
+            "version": "2.7.0",
             "enabled": True,
             "settings": {
                 "year": 2026,
@@ -117,7 +117,7 @@ class SettingsManager:
             },
         },
         "Semesterlista & Limokörning": {
-            "version": "2.6.0",
+            "version": "2.7.0",
             "enabled": True,
             "settings": {
                 "default_mode": "Semesterlista",
@@ -137,7 +137,7 @@ class SettingsManager:
         },
         # Egen flik för fordon/limokörning (v2.5.0)
         "Fordon": {
-            "version": "2.6.0",
+            "version": "2.7.0",
             "enabled": True,
             "settings": {
                 "default_mode": "Limokörning",

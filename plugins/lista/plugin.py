@@ -6,6 +6,10 @@ Semesterlista & Limokörning Plugin – UPPDATERAD (PySide6 + BasePlugin)
 
 Plugin för att generera semesterlistor och limokörningsscheman i PDF-format.
 
+NYTT v2.7.0:
+  - Inställningsdialogen använder appikonen (core/app_icon.py) så att
+    fönster, systemfält och aktivitetsfält visar samma ikon.
+
 NYTT v2.6.0:
   - Sidlayout: liggande (standard, 270 mm tabell) eller stående A4
     (190 mm tabell) – väljs i vyn och sparas i inställningarna.
@@ -162,7 +166,7 @@ DEFAULT_MONTHS_PER_PAGE: int = 3
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -456,6 +460,14 @@ class SettingsDialog(QDialog):
         self.plugin: "Plugin" = plugin
         self.setWindowTitle("Inställningar – Semesterlista")
         self.setFixedSize(460, 360)
+
+        # Samma appikon som huvudfönstret (v2.7.0)
+        try:
+            from core.app_icon import app_icon
+
+            self.setWindowIcon(app_icon())
+        except Exception:  # pragma: no cover – defensivt
+            pass
         self.setModal(True)
         self._init_ui()
         self._load_settings()
@@ -1895,7 +1907,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.6.0"
+    VERSION: str = "2.7.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 

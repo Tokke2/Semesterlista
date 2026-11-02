@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Listredigerare (PySide6) – anställda, fordon och hyresgäster.
-v2.5.0
+v2.7.0
 =============================================================
 
 En gemensam dialog för att redigera appens textlistor direkt i programmet
@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.5.0"
+MODULE_VERSION: str = "2.7.0"
 
 
 # ══════════════════════════════════════════════════════════
@@ -391,6 +391,14 @@ class ListEditorDialog(QDialog):
             create:         Skapa filen om den saknas.
         """
         super().__init__(parent)
+
+        # Samma appikon som huvudfönstret (v2.7.0)
+        try:
+            from core.app_icon import app_icon
+
+            self.setWindowIcon(app_icon())
+        except Exception:  # pragma: no cover – defensivt
+            pass
 
         self._created = False
         self._dirty = False

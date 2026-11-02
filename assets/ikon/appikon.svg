@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Semesterlista – appikon (v2.7.0)
+  Används som fönsterikon, systemfältsikon (tray) och aktivitetsfältsikon.
+  Former och färger: mörkblå platta (#14507d), vit kalender, gul bock (#f2b705).
+  Fungerar ner till 16×16 px – undvik tunna detaljer här.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Bakgrund -->
+  <rect x="2" y="2" width="60" height="60" rx="14" ry="14" fill="#14507d"/>
+
+  <!-- Kalenderringar -->
+  <rect x="19" y="10" width="6" height="12" rx="3" ry="3" fill="#0d3a5c"/>
+  <rect x="39" y="10" width="6" height="12" rx="3" ry="3" fill="#0d3a5c"/>
+
+  <!-- Kalenderblad -->
+  <rect x="13" y="17" width="38" height="34" rx="5" ry="5" fill="#ffffff"/>
+  <!-- Gul rubrik (endast övre hörnen rundade) -->
+  <path d="M13 22 a5 5 0 0 1 5 -5 h28 a5 5 0 0 1 5 5 v4 h-38 z" fill="#f2b705"/>
+  <!-- Radlinjer -->
+  <g stroke="#dbe7f2" stroke-width="2" stroke-linecap="round">
+    <line x1="18" y1="31" x2="46" y2="31"/>
+    <line x1="18" y1="38" x2="46" y2="38"/>
+    <line x1="18" y1="45" x2="46" y2="45"/>
+  </g>
+  <!-- Bock -->
+  <path d="M24 37 l6 6 l11 -13" fill="none" stroke="#f2b705" stroke-width="6"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

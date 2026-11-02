@@ -69,6 +69,10 @@ SVG_SUFFIXES: Tuple[str, ...] = (".svg",)
 RASTER_SUFFIXES: Tuple[str, ...] = (".png", ".jpg", ".jpeg")
 IMAGE_SUFFIXES: Tuple[str, ...] = SVG_SUFFIXES + RASTER_SUFFIXES
 
+#: Undermappar som aldrig ska dyka upp i logotypväljaren (v2.7.0).
+#: "ikon" innehåller appens egen ikon – den är ingen logotyp.
+EXCLUDED_DIR_NAMES: Tuple[str, ...] = ("ikon",)
+
 #: 1 mm i punkter (samma som reportlab.lib.units.mm)
 MM: float = 72.0 / 25.4
 
@@ -165,18 +169,39 @@ def _is_hidden(path: Path, root: Path) -> bool:
     return any(part.startswith(".") for part in parts)
 
 
+def _in_excluded_dir(
+    path: Path,
+    root: Path,
+    excluded: Sequence[str],
+) -> bool:
+    """True om filen ligger i en undantagen undermapp (t.ex. assets/ikon)."""
+    if not excluded:
+        return False
+
+    try:
+        folders = path.relative_to(root).parts[:-1]
+    except ValueError:  # pragma: no cover – defensivt
+        return False
+
+    unwanted = {name.casefold() for name in excluded}
+    return any(folder.casefold() in unwanted for folder in folders)
+
+
 def scan_assets(
     root: Optional[Union[str, Path]] = None,
     suffixes: Sequence[str] = IMAGE_SUFFIXES,
     recursive: bool = True,
+    exclude_dirs: Sequence[str] = EXCLUDED_DIR_NAMES,
 ) -> List[AssetFile]:
     """
     Hitta bildfiler i assets-mappen.
 
     Args:
-        root:      Mapp att söka i (standard: appens assets-mapp).
-        suffixes:  Tillåtna filändelser (standard: svg/png/jpg/jpeg).
-        recursive: Sök även i undermappar (standard: True).
+        root:         Mapp att söka i (standard: appens assets-mapp).
+        suffixes:     Tillåtna filändelser (standard: svg/png/jpg/jpeg).
+        recursive:    Sök även i undermappar (standard: True).
+        exclude_dirs: Undermappar att hoppa över (standard: "ikon",
+                      där appens egen ikon ligger).
 
     Returns:
         Alfabetiskt sorterad lista med AssetFile (tom om mappen saknas).
@@ -196,6 +221,8 @@ def scan_assets(
             continue
         if _is_hidden(path, asset_root):
             continue
+        if _in_excluded_dir(path, asset_root, exclude_dirs):
+            continue
         found.append(AssetFile(path=path, root=asset_root))
 
     return sorted(found, key=lambda asset: asset.relative.casefold())
@@ -205,6 +232,7 @@ def find_asset(
     name: str,
     root: Optional[Union[str, Path]] = None,
     recursive: bool = True,
+    exclude_dirs: Sequence[str] = EXCLUDED_DIR_NAMES,
 ) -> Optional[AssetFile]:
     """
     Hitta en bild på filnamn, relativ sökväg eller stam.
@@ -215,7 +243,7 @@ def find_asset(
     if not wanted:
         return None
 
-    assets = scan_assets(root, recursive=recursive)
+    assets = scan_assets(root, recursive=recursive, exclude_dirs=exclude_dirs)
     for asset in assets:
         if asset.relative.lower() == wanted:
             return asset

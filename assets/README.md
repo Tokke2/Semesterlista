@@ -7,6 +7,10 @@ avdelning).
 ```
 assets/
 ├── README.md
+├── ikon/                 ← appens ikon (fönster, tray, aktivitetsfält)
+│   ├── appikon.svg
+│   ├── appikon-16…256.png
+│   └── appikon.ico
 └── logotyper/
     └── exempel-logotyp.svg
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Fordonsplugin (v2.6.0)
+Fordonsplugin (v2.7.0)
 ======================
 
 Egen flik för limokörnings-/fordonsscheman. Fliken återanvänder vyn och
@@ -21,7 +21,7 @@ Konfiguration (data/plugins.json → "Fordon"):
 
     {
       "Fordon": {
-        "version": "2.6.0",
+        "version": "2.7.0",
         "enabled": true,
         "settings": {
           "default_mode": "Limokörning",
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO: Dict[str, str] = {
     "id": "fordon",
     "name": "Fordon",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "author": "Din Organisation",
     "description": "Genererar limokörningsscheman per fordon i PDF-format",
 }

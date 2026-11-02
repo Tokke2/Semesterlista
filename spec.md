@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.6.0                                                             ║
+║  Version: 2.7.0                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -41,6 +41,7 @@
     - 4.16 core/pdf_assets.py
     - 4.17 core/logo_dialog.py
     - 4.18 plugins/fordon/plugin.py
+    - 4.19 core/app_icon.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -112,6 +113,7 @@ Semesterlista/ ← Rotmapp
 │ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
 │ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
 │ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0
+│ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -135,10 +137,17 @@ Semesterlista/ ← Rotmapp
 ├── Fordon.txt ← Indata: fordon (skapas vid behov)
 ├── Hyresgäster.txt ← Indata: hyresgäster (skapas vid behov)
 │
-├── assets/ ← Bilder till PDF:en ← NY v2.5.0
-│ ├── README.md ← Så används logotyperna
+├── assets/ ← Bilder: ikon + logotyper ← NY v2.5.0
+│ ├── README.md ← Så används bilderna
+│ ├── ikon/ ← Appikon (fönster, tray, aktivitetsfält) ← NY v2.7.0
+│ │ ├── appikon.svg
+│ │ ├── appikon-16…256.png
+│ │ └── appikon.ico
 │ └── logotyper/ ← Egna undermappar läses rekursivt
 │   └── exempel-logotyp.svg
+│
+├── tools/ ← Hjälpskript ← NY v2.7.0
+│ └── make_icons.py ← Bygger om PNG/ICO från appikon.svg
 │
 ├── tests/ ← Enhetstester (unittest) ← NY v2.4.0
 │ ├── test_roster.py ← Listor, format, validering, skrivning
@@ -1280,6 +1289,43 @@ Inställningarna sparas i en egen lokal fil
 
 ---
 
+### 4.19 `core/app_icon.py` ✅ v2.7.0
+
+**Ansvar:** En och samma ikon överallt i appen.
+
+| Funktion | Beskrivning |
+|----------|-------------|
+| `icon_dir()` | `assets/ikon` (relativt appens rot) |
+| `icon_files()` | Befintliga filer: PNG 16–256, `.ico`, `.svg` (i den ordningen) |
+| `app_icon(force_reload=False)` | `QIcon` med alla storlekar (cachas) |
+| `fallback_icon()` | Ritar ikonen med `QPainter` om bilderna saknas |
+| `apply_app_icon(app=None)` | Sätter applikationens ikon (+ `setDesktopFileName` på Linux) |
+| `set_windows_app_user_model_id()` | AppUserModelID på Windows – rätt ikon/gruppering i aktivitetsfält och aktivitetshanterare |
+| `clear_cache()` | Rensar cachen (tester) |
+
+**Var ikonen används**
+
+- `main.pyw`: `apply_app_icon(app)` direkt efter `QApplication` skapas;
+  `set_windows_app_user_model_id()` innan fönstret skapas.
+- `MainWindow._init_ui()`: `self.setWindowIcon(app_icon())`.
+- `SystrayManager`: `QSystemTrayIcon(app_icon(), app)` (tidigare en egenritad
+  blå ruta med "S").
+- Dialoger: listredigeraren, logotypväljaren och pluginets
+  inställningsdialog sätter samma ikon; `QMessageBox` ärver appens ikon.
+
+**Filer & återbyggnad**
+
+| Fil | Roll |
+|-----|------|
+| `assets/ikon/appikon.svg` | källa (redigeras) |
+| `assets/ikon/appikon-16…256.png` | Qt väljer storlek per yta (tray, fönster, HiDPI) |
+| `assets/ikon/appikon.ico` | Windows: aktivitetsfält, genvägar, aktivitetshanteraren |
+
+`python tools/make_icons.py` rastrerar om SVG:n med `QSvgRenderer` och bygger
+`.ico` (7 storlekar, PNG-baserad) – bara PySide6 behövs.
+
+---
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -1436,6 +1482,11 @@ text
 ---
 
 ## 9. SYSTRAY & MINIMERING
+
+v2.7.0: Systemfältsikonen är appens riktiga ikon (assets/ikon) – samma som
+fönstret och aktivitetsfältet. På Windows sätts AppUserModelID
+("Tokke2.Semesterlista") innan fönstret skapas, så aktivitetsfältet och
+aktivitetshanteraren visar appens ikon i stället för Python-ikonen.
 Startar ALLTID minimerat – main_window.show() anropas EJ i main()
 Enkelklick (vänster) på ikon → toggla visa/dölj
 Högerklick → meny (Visa, Dölj, Avsluta)
@@ -2094,7 +2145,7 @@ proportionerna bevaras alltid.
 ### 21.4 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 76 tester
+python -m unittest discover -s tests -v      # 86 tester
 ```
 
 `tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
@@ -2103,4 +2154,4 @@ logotyp på varje sida via `canvasmaker` samt felhantering (`AssetError`).
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.6.0 | Datum: 2026-11-02 | Status: 49/50 (98%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.7.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
