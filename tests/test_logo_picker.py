@@ -68,6 +68,10 @@ class LogoPickerTests(unittest.TestCase):
         self.svg = self.root / "logotyper" / "foretag.svg"
         _write_svg(self.svg)
 
+        # Andra bildformat får finnas i mappen men ska inte listas (v2.10.0)
+        (self.root / "logotyper" / "bild.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        (self.root / "foto.jpg").write_bytes(b"\xff\xd8\xff")
+
         from core.logo_picker import LogoPicker
 
         self.LogoPicker = LogoPicker
@@ -99,6 +103,21 @@ class LogoPickerTests(unittest.TestCase):
         # Texten är den relativa sökvägen inuti assets/
         self.assertEqual(picker.combo.itemText(1), "logotyper/foretag.svg")
         self.assertEqual([a.path for a in picker.assets()], [self.svg])
+        picker.deleteLater()
+
+    def test_only_svg_is_listed(self) -> None:
+        """PNG/JPG i assets-mappen ska inte dyka upp i dropdownen (v2.10.0)."""
+        picker = self._picker()
+        texts = [picker.combo.itemText(i) for i in range(picker.combo.count())]
+        self.assertFalse([t for t in texts if t.lower().endswith((".png", ".jpg", ".jpeg"))])
+        self.assertTrue(all(a.suffix == ".svg" for a in picker.assets()))
+        picker.deleteLater()
+
+    def test_svg_deep_in_subfolders_is_listed(self) -> None:
+        _write_svg(self.root / "kunder" / "2026" / "acme.svg")
+        picker = self._picker()
+        texts = [picker.combo.itemText(i) for i in range(1, picker.combo.count())]
+        self.assertIn("kunder/2026/acme.svg", texts)
         picker.deleteLater()
 
     def test_missing_assets_folder_gives_only_no_logo(self) -> None:
@@ -149,6 +168,7 @@ class LogoPickerTests(unittest.TestCase):
 
         picker.refresh()
 
+        # endast SVG räknas (post 0 + två SVG-filer)
         self.assertEqual(picker.combo.count(), 3)
         self.assertEqual(picker.current_path(), str(self.svg))
         self.assertEqual(Path(picker.combo.currentData()), self.svg)

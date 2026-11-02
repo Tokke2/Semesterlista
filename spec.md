@@ -1500,7 +1500,7 @@ self.logo_picker.changed.connect(self._on_logo_changed)   # (str) → sökväg
 
 | Medlem | Beskrivning |
 |--------|-------------|
-| `combo` | `QComboBox` – post 0 = **"Ingen logotyp"** (`data=""`), sedan alla bilder i `assets/` **och undermappar** med relativ sökväg som text |
+| `combo` | `QComboBox` – post 0 = **"Ingen logotyp"** (`data=""`), sedan alla **SVG-logotyper** i `assets/` **och undermappar** med relativ sökväg som text (andra bildformat listas inte) |
 | `insert_button` | 🖼️ **Infoga SVG…** – väljer en bild även utanför `assets/` (läggs då till i listan med markeringen *(utanför assets)*) |
 | `rescan_button` | **Uppdatera lista** – läser om mappen |
 | `preview` | `QLabel` som visar bilden i `PREVIEW_HEIGHT` (56 px) höjd; skalas med `KeepAspectRatio` vid `resizeEvent`/`showEvent` |
@@ -2503,8 +2503,10 @@ täcks av 7 tester i `tests/test_settings_dialog.py`.
 
 ### 24.1 Knappen
 
-Logotypen väljs i en dropdown som listar **alla bilder i appens mapp
+Logotypen väljs i en dropdown som listar **alla SVG-logotyper i appens mapp
 `assets/` och dess undermappar** (t.ex. `logotyper/exempel-logotyp.svg`).
+Andra bildformat (PNG/JPG) listas inte, men kan fortfarande infogas med
+*Infoga SVG…* och ritas då som vanligt i PDF:en.
 Widgeten är `core/logo_picker.py::LogoPicker` och finns i två vyer:
 
 | Vy | Placering | Förhandsgranskning |
@@ -2541,10 +2543,11 @@ sin naturliga storlek (används av testerna).
 
 ### 24.3 Tester
 
-`tests/test_logo_picker.py` (14 tester): listan fylls från `assets/` +
-undermappar, post 0 = *Ingen logotyp*, val/`clear()`/`refresh()` och
-`changed`-signalen, fil utanför `assets/`, trasig fil → feltext,
-förhandsgranskningen skalas proportionellt och följer ytan.
+`tests/test_logo_picker.py` (16 tester): listan fylls med **endast SVG** från
+`assets/` + undermappar (även djupt liggande filer), post 0 = *Ingen
+logotyp*, val/`clear()`/`refresh()` och `changed`-signalen, fil utanför
+`assets/`, trasig fil → feltext, förhandsgranskningen skalas proportionellt
+och följer ytan.
 
 `tests/test_pdf_assets.py::PdfLogoAutoSizeTests` (7 tester): liggande och
 stående A4, extremt breda/höga logotyper, tak och minsta ruta, samt

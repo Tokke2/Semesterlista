@@ -13,8 +13,8 @@ En liten widget som låter användaren infoga en logotyp till PDF-exporten:
     │ └──────────────────────────────────────────────────────┘ │
     └──────────────────────────────────────────────────────────┘
 
-* Dropdown-listan visar alla bilder i appens mapp ``assets/`` **och dess
-  undermappar** (samma sökning som ``core/pdf_assets.py``).
+* Dropdown-listan visar alla **SVG-logotyper** i appens mapp ``assets/``
+  **och dess undermappar** (samma sökning som ``core/pdf_assets.py``).
 * **Infoga SVG…** låter användaren välja en fil utanför assets-mappen.
 * Förhandsgranskningen **anpassar storleken automatiskt** – bilden skalas
   alltid till att passa ytan och behåller sina proportioner.
@@ -52,7 +52,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.i18n import t
-from core.pdf_assets import AssetFile, assets_root, scan_assets
+from core.pdf_assets import SVG_SUFFIXES, AssetFile, assets_root, scan_assets
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +140,15 @@ class LogoPicker(QWidget):
     # ──────────────────────────────────────────────────────
 
     def refresh(self, emit: bool = False) -> None:
-        """Läs om assets-mappen och fyll dropdown-listan."""
+        """
+        Läs om assets-mappen och fyll dropdown-listan.
+
+        v2.10.0: endast SVG-logotyper listas (``SVG_SUFFIXES``) – appens
+        undermappar genomsöks rekursivt. Andra bildformat kan fortfarande
+        infogas med *Infoga SVG…* och ritas då som vanligt i PDF:en.
+        """
         try:
-            self._assets = scan_assets(self._root)
+            self._assets = scan_assets(self._root, suffixes=SVG_SUFFIXES)
         except Exception as exc:  # pragma: no cover – defensivt
             logger.warning(f"Kunde inte läsa logotyper: {exc}")
             self._assets = []
@@ -163,7 +169,7 @@ class LogoPicker(QWidget):
             self.changed.emit(self._current)
 
     def assets(self) -> List[AssetFile]:
-        """Alla logotyper som hittades vid senaste genomsökningen."""
+        """Alla SVG-logotyper som hittades vid senaste genomsökningen."""
         return list(self._assets)
 
     # ──────────────────────────────────────────────────────
@@ -261,7 +267,7 @@ class LogoPicker(QWidget):
             self,
             t("logo.dialog_title"),
             start,
-            "Bilder (*.svg *.png *.jpg *.jpeg);;SVG (*.svg);;Alla filer (*)",
+            "SVG (*.svg);;Bilder (*.svg *.png *.jpg *.jpeg);;Alla filer (*)",
         )
         if not filename:
             return
