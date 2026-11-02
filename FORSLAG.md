@@ -1,6 +1,6 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02. **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-02 (v2.6.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -63,6 +63,13 @@ Status per 2026-11-02. **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjo
     för schemaläggning (Windows Task Scheduler) utan att öppna fönstret.
 25. **[FÖRSLAG] CI + GUI-tester** – GitHub Actions som kör de 62 testerna vid
     varje push, plus `pytest-qt` för flikar, logotypdialog och PDF-knappar.
+
+## Klart efter listan skrevs (v2.6.0)
+
+- **Valbar sidlayout** för semester-/fordons-PDF: liggande A4 (270 mm tabell)
+  eller stående A4 (190 mm tabell).
+- **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
+  startmånad – allt sparas per flik.
 
 ## Rekommenderad ordning härnäst
 
