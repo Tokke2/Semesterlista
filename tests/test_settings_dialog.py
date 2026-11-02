@@ -143,7 +143,7 @@ class SettingsDialogTests(unittest.TestCase):
     # ── Bygge ────────────────────────────────────────────
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.8.0")
+        self.assertEqual(MODULE_VERSION, "2.8.1")
 
     def test_has_four_tabs(self) -> None:
         dialog = self.make_dialog()

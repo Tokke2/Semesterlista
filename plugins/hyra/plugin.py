@@ -5,6 +5,12 @@ Hyresfakturering Plugin – UPPDATERAD (PySide6 + BasePlugin)
 Plugin för att generera hyreslistor med tomma kryssrutor för
 månads- och kvartalshyresgäster.
 
+FIXAT v2.8.1:     Årbytet tömde hela sidan. Vyn byggdes om med en ny
+                   QVBoxLayout(self) trots att widgeten redan hade en layout,
+                   vilket Qt vägrar – nu återanvänds rotlayouten och bara
+                   kvartalskorten byts ut på plats (fokus ligger kvar i
+                   årväljaren).
+
 UPPDATERAD v2.5.0: Fliken heter "Hyra" (TAB_ORDER 10).
                    Logotyp i PDF:en: "Välj logotyp…" hämtar en bild från
                    appens assets-mapp (även undermappar) och ritar den i
@@ -95,7 +101,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.8.0",
+    "version":     "2.8.1",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -363,18 +369,30 @@ class HyraMainView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
+        # Rotlayouten skapas en gång och återanvänds vid uppdateringar.
+        # Annars blir vyn tom: Qt vägrar sätta en ny layout på en widget som
+        # redan har en (”QLayout: Attempting to add QLayout …”) – det var
+        # felet när man bytte år (v2.8.1).
+        self._main_layout:    Optional[QVBoxLayout] = None
+        self._quarter_group:  Optional[QGroupBox]   = None
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """Bygg hela gränssnittet."""
-        main_layout = QVBoxLayout(self)
+        """Bygg (eller bygg om) hela gränssnittet."""
+        if self._main_layout is None:
+            self._main_layout = QVBoxLayout(self)
+
+        main_layout = self._main_layout
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(8)
 
         main_layout.addLayout(self._create_top_panel())
         main_layout.addLayout(self._create_file_info_row())
         self._update_logo_label()
-        main_layout.addWidget(self._create_quarter_info_panel())
+
+        self._quarter_group = self._create_quarter_info_panel()
+        main_layout.addWidget(self._quarter_group)
+
         main_layout.addWidget(self._create_tenant_overview(), stretch=1)
         main_layout.addLayout(self._create_button_bar())
 
@@ -638,7 +656,12 @@ class HyraMainView(QWidget):
 
     @Slot(int)
     def _on_year_change(self, value: int) -> None:
-        """Hantera ändring av år i spinbox."""
+        """
+        Hantera ändring av år i spinbox.
+
+        Bara kvartalskorten byggs om – resten av vyn (inklusive spinboxen som
+        användaren just klickar i) lämnas orörd, så fokus och sidan behålls.
+        """
         self.tm.set_year(value)
         self.year_changed.emit(value)
         self._refresh_quarter_panel()
@@ -650,12 +673,37 @@ class HyraMainView(QWidget):
         self._refresh_ui()
 
     def _refresh_ui(self) -> None:
-        """Uppdatera hela gränssnittet."""
-        self._clear_layout(self.layout())
+        """
+        Uppdatera hela gränssnittet.
+
+        Rotlayouten behålls – bara innehållet byts ut (v2.8.1).
+        """
+        if self._main_layout is not None:
+            self._clear_layout(self._main_layout)
+        self._quarter_group = None
         self._init_ui()
 
     def _refresh_quarter_panel(self) -> None:
-        """Uppdatera gränssnittet (inkl. kvartalspanel)."""
+        """
+        Uppdatera kvartalskorten på plats (året ändrades).
+
+        Widgeten byts med ``replaceWidget`` i stället för att hela vyn rivs,
+        så att sidan aldrig blir tom och årsspinboxen behåller fokus.
+        """
+        new_group = self._create_quarter_info_panel()
+        layout    = self._main_layout
+
+        if layout is not None and self._quarter_group is not None:
+            old_group = self._quarter_group
+            layout.replaceWidget(old_group, new_group)
+            # Koppla loss direkt – deleteLater() sker först i event-loopen
+            old_group.hide()
+            old_group.setParent(None)
+            old_group.deleteLater()
+            self._quarter_group = new_group
+            return
+
+        # Reservväg: inget att byta ut – bygg om hela vyn
         self._refresh_ui()
 
     @staticmethod
@@ -667,6 +715,9 @@ class HyraMainView(QWidget):
             item   = layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
+                # Ta bort direkt ur trädet så att inget gammalt ligger kvar
+                widget.hide()
+                widget.setParent(None)
                 widget.deleteLater()
             elif item.layout() is not None:
                 HyraMainView._clear_layout(item.layout())
@@ -963,7 +1014,7 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.8.0"
+    VERSION:     str = "2.8.1"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 

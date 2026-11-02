@@ -1,6 +1,6 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02 (v2.8.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-02 (v2.8.1). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -65,6 +65,16 @@ Status per 2026-11-02 (v2.8.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
     varje push, plus `pytest-qt` för flikar, logotypdialog och PDF-knappar.
 
 ## Klart efter listan skrevs
+
+**v2.8.1 – Årbytet i Hyra-fliken tömde sidan**
+
+- **Fixat:** när man bytte år i Hyra-fliken byggdes vyn om med en ny
+  `QVBoxLayout(self)` trots att widgeten redan hade en layout. Qt vägrar
+  sätta den nya layouten, och kvar blev en tom sida. Nu återanvänds
+  rotlayouten och bara kvartalskorten byts ut på plats – fokus ligger kvar
+  i årväljaren.
+- **Regressionstester:** `tests/test_hyra_view.py` (8 tester) fångar bland
+  annat Qt-varningen ”already has a layout”.
 
 **v2.8.0 – Detaljerad loggning & inställningsdialog**
 

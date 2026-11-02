@@ -171,7 +171,7 @@ DEFAULT_MONTHS_PER_PAGE: int = 3
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.8.0",
+    "version": "2.8.1",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -1937,7 +1937,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.8.0"
+    VERSION: str = "2.8.1"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 

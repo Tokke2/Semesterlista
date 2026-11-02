@@ -48,7 +48,7 @@ from core.pdf_assets import AssetFile, assets_root, ensure_assets_dir, scan_asse
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.8.0"
+MODULE_VERSION: str = "2.8.1"
 
 #: Data-roll för den valda sökvägen på listobjekt
 _PATH_ROLE = Qt.ItemDataRole.UserRole

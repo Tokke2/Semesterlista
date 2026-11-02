@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.8.0                                                             ║
+║  Version: 2.8.1                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -840,7 +840,7 @@ VARIABLER: __all__ = ["Plugin"]
 
 ---
 
-### 4.11 `plugins/hyra/plugin.py` ✅ v2.2.0
+### 4.11 `plugins/hyra/plugin.py` ✅ v2.2.0 (fixad v2.8.1)
 
 <!--
 ┌──────────────────────────────────────────────────────────────┐
@@ -2187,7 +2187,7 @@ Redigeraren visar en lista per sektion (Hyresgäster.txt får två flikar) med:
 ### 20.6 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 126 tester
+python -m unittest discover -s tests -v      # 134 tester
 ```
 
 `tests/test_roster.py` täcker inläsning (kommentarer, BOM, CRLF, cp1252,
@@ -2242,7 +2242,7 @@ proportionerna bevaras alltid.
 ### 21.4 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 126 tester
+python -m unittest discover -s tests -v      # 134 tester
 ```
 
 `tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
@@ -2298,10 +2298,33 @@ data/crash.log     hårda krascher
 
 `data/*.log` och `data/*.log.*` står i `.gitignore`.
 
-### 22.5 Tester
+### 22.5 Årbytet i Hyra-fliken (fixat i v2.8.1)
+
+**Symptom:** när man bytte år i **Hyra**-fliken blev hela sidan tom.
+
+**Orsak:** `_on_year_change()` → `_refresh_quarter_panel()` → `_refresh_ui()`
+anropade `_init_ui()`, som gjorde `QVBoxLayout(self)` på nytt. Widgeten hade
+redan en layout, och Qt vägrar då installera den nya
+(`QLayout: Attempting to add QLayout … which already has a layout`). Den nya
+layouten hamnade utanför widgeten – kvar blev en tom sida (0 layoutobjekt).
+
+**Åtgärd:**
+
+| Före | Efter |
+|------|-------|
+| Ny `QVBoxLayout(self)` vid varje ombyggnad | Rotlayouten `self._main_layout` skapas en gång och återanvänds |
+| Hela vyn revs vid årbyte | Bara kvartalskorten byts med `layout.replaceWidget()` – fokus ligger kvar i årväljaren |
+| Gamla widgetar låg kvar som barn | `hide()` + `setParent(None)` + `deleteLater()` kopplar loss dem direkt |
+| `_clear_layout()` användes på widgetens layout | Används bara på rotlayoutens innehåll, aldrig på widgeten själv |
+
+Regressionstester: `tests/test_hyra_view.py` (8 tester) – årbytet behåller
+layouten, korten uppdateras, panelen dupliceras inte, ingen
+”already has a layout”-varning och ”Ladda om” fungerar fortfarande.
+
+### 22.6 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 126 tester
+python -m unittest discover -s tests -v      # 134 tester
 ```
 
 `tests/test_logging_setup.py` (24 tester) täcker sökvägsval, reservplats,
@@ -2313,4 +2336,4 @@ och att dialogen fungerar utan valfria komponenter.
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.8.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.8.1 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
