@@ -1,0 +1,153 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Semesterlista – Release
+#
+#  Bygger appens zip-paket och skapar en GitHub Release när en tagg (v*)
+#  pushas. Filerna som läggs upp är exakt det som core/updater.py letar
+#  efter:
+#
+#      Semesterlista-v<version>.zip
+#      Semesterlista-v<version>.zip.sha256
+#
+#  Zip-paketet innehåller ett toppkatalog ("Semesterlista/") med appens
+#  filer – men INTE data/ (användarens inställningar) eller .git.
+#
+#  Användning:
+#      git tag v2.4.0
+#      git push origin v2.4.0
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Befintlig tagg att släppa (t.ex. v2.4.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Bygg och publicera release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checka ut repot
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Bestäm tagg och version
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          if [ -z "$TAG" ]; then
+            echo "::error::Ingen tagg angiven."
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tagg: $TAG  →  version: $VERSION"
+
+      - name: Kontrollera att versionen stämmer
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - "$TAG" "$VERSION" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          tag, version = sys.argv[1], sys.argv[2]
+
+          config = json.loads(Path("config.json").read_text(encoding="utf-8"))
+          main_source = Path("main.pyw").read_text(encoding="utf-8")
+          match = re.search(r'APP_VERSION: str = "([^"]+)"', main_source)
+
+          problems = []
+          if config.get("version") != version:
+              problems.append(
+                  f'config.json säger {config.get("version")!r}, taggen säger {version!r}'
+              )
+          if match is None:
+              problems.append("APP_VERSION hittades inte i main.pyw")
+          elif match.group(1) != version:
+              problems.append(
+                  f"APP_VERSION i main.pyw är {match.group(1)!r}, taggen säger {version!r}"
+              )
+
+          if problems:
+              print("::error::" + " | ".join(problems))
+              sys.exit(1)
+
+          print(f"Version {version} stämmer i config.json och main.pyw")
+          PY
+
+      - name: Bygg zip-paketet
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          STAGE="dist/Semesterlista"
+          mkdir -p "$STAGE"
+
+          # Appens filer – medvetet UTAN data/ (användardata) och .git
+          cp -R core plugins main.pyw config.json requirements.txt spec.md LICENSE "$STAGE"/
+
+          # Städa bort cachefiler
+          find "$STAGE" -type d -name "__pycache__" -prune -exec rm -rf {} +
+          find "$STAGE" -type f -name "*.pyc" -delete
+          find "$STAGE" -name ".DS_Store" -delete
+
+          cd dist
+          zip -r -q "Semesterlista-v${VERSION}.zip" "Semesterlista"
+          sha256sum "Semesterlista-v${VERSION}.zip" > "Semesterlista-v${VERSION}.zip.sha256"
+
+          echo "Innehåll:"
+          unzip -l "Semesterlista-v${VERSION}.zip" | tail -n 20
+          cat "Semesterlista-v${VERSION}.zip.sha256"
+
+      - name: Skapa GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          TITLE="Semesterlista v${VERSION}"
+          FILES=(
+            "dist/Semesterlista-v${VERSION}.zip"
+            "dist/Semesterlista-v${VERSION}.zip.sha256"
+          )
+
+          # Taggar med bindestreck (t.ex. v2.5.0-beta.1) blir prerelease
+          if [ "${TAG#*-}" != "$TAG" ]; then
+            KIND=(--prerelease)
+          else
+            KIND=(--latest)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Releasen $TAG finns redan – laddar upp filerna på nytt."
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+            gh release edit "$TAG" --title "$TITLE" "${KIND[@]}"
+          else
+            gh release create "$TAG" "${FILES[@]}" \
+              --title "$TITLE" --generate-notes "${KIND[@]}"
+          fi
+
+          echo "Release klar: $TAG"

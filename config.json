@@ -1,6 +1,6 @@
 {
   "app_name": "Semesterlista",
-  "version": "2.2.0",
+  "version": "2.4.0",
   "description": "Plugin-baserad desktopapplikation för semesterlistor och hyresfakturering",
   "author": "Rickard Längkvist",
   "copyright": "Rickard Längkvist 2025",
@@ -9,5 +9,25 @@
   "data_path": "data",
   "plugins_path": "plugins",
   "log_path": "data/app.log",
-  "debug": false
+  "debug": false,
+  "update": {
+    "owner": "Tokke2",
+    "repo": "Semesterlista",
+    "channel": "stable",
+    "auto_check": true,
+    "check_interval_hours": 24,
+    "install_mode": "auto",
+    "restart_after_update": true,
+    "asset_patterns": [
+      "*-setup.exe",
+      "*setup*.exe",
+      "*.msi",
+      "*.dmg",
+      "*.pkg",
+      "*-win*.zip",
+      "*.zip",
+      "*.tar.gz",
+      "*.tgz"
+    ]
+  }
 }

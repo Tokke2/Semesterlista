@@ -98,6 +98,14 @@ class SettingsManager:
             "log_path": "data/app.log",
             "check_updates": True,
         },
+        "updates": {
+            "auto_check": True,
+            "check_interval_hours": 24,
+            "last_check": "",
+            "last_found": "",
+            "skipped_version": "",
+            "snooze_until": "",
+        },
     }
 
     # ──────────────────────────────────────────────────────────

@@ -3,8 +3,8 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.2.0                                                             ║
-║  Datum: 2026-06-05                                                          ║
+║  Version: 2.4.0                                                             ║
+║  Datum: 2026-11-02                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
 ║  Copyright: Rickard Längkvist 2025 – dynamiskt år                          ║
@@ -36,6 +36,8 @@
     - 4.11 plugins/hyra/plugin.py
     - 4.12 plugins/lista/__init__.py
     - 4.13 plugins/lista/plugin.py
+    - 4.14 core/updater.py
+    - 4.15 core/update_dialog.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -51,6 +53,8 @@
 17. Checklista (50 Punkter)
 18. Kända Fel/Buggar & Åtgärdsplan
 19. Framtidsplan
+20. Automatisk Uppdatering mot GitHub Releases (v2.4.0)
+21. Release-arbetsflöde (GitHub Actions)
 
 ---
 
@@ -80,6 +84,7 @@ semesterlistor, limokörningsscheman och hyresfakturering.
 | Korrekt färgkodning       | Röda=officiella helgdagar+söndagar. Gröna=halvdagar (inkl. midsommarafton). Blå=lördagar                        |
 | Autostart med OS          | Arkiv → Autostart vid inloggning (checkable). Windows/macOS/Linux plattformsspecifikt                           |
 | Dynamiskt copyright-år    | © {datetime.now().year} Rickard Längkvist – uppdateras automatiskt                                              |
+| Automatisk uppdatering    | GitHub Releases API → notifikation i systemfältet → nedladdning (SHA-256) → omstart. Hjälp → Sök efter uppdateringar |
 
 ---
 
@@ -100,6 +105,8 @@ Semesterlista/ ← Rotmapp
 │ ├── settings_manager.py ← JSON-inställningshantering
 │ ├── single_instance.py ← Single-instance-lock + AutostartManager
 │ ├── theme_manager.py ← 3 teman + QSS-generator
+│ ├── updater.py ← GitHub-uppdatering (Qt-fri motor) ← NY v2.4.0
+│ ├── update_dialog.py ← Uppdateringsdialog + arbetstrådar ← NY v2.4.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -119,6 +126,13 @@ Semesterlista/ ← Rotmapp
 ├── Anställda.txt ← Indata: anställda
 ├── Fordon.txt ← Indata: fordon
 ├── Hyresgäster.txt ← Indata: hyresgäster
+├── tests/ ← Enhetstester (unittest, inga GUI-beroenden) ← NY v2.4.0
+│ └── test_updater.py ← Tester för versionsjämförelse, API, nedladdning
+│
+├── .github/workflows/ ← CI/CD ← NY v2.4.0
+│ ├── release.yml ← Bygger zip + skapar GitHub Release vid tagg v*
+│ └── tests.yml ← Kör enhetstesterna vid push/PR
+│
 ├── requirements.txt ← Python-beroenden
 └── spec.md ← Denna fil
 
@@ -142,6 +156,9 @@ Alla tekniska val och beroenden listade.
 | Kommunikation    | EventBus (Pub/Sub)                       | Plugin ↔ Kärna, trådsäkert              |
 | Single-instance  | QSharedMemory + QLocalServer             | Lås + bring-to-front                     |
 | Autostart        | AutostartManager                         | Windows/macOS/Linux OS-autostart         |
+| Uppdatering      | GitHub Releases API + urllib             | core/updater.py, Qt-fri och testbar      |
+| Nedladdning      | SHA-256 (digest / *.sha256)              | Verifieras innan uppackning              |
+| Uppdateringsskript | .bat (Windows) / .sh (macOS/Linux)     | Väntar på avslut → kopierar → startar om |
 | PDF-generering   | reportlab                                | Semesterlistor, limokörning, hyra        |
 | Helgdagar        | get_swedish_holidays() (intern)          | Svenska helgdagar, egen implementation   |
 | Trådsäkerhet     | threading.Lock                           | EventBus + SettingsManager               |
@@ -1097,6 +1114,114 @@ KLASSER:
 
 ---
 
+
+### 4.14 `core/updater.py` ✅ v2.4.0
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ MODULE_VERSION = "2.4.0"                                    │
+│ Ansvar: hela uppdateringsflödet mot GitHub – UTAN Qt        │
+└─────────────────────────────────────────────────────────────┘
+
+IMPORTER
+  fnmatch, hashlib, json, logging, os, platform, re, shutil,
+  subprocess, sys, tarfile, tempfile, urllib.request, webbrowser,
+  zipfile, argparse, dataclasses, datetime, pathlib, typing
+
+KLASSER
+  Version                – jämförbart versionsnummer
+    Version.parse("v2.4.0-beta.1") → Version(2,4,0,"beta",1)
+    as_tuple() → (major, minor, patch, stage_rank, stage_number)
+    __lt__/__gt__/__eq__ → 2.3.0 < 2.4.0-beta.1 < 2.4.0-rc.1 < 2.4.0
+
+  UpdateInfo             – en release från GitHub
+    from_github_release(data, asset_patterns) → väljer rätt fil
+    version, tag, name, notes, published_at, html_url, prerelease,
+    asset_name, asset_url, asset_api_url, asset_size, asset_digest,
+    checksum_url
+    is_installer / is_archive / has_asset / download_suffix
+    published_date() / to_dict()
+
+  ApplyResult            – vad apply() gjorde
+    mode("installer"|"archive"|"browser"), script, staged_dir,
+    command, dry_run, requires_restart
+
+  GitHubUpdater          – motorn
+    __init__(current_version, app_root, owner, repo, channel,
+             asset_patterns, install_mode, restart_after_update,
+             preserve_paths, timeout, api_base, token, work_dir)
+    from_config(project_root, current_version) → läser config.json
+    check() → Optional[UpdateInfo]           (draft/förhandsversioner filtreras)
+    download(update, dest_dir, progress, verify=True) → Path
+    stage_archive(archive) → Path            (zip/tar, path-traversal-skydd)
+    apply(update, archive, pid, restart, dry_run) → ApplyResult
+    download_dir(version) / open_release_page(update)
+    _restart_command() / _write_apply_script() / _launch_script()
+
+FEL
+  UpdateError (bas) → UpdateCheckError, UpdateDownloadError, UpdateApplyError
+
+FUNKTIONER
+  normalize_version(v), compare_versions(a, b), is_newer(a, b)
+  load_update_config(project_root, config_path) → dict
+  read_app_version(config_path) → str
+
+AUTOMATISK KONTROLL (mot SettingsManager)
+  auto_check_enabled(sm)             – updates.auto_check / advanced.check_updates
+  should_auto_check(sm, now)         – intervall + snooze + last_check
+  record_check(sm, found_version)    – sparar updates.last_check
+  skipped_version(sm) / is_skipped(sm, v) / skip_version(sm, v)
+  snooze(sm, hours) / clear_snooze(sm)
+  mark_update_found(sm, v)
+
+CLI
+  python core/updater.py --check [--json]
+  python core/updater.py --download --install
+  Exit: 0 = senaste, 10 = uppdatering finns, 20 = nedladdad, 1 = fel
+
+MILJÖVARIABLER (test/CI)
+  SEMESTERLISTA_UPDATE_API / _OWNER / _REPO, GITHUB_TOKEN
+```
+
+### 4.15 `core/update_dialog.py` ✅ v2.4.0
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ MODULE_VERSION = "2.4.0"                                    │
+│ Ansvar: GUI + arbetstrådar för uppdateringen                │
+└─────────────────────────────────────────────────────────────┘
+
+IMPORTER
+  PySide6.QtCore (QThread, Signal), PySide6.QtWidgets
+  (QDialog, QLabel, QProgressBar, QPushButton, QTextBrowser,
+   QMessageBox, QApplication …), core.i18n, core.updater
+
+KLASSER
+  UpdateCheckWorker(QThread)
+    checked(object) → UpdateInfo eller None
+    failed(str)     → felmeddelande
+    run() → updater.check() i bakgrunden
+
+  UpdateDownloadWorker(QThread)
+    progress(int, int) → nedladdade/totala byte
+    downloaded(object) → Path
+    failed(str)
+    run() → updater.download(update, progress=…)
+
+  UpdateDialog(QDialog)
+    __init__(updater, parent, update=None, settings_manager=None, auto=False)
+    update (property) → aktuell UpdateInfo
+    _start_check() → UpdateCheckWorker
+    _show_update(info) → version, datum, storlek, release-notes (Markdown)
+    _on_install() → nedladdning + apply()
+    _finish_apply(result) → installer / arkiv (omstart) / webbläsare
+    _on_later() → snooze(sm, 24)
+    _on_skip() → skip_version(sm, version)
+    reject()/closeEvent() → blockerar stängning under nedladdning
+
+  should_prompt(settings_manager, info) → False om versionen hoppats över
+```
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -1334,6 +1459,14 @@ Exakt JSON-struktur för alla inställningsfiler.
     "log_path": "data/app.log",
     "check_updates": true,
     "autostart": false
+  },
+  "updates": {
+    "auto_check": true,
+    "check_interval_hours": 24,
+    "last_check": "2026-11-02T09:15:00+00:00",
+    "last_found": "",
+    "skipped_version": "",
+    "snooze_until": ""
   }
 }
 data/plugins.json
@@ -1723,7 +1856,11 @@ Version 2.3.0 – FÖRBÄTTRINGAR
   [ ] Snabbkommandon (QShortcut)
 
 Version 2.4.0 – AVANCERAT
-  [ ] Fler språk (i18n)
+  [✔] Automatisk uppdatering mot GitHub Releases (core/updater.py)
+  [✔] Uppdateringsdialog med release-notes + progress (core/update_dialog.py)
+  [✔] Release-arbetsflöde i GitHub Actions (.github/workflows/release.yml)
+  [✔] Enhetstester för uppdateringen (tests/test_updater.py)
+  [✔] Fler språk (i18n) – svenska/engelska i hela gränssnittet (v2.3.0)
   [ ] Plugin-sandbox
   [ ] Prestandaövervakning
   [ ] Crash reporter
@@ -1734,4 +1871,147 @@ Version 3.0.0 – FRAMTID
   [ ] Molnsynkronisering
   [ ] Plugin-marknad
   [ ] Profil-/användarhantering (på begäran)
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.2.0 | Datum: 2026-06-05 | Status: 44/50 (88%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+
+---
+
+## 20. AUTOMATISK UPPDATERING MOT GITHUB RELEASES (v2.4.0)
+
+<!--
+Hela flödet från GitHub-tagg till uppdaterad app.
+-->
+
+### 20.1 Flöde
+
+```text
+GitHub (tagg v2.4.0)
+      │  .github/workflows/release.yml bygger Semesterlista-v2.4.0.zip
+      │  + Semesterlista-v2.4.0.zip.sha256
+      ▼
+GitHub Releases API  /repos/Tokke2/Semesterlista/releases
+      │  core/updater.py: check() → Version-jämförelse → UpdateInfo
+      ▼
+Automatisk kontroll 8 s efter start (om updates.auto_check och
+intervallet gått ut)  –  eller Hjälp → Sök efter uppdateringar...
+      │  hittad version → notifikation i systemfältet
+      ▼
+UpdateDialog  (version, datum, storlek, release-notes i Markdown)
+      │  "Ladda ner & installera"
+      ▼
+download()  →  SHA-256 verifieras  →  stage_archive()
+      │  data/, .git/ och indatafiler skrivs ALDRIG över
+      ▼
+apply()  →  apply_update.bat / apply_update.sh väntar på att appen stängs
+      │  kopierar nya filer → startar om Semesterlista
+      ▼
+Ny version igång – inställningarna ligger kvar i data/
+```
+
+### 20.2 Menyval
+
+| Plats                            | Funktion                                            |
+|----------------------------------|-----------------------------------------------------|
+| Hjälp → Sök efter uppdateringar… | Manuell kontroll (Ctrl+Shift+U), visar dialog       |
+| Hjälp → Kontrollera uppdateringar automatiskt | Checkable; sparas i `updates.auto_check` |
+| Klick på notifikation            | Öppnar dialogen för den hittade versionen           |
+| Dialog: Påminn mig senare        | `updates.snooze_until` = nu + 24 h                  |
+| Dialog: Hoppa över denna version | `updates.skipped_version` = versionen               |
+
+### 20.3 Konfiguration – `config.json`
+
+```json
+{
+  "version": "2.4.0",
+  "update": {
+    "owner": "Tokke2",
+    "repo": "Semesterlista",
+    "channel": "stable",
+    "auto_check": true,
+    "check_interval_hours": 24,
+    "install_mode": "auto",
+    "restart_after_update": true,
+    "asset_patterns": ["*-setup.exe", "*setup*.exe", "*.msi", "*.dmg",
+                       "*.pkg", "*-win*.zip", "*.zip", "*.tar.gz", "*.tgz"]
+  }
+}
+```
+
+| Nyckel                  | Beskrivning                                                        |
+|-------------------------|--------------------------------------------------------------------|
+| `owner` / `repo`        | Repot som uppdateringen hämtas från                               |
+| `channel`               | `stable` (hoppar över förhandsversioner) eller `prerelease`        |
+| `auto_check`            | Kontrollera vid start (högst en gång per `check_interval_hours`)   |
+| `check_interval_hours`  | Minsta tid mellan automatiska kontroller                           |
+| `install_mode`          | `auto`, `installer`, `archive` eller `browser`                     |
+| `restart_after_update`  | Starta om appen automatiskt efter uppdateringen                    |
+| `asset_patterns`        | Prioritetsordning för vilken fil i releasen som laddas ner         |
+| `preserve_paths`        | Filer/mappar som aldrig skrivs över (standard: `data`, `.git`, txt) |
+| `timeout_seconds`       | Timeout för nätverksanrop                                          |
+| `token`                 | Valfri GitHub-token (höjer API:ts ratelimit)                       |
+
+### 20.4 Säkerhet
+
+- Nedladdningen verifieras med SHA-256 (GitHubs `digest`-fält eller
+  systerfilen `*.sha256`) innan något packas upp.
+- Uppackning skyddas mot path traversal och länkar i tar-arkiv.
+- `data/`, `.git/` samt `Anställda.txt`, `Fordon.txt`, `Hyresgäster.txt`
+  tas bort ur den uppackade kopian – användardata kan inte skrivas över.
+- Inget installeras utan att användaren klickar på
+  ”Ladda ner & installera” (eller bekräftar omstarten).
+- Endast HTTP/HTTPS mot `api.github.com` (eller `api_base` i config).
+
+### 20.5 Felsökning
+
+| Symtom                                | Åtgärd                                                        |
+|---------------------------------------|---------------------------------------------------------------|
+| ”GitHub API:s gräns … är nådd”        | Vänta, eller lägg in `GITHUB_TOKEN` / `update.token`          |
+| Ingen uppdatering hittas              | Kontrollera att taggen är `v2.4.0` och att releasen inte är draft |
+| Filen laddas inte ner                 | Kontrollera `asset_patterns` och att filen är bifogad releasen |
+| Uppdateringen slår inte igenom        | Läs `%TEMP%/Semesterlista/updates/apply_update.log`           |
+| Vill tillbaka                         | Ladda ner föregående release manuellt och packa upp över appen |
+
+CLI för felsökning:
+
+```bash
+python core/updater.py --check --json
+python core/updater.py --check --verbose
+python core/updater.py --download --install
+```
+
+---
+
+## 21. RELEASE-ARBETSFLÖDE (GITHUB ACTIONS)
+
+```text
+.github/workflows/release.yml
+  Triggas av:  push av tagg "v*"  eller  manuell workflow_dispatch
+  Steg:
+    1. Kontrollera att taggens version == config.json + main.pyw APP_VERSION
+    2. Bygg "Semesterlista/" med core/, plugins/, main.pyw, config.json,
+       spec.md, LICENSE (UTAN data/, __pycache__, .git)
+    3. zip → dist/Semesterlista-v<version>.zip
+    4. sha256sum → dist/Semesterlista-v<version>.zip.sha256
+    5. gh release create <tagg> … (prerelease om taggen innehåller "-")
+
+.github/workflows/tests.yml
+  Triggas av:  push och pull_request
+  Steg:        python -m unittest discover -s tests -v  (Python 3.12)
+```
+
+Så här släpps en ny version:
+
+```bash
+# 1. Bumpa versionen i config.json + APP_VERSION i main.pyw
+# 2. Committa och tagga
+git tag v2.4.0
+git push origin v2.4.0
+# 3. Actions bygger zip + skapar releasen automatiskt
+# 4. Installerade appar hittar releasen vid nästa kontroll
+```
+
+> **OBS:** `.github/workflows/`-filerna påverkar bara GitHub. Ingen merge
+> till `main` behövs för att testerna ska kunna köras lokalt:
+> `python -m unittest discover -s tests -v`
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.4.0 | Datum: 2026-11-02 | Status: 48/50 (96%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

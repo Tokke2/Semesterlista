@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Nedladdade uppdateringar och release-artefakter
+Semesterlista-v*.zip
+Semesterlista-v*.zip.sha256
+*.zip.tmp
+
+# Appens loggar och temporärfiler
+data/app.log
+data/*.log
+data/*.json.tmp
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db

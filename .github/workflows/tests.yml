@@ -1,0 +1,42 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Semesterlista – Tester
+#
+#  Kör enhetstesterna för uppdateringsmotorn (core/updater.py) och
+#  kompilerar alla moduler. Testerna kräver varken PySide6 eller nätverk.
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: Tester
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    name: Enhetstester (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checka ut repot
+        uses: actions/checkout@v5
+
+      - name: Installera Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Kompilera alla moduler
+        run: |
+          python -m py_compile main.pyw core/*.py plugins/*.py plugins/*/*.py tests/*.py
+
+      - name: Kör enhetstesterna
+        run: python -m unittest discover -s tests -v

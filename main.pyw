@@ -8,6 +8,15 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.4.0: AUTOMATISK UPPDATERING MOT GITHUB RELEASES.
+                   Nytt: core/updater.py (Qt-fri motor) + core/update_dialog.py
+                   (dialog + arbetstrådar). Hjälp-menyn har nu
+                   "Sök efter uppdateringar..." och "Kontrollera
+                   uppdateringar automatiskt".
+                   Automatisk kontroll sker i bakgrunden vid start och
+                   visar en notifikation i systemfältet när en ny
+                   version finns (högst en gång per dygn).
+                   APP_VERSION bumpat till 2.4.0.
 UPPDATERAD v2.3.0: TVÅSPRÅKIG (svenska/engelska) – väljs i
                    Arkiv → Inställningar → Språk.
                    Alla texter hämtas via core/i18n.py (core.i18n.t()).
@@ -104,8 +113,24 @@ from core.settings_manager import SettingsManager
 from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
 from core import i18n
-from core.settings_dialog import SettingsDialog
+from core.updater import (
+    GitHubUpdater,
+    UpdateInfo,
+    auto_check_enabled,
+    is_skipped,
+    mark_update_found,
+    record_check,
+    should_auto_check,
+)
+from core.update_dialog import UpdateCheckWorker, UpdateDialog
 from plugins.base_plugin import BasePlugin
+
+# Inställningsdialogen är valfri: appen ska kunna starta även om
+# core/settings_dialog.py saknas i installationen (v2.4.0).
+try:
+    from core.settings_dialog import SettingsDialog
+except ImportError:  # pragma: no cover – beroende på installation
+    SettingsDialog = None  # type: ignore[assignment,misc]
 
 if TYPE_CHECKING:
     pass
@@ -129,7 +154,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.3.0"
+APP_VERSION: str = "2.4.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -401,6 +426,17 @@ class MainWindow(QMainWindow):
         self._theme_actions: Dict[str, QAction] = {}
         self._tray_manager: Optional[Any] = None
 
+        # Uppdatering mot GitHub Releases (v2.4.0)
+        self._updater: GitHubUpdater = GitHubUpdater.from_config(
+            PROJECT_ROOT, APP_VERSION
+        )
+        self._update_action:        Optional[QAction] = None
+        self._auto_update_action:   Optional[QAction] = None
+        self._update_dialog:        Optional[UpdateDialog] = None
+        self._update_check_worker:  Optional[UpdateCheckWorker] = None
+        self._pending_update:       Optional[UpdateInfo] = None
+        self._auto_update_timer:    Optional[QTimer] = None
+
         # Bygg UI
         self._init_ui()
 
@@ -502,6 +538,9 @@ class MainWindow(QMainWindow):
           ○ System-tema
 
         Hjälp:
+          Sök efter uppdateringar...   Ctrl+Shift+U  (v2.4.0)
+          Kontrollera uppdateringar automatiskt  (checkable)
+          ─────────────────────────────────────
           Om Semesterlista...
         """
         menubar = self.menuBar()
@@ -575,6 +614,29 @@ class MainWindow(QMainWindow):
         # HJÄLP
         # ══════════════════════════════════════════════════
         hjalp_menu = menubar.addMenu(i18n.t("menu.help"))
+
+        # Sök efter uppdateringar (v2.4.0)
+        self._update_action = QAction(i18n.t("menu.help.check_updates"), self)
+        self._update_action.setShortcut(QKeySequence("Ctrl+Shift+U"))
+        self._update_action.triggered.connect(
+            lambda _checked=False: self._check_for_updates(manual=True)
+        )
+        hjalp_menu.addAction(self._update_action)
+
+        # Automatisk kontroll (checkable, sparas i settings.json)
+        self._auto_update_action = QAction(
+            i18n.t("menu.help.auto_update"), self
+        )
+        self._auto_update_action.setCheckable(True)
+        self._auto_update_action.setChecked(
+            auto_check_enabled(self._settings_manager)
+        )
+        self._auto_update_action.triggered.connect(
+            self._on_auto_update_toggle
+        )
+        hjalp_menu.addAction(self._auto_update_action)
+
+        hjalp_menu.addSeparator()
 
         about_action = QAction(
             i18n.t("menu.help.about", app=self._app_name()), self
@@ -1000,6 +1062,14 @@ class MainWindow(QMainWindow):
         helgdagsval (Sverige/USA), fönster/systemfält, plugins
         och avancerade inställningar.
         """
+        if SettingsDialog is None:
+            QMessageBox.warning(
+                self,
+                i18n.t("common.error"),
+                i18n.t("settings.dialog_missing"),
+            )
+            return
+
         dialog = SettingsDialog(
             settings_manager=self._settings_manager,
             theme_manager=self._theme_manager,
@@ -1031,6 +1101,152 @@ class MainWindow(QMainWindow):
                 year=COPYRIGHT_YEAR,
             ),
         )
+
+    # ──────────────────────────────────────────────────────
+    # Uppdatering mot GitHub Releases (v2.4.0)
+    # ──────────────────────────────────────────────────────
+
+    def schedule_auto_update_check(self, delay_ms: int = 8000) -> None:
+        """
+        Starta en automatisk uppdateringskontroll strax efter appstart.
+
+        Kontrollen görs bara om den är påslagen och om det gått minst
+        updates.check_interval_hours sedan förra kontrollen (eller om
+        användaren skjutit upp den). Nätverksanropet sker i en
+        arbetstråd så att starten aldrig blockeras.
+
+        Args:
+            delay_ms: Fördröjning i millisekunder (appen ska hinna starta).
+        """
+        if not should_auto_check(self._settings_manager):
+            logger.info(
+                "Automatisk uppdateringskontroll: hoppas över "
+                "(avstängd, nyligen gjord eller uppskjuten)"
+            )
+            return
+
+        self._auto_update_timer = QTimer(self)
+        self._auto_update_timer.setSingleShot(True)
+        self._auto_update_timer.timeout.connect(self._check_for_updates)
+        self._auto_update_timer.start(max(1000, int(delay_ms)))
+        logger.info("Automatisk uppdateringskontroll schemalagd")
+
+    def _check_for_updates(self, manual: bool = False) -> None:
+        """
+        Sök efter uppdateringar.
+
+        Args:
+            manual: True när användaren valt Hjälp → Sök efter uppdateringar
+                    (dialogen öppnas och visar resultatet direkt).
+                    False vid den automatiska kontrollen, som sker i
+                    bakgrunden och notifierar via systemfältet.
+        """
+        if manual:
+            dialog = UpdateDialog(
+                self._updater,
+                parent=self,
+                settings_manager=self._settings_manager,
+            )
+            self._update_dialog = dialog
+            dialog.exec()
+            if dialog.update is not None:
+                self._pending_update = dialog.update
+            return
+
+        if (
+            self._update_check_worker is not None
+            and self._update_check_worker.isRunning()
+        ):
+            return
+
+        worker = UpdateCheckWorker(self._updater, parent=self)
+        worker.checked.connect(self._on_auto_update_checked)
+        worker.failed.connect(self._on_auto_update_failed)
+        worker.finished.connect(worker.deleteLater)
+        self._update_check_worker = worker
+        self.set_status(i18n.t("update.checking_status"))
+        worker.start()
+
+    @Slot(object)
+    def _on_auto_update_checked(self, info: Optional[UpdateInfo]) -> None:
+        """Hantera resultatet av den automatiska kontrollen."""
+        self._update_check_worker = None
+        record_check(
+            self._settings_manager,
+            info.version if info is not None else "",
+        )
+        self.set_status(i18n.t("status.ready"))
+
+        if info is None:
+            logger.info("Ingen nyare version hittad")
+            return
+
+        if is_skipped(self._settings_manager, info.version):
+            logger.info(f"v{info.version} är överhoppad av användaren")
+            return
+
+        self._pending_update = info
+        mark_update_found(self._settings_manager, info.version)
+        self.set_status(
+            i18n.t("update.status.available", version=info.version)
+        )
+
+        if self._tray_manager is not None:
+            self._tray_manager.show_notification(
+                i18n.t("update.tray.title"),
+                i18n.t("update.tray.body", version=info.version, app=self._app_name()),
+                duration_ms=int(
+                    self._settings_manager.get(
+                        "systray.notification_duration_ms", 3000
+                    )
+                ),
+            )
+        logger.info(f"Uppdatering v{info.version} tillgänglig")
+
+    @Slot(str)
+    def _on_auto_update_failed(self, message: str) -> None:
+        """Hantera att den automatiska kontrollen misslyckades (tyst)."""
+        self._update_check_worker = None
+        self.set_status(i18n.t("status.ready"))
+        logger.warning(f"Uppdateringskontroll misslyckades: {message}")
+
+    def _on_auto_update_toggle(self, checked: bool = False) -> None:
+        """Slå på/av automatisk uppdateringskontroll."""
+        enabled = bool(
+            self._auto_update_action.isChecked()
+            if self._auto_update_action is not None
+            else checked
+        )
+        self._settings_manager.set("updates.auto_check", enabled)
+        self._settings_manager.set("advanced.check_updates", enabled)
+        self.set_status(
+            i18n.t("update.menu.auto_on" if enabled else "update.menu.auto_off")
+        )
+        logger.info(
+            "Automatisk uppdateringskontroll "
+            + ("påslagen" if enabled else "avstängd")
+        )
+
+    def open_pending_update(self) -> None:
+        """
+        Öppna uppdateringsdialogen för en uppdatering som hittats i
+        bakgrunden (anropas från systemfältets notifikation).
+        """
+        if self._pending_update is None:
+            self._check_for_updates(manual=True)
+            return
+
+        dialog = UpdateDialog(
+            self._updater,
+            parent=self,
+            update=self._pending_update,
+            settings_manager=self._settings_manager,
+            auto=True,
+        )
+        self._update_dialog = dialog
+        self.show_application()
+        dialog.exec()
+        self._pending_update = None
 
     # ──────────────────────────────────────────────────────
     # EventBus-lyssnare
@@ -1149,7 +1365,29 @@ class SystrayManager:
 
         self._tray_icon.setContextMenu(self._tray_menu)
         self._tray_icon.activated.connect(self._on_tray_activated)
+        self._tray_icon.messageClicked.connect(self._on_message_clicked)
         self._tray_icon.show()
+
+        # Anropas när användaren klickar på en notifikation (v2.4.0)
+        self._message_handler: Optional[Any] = None
+
+    def set_message_handler(self, handler: Any) -> None:
+        """
+        Registrera en callback för klick på systemnotifikationer (v2.4.0).
+
+        Används för att öppna uppdateringsdialogen när användaren
+        klickar på notifikationen om en ny version.
+        """
+        self._message_handler = handler
+
+    def _on_message_clicked(self) -> None:
+        """Skicka vidare klick på notifikationen till registrerad callback."""
+        if self._message_handler is None:
+            return
+        try:
+            self._message_handler()
+        except Exception as exc:  # pragma: no cover – defensivt
+            logger.warning(f"Fel i notifikationshanteraren: {exc}")
 
     def retranslate(self) -> None:
         """
@@ -1211,6 +1449,7 @@ def main() -> None:
      9. Applicera tema på QApplication
     10. Koppla single-instance-signal
     11. Skapa SystrayManager
+    11b. Automatisk uppdateringskontroll mot GitHub Releases (v2.4.0)
     12. Emittera app:started
     13. Starta Qt event-loop
     """
@@ -1303,6 +1542,12 @@ def main() -> None:
     saved_autostart = settings_manager.get("advanced.autostart", False)
     if saved_autostart != lock.get_autostart():
         lock.set_autostart(bool(saved_autostart))
+
+    # 11b. Klick på uppdateringsnotifikation → öppna dialogen (v2.4.0)
+    systray.set_message_handler(main_window.open_pending_update)
+
+    # 11c. Automatisk uppdateringskontroll mot GitHub Releases (v2.4.0)
+    main_window.schedule_auto_update_check()
 
     # 12. Notifiera att appen är redo
     event_bus.emit("app:started", {
