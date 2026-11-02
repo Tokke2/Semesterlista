@@ -33,6 +33,7 @@ try:
         THEME_ORDER,
         SettingsDialog,
     )
+    from core.updater import UpdateInfo
 
     HAVE_QT = True
 except Exception:  # pragma: no cover – miljö utan PySide6
@@ -143,7 +144,7 @@ class SettingsDialogTests(unittest.TestCase):
     # ── Bygge ────────────────────────────────────────────
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.8.1")
+        self.assertEqual(MODULE_VERSION, "2.9.0")
 
     def test_has_four_tabs(self) -> None:
         dialog = self.make_dialog()
@@ -296,6 +297,86 @@ class SettingsDialogTests(unittest.TestCase):
         dialog.theme_combo.setCurrentIndex(index)
         dialog.apply_settings()
         self.assertEqual(self.manager.get("theme"), "dark")
+
+    # ── Uppdatering från GitHub (v2.9.0) ────────────────
+
+    def _update_info(self, version: str = "2.9.0", local: str = "2.8.1") -> "UpdateInfo":
+        return UpdateInfo(
+            tag="v0.0.1",
+            version=version,
+            name="Semesterlista v0.0.1",
+            published_at="2026-11-02T13:57:26Z",
+            notes="Nytt: uppdateringsknapp",
+            html_url="https://github.com/Tokke2/Semesterlista/releases/tag/v0.0.1",
+            zip_url="https://codeload.github.com/Tokke2/Semesterlista/zip/refs/tags/v0.0.1",
+            local_version=local,
+        )
+
+    def test_update_group_exists(self) -> None:
+        dialog = self.make_dialog(app_version="2.8.1")
+        self.assertTrue(dialog.update_check_button.isEnabled())
+        self.assertFalse(dialog.update_install_button.isEnabled())
+        self.assertIn("2.8.1", dialog.update_version_label.text())
+        self.assertTrue(dialog.update_release_button.isEnabled())
+
+    def test_update_available_enables_install(self) -> None:
+        dialog = self.make_dialog(app_version="2.8.1")
+        dialog._on_update_checked(self._update_info(), None)
+
+        self.assertTrue(dialog.update_install_button.isEnabled())
+        self.assertIn("2.9.0", dialog.update_status_label.text())
+        self.assertIn("2026-11-02", dialog.update_status_label.text())
+        self.assertIn("uppdateringsknapp", dialog.update_status_label.text())
+
+    def test_update_latest_disables_install(self) -> None:
+        dialog = self.make_dialog(app_version="2.9.0")
+        dialog._on_update_checked(self._update_info(version="2.9.0", local="2.9.0"), None)
+
+        self.assertFalse(dialog.update_install_button.isEnabled())
+        self.assertIn("senaste", dialog.update_status_label.text())
+
+    def test_update_error_is_shown(self) -> None:
+        dialog = self.make_dialog(app_version="2.9.0")
+        dialog._on_update_checked(None, RuntimeError("Ingen kontakt med GitHub"))
+
+        self.assertFalse(dialog.update_install_button.isEnabled())
+        self.assertIn("Ingen kontakt", dialog.update_status_label.text())
+
+    def test_update_without_zip_disables_install(self) -> None:
+        dialog = self.make_dialog(app_version="2.8.1")
+        info = self._update_info()
+        info.zip_url = ""
+        dialog._on_update_checked(info, None)
+        self.assertFalse(dialog.update_install_button.isEnabled())
+
+    def test_install_update_without_info_is_noop(self) -> None:
+        dialog = self.make_dialog(app_version="2.8.1")
+        dialog.install_update()          # ska bara returnera
+        self.assertFalse(dialog.update_install_button.isEnabled())
+
+    def test_check_for_updates_reports_error(self) -> None:
+        """Knappen anropar GitHub i bakgrunden – fel ska hamna i statusraden."""
+        from unittest import mock
+
+        from core import updater
+
+        dialog = self.make_dialog(app_version="2.9.0")
+        with mock.patch.object(
+            updater, "check_for_update", side_effect=RuntimeError("nätet är nere")
+        ):
+            dialog.check_for_updates()
+            self.assertFalse(dialog.update_check_button.isEnabled())
+
+            import time
+
+            for _ in range(200):
+                self.app.processEvents()
+                if dialog.update_check_button.isEnabled():
+                    break
+                time.sleep(0.01)
+
+        self.assertTrue(dialog.update_check_button.isEnabled())
+        self.assertIn("nätet är nere", dialog.update_status_label.text())
 
     def test_data_path_label_points_to_data_dir(self) -> None:
         dialog = self.make_dialog()

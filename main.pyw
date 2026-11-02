@@ -8,6 +8,14 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.9.0: UPPDATERING FRÅN GITHUB RELEASES.
+                   Nytt: core/updater.py, knappen Hjälp → Sök efter
+                   uppdatering… och gruppen Uppdatering under
+                   Inställningar → Avancerat. Hämtar zipball från
+                   releasen, säkerhetskopierar i data/backup/ och
+                   startar om appen. Användarens listor och data/
+                   rörs aldrig. Automatisk kontroll vid start kan
+                   stängas av i Avancerat.
 UPPDATERAD v2.8.0: DETALJERAD LOGGNING OCH INSTÄLLNINGSDIALOG.
                    Nytt: core/logging_setup.py – data/app.log (roterande,
                    2 MB × 5), data/crash.log via faulthandler, Qt:s egna
@@ -94,6 +102,7 @@ import sys
 import os
 import time
 import ctypes
+import threading
 import importlib
 import importlib.util
 import json
@@ -182,6 +191,7 @@ try:
     from PySide6.QtCore import (
         Qt,
         QEvent,
+        QObject,
         QTimer,
         QSize,
         Signal,
@@ -218,7 +228,7 @@ from core.event_bus import EventBus
 from core.settings_manager import SettingsManager
 from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
-from core import i18n
+from core import i18n, updater
 from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
 from plugins.base_plugin import BasePlugin
 
@@ -245,7 +255,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.8.1"
+APP_VERSION: str = "2.9.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -459,6 +469,45 @@ class PluginManager:
 # ══════════════════════════════════════════════════════════
 # MAIN WINDOW
 # ══════════════════════════════════════════════════════════
+
+class StartupUpdateChecker(QObject):
+    """
+    Söker efter en nyare release i bakgrunden vid start (v2.9.0).
+
+    Tråden rör aldrig Qt direkt – resultatet skickas som signaler som
+    levereras i GUI-tråden. Fel sväljs (loggas) så att en start utan
+    nätverk aldrig påverkar appen.
+    """
+
+    found  = Signal(str, str)   # (version, url)
+    failed = Signal(str)        # felmeddelande
+
+    def __init__(self, local_version: str, parent: Optional[QObject] = None):
+        super().__init__(parent)
+        self._local_version = local_version
+
+    def start(self) -> None:
+        """Starta kontrollen i en egen tråd."""
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        try:
+            info = updater.check_for_update(self._local_version)
+        except Exception as exc:  # noqa: BLE001 – nätet får aldrig stoppa appen
+            logger.info("Uppdateringskontroll vid start misslyckades: %s", exc)
+            self.failed.emit(str(exc))
+            return
+
+        if info.available:
+            self.found.emit(
+                info.version,
+                info.html_url or updater.github_release_url(),
+            )
+        else:
+            logger.info(
+                "Ingen uppdatering: senaste versionen är %s", info.version
+            )
+
 
 class MainWindow(QMainWindow):
     """
@@ -714,6 +763,16 @@ class MainWindow(QMainWindow):
         # HJÄLP
         # ══════════════════════════════════════════════════
         hjalp_menu = menubar.addMenu(i18n.t("menu.help"))
+
+        # Uppdatering från GitHub (v2.9.0)
+        self._update_action = QAction(
+            i18n.t("menu.help.check_updates"), self
+        )
+        self._update_action.triggered.connect(
+            lambda: self._open_settings(check_updates=True)
+        )
+        hjalp_menu.addAction(self._update_action)
+        hjalp_menu.addSeparator()
 
         about_action = QAction(
             i18n.t("menu.help.about", app=self._app_name()), self
@@ -1155,7 +1214,7 @@ class MainWindow(QMainWindow):
     # Dialoger
     # ──────────────────────────────────────────────────────
 
-    def _open_settings(self) -> None:
+    def _open_settings(self, check_updates: bool = False) -> None:
         """
         Öppna inställningsdialogen (v2.3.0).
 
@@ -1184,7 +1243,13 @@ class MainWindow(QMainWindow):
             plugin_manager=self._plugin_manager,
             event_bus=self._event_bus,
             parent=self,
+            app_version=APP_VERSION,
         )
+
+        if check_updates:
+            # Öppna Avancerat-fliken och sök direkt (Hjälp → Sök efter uppdatering)
+            dialog.show_update_check()
+
         result = dialog.exec()
         logger.info(
             "Inställningsdialogen stängd (resultat=%s, språk=%s, tema=%s)",
@@ -1592,6 +1657,27 @@ def main() -> None:
         ),
     )
     step("12", "app:started emitterat")
+
+    # 12b. Sök efter uppdatering i bakgrunden (v2.9.0)
+    update_checker: Optional[StartupUpdateChecker] = None
+    if settings_manager.get("advanced.check_updates", True):
+        def _notify_update(version: str, url: str) -> None:
+            """Visa att en nyare version finns (ändrar inget automatiskt)."""
+            logger.info("Ny version finns på GitHub: %s – %s", version, url)
+            systray.show_notification(
+                i18n.t("update.tray_title"),
+                i18n.t(
+                    "update.tray_body", version=version, current=APP_VERSION
+                ),
+                duration_ms=settings_manager.get(
+                    "systray.notification_duration_ms", 3000
+                ),
+            )
+
+        update_checker = StartupUpdateChecker(APP_VERSION)
+        update_checker.found.connect(_notify_update)
+        update_checker.start()
+        step("12b", "Uppdateringskontroll", "startad i bakgrunden")
 
     logger.info(
         "%s är redo – uppstart klar på %.0f ms",

@@ -26,3 +26,5 @@ Fordon.txt
 Hyresgäster.txt
 
 data/*.log.*
+
+data/backup/

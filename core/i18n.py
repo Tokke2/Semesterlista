@@ -286,7 +286,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.group.advanced":         "Avancerat",
         "settings.debug_mode":             "Felsökningsläge",
         "settings.log_to_file":            "Logga till fil",
-        "settings.check_updates":          "Sök efter uppdateringar",
+        "settings.check_updates":          "Sök efter uppdatering vid start",
         "settings.group.data":             "Data",
         "settings.data_path":              "Inställningarna sparas i:",
         "settings.plugin_restart_hint":    "Ändring av plugins kräver omstart.",
@@ -310,6 +310,44 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.open_log_error":         "Kunde inte öppna mappen:\n{error}",
         "settings.save_error":             "Kunde inte spara inställningarna:\n{error}",
         "settings.autostart.unavailable":  "Autostart kunde inte läsas i den här miljön.",
+        # ── Uppdatering från GitHub (v2.9.0) ──────────────
+        "update.group":                    "Uppdatering",
+        "update.current":                  "Nuvarande version: {version}",
+        "update.check":                    "Sök efter uppdatering",
+        "update.checking":                 "Söker efter uppdatering…",
+        "update.available":                "Ny version {version} finns ({date}).",
+        "update.latest":                   "Du har senaste versionen ({version}).",
+        "update.error":                    "Kunde inte söka: {error}",
+        "update.install":                  "Uppdatera nu",
+        "update.downloading":              "Laddar ner… {percent} %",
+        "update.installing":               "Installerar…",
+        "update.confirm_title":            "Uppdatera",
+        "update.confirm":                  (
+            "Uppdatera från {old} till {new}?\n\n"
+            "Dina listor, inställningar och loggar rörs inte. Nuvarande "
+            "programfiler säkerhetskopieras i data/backup/."
+        ),
+        "update.done":                     (
+            "Uppdaterat till {version} ({files} filer).\n"
+            "Säkerhetskopia: {backup}"
+        ),
+        "update.install_error":            "Kunde inte uppdatera: {error}",
+        "update.restart_title":            "Starta om",
+        "update.restart_question":         (
+            "Uppdateringen är klar. Starta om Semesterlista nu för att "
+            "använda version {version}?"
+        ),
+        "update.restart_manual":           (
+            "Starta om appen manuellt för att använda den nya versionen."
+        ),
+        "update.release_page":             "Öppna release-sidan",
+        "update.notes":                    "Ändringar i releasen:",
+        "update.no_zip":                   "Releasen saknar nedladdningsbar fil.",
+        "update.tray_title":               "Uppdatering finns",
+        "update.tray_body":                (
+            "Semesterlista {version} finns på GitHub (du har {current})."
+        ),
+        "menu.help.check_updates":         "Sök efter &uppdatering…",
 
         # ── Loggning & fel (v2.8.0) ───────────────────────
         "log.started":                     "Loggning startad: {path}",
@@ -662,7 +700,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.group.advanced":         "Advanced",
         "settings.debug_mode":             "Debug mode",
         "settings.log_to_file":            "Log to file",
-        "settings.check_updates":          "Check for updates",
+        "settings.check_updates":          "Check for updates at startup",
         "settings.group.data":             "Data",
         "settings.data_path":              "Settings are stored in:",
         "settings.plugin_restart_hint":    "Changing plugins requires a restart.",
@@ -686,6 +724,44 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.open_log_error":         "Could not open the folder:\n{error}",
         "settings.save_error":             "Could not save the settings:\n{error}",
         "settings.autostart.unavailable":  "Autostart could not be read in this environment.",
+        # ── Update from GitHub (v2.9.0) ───────────────────
+        "update.group":                    "Update",
+        "update.current":                  "Current version: {version}",
+        "update.check":                    "Check for updates",
+        "update.checking":                 "Checking for updates…",
+        "update.available":                "New version {version} is available ({date}).",
+        "update.latest":                   "You have the latest version ({version}).",
+        "update.error":                    "Could not check: {error}",
+        "update.install":                  "Update now",
+        "update.downloading":              "Downloading… {percent} %",
+        "update.installing":               "Installing…",
+        "update.confirm_title":            "Update",
+        "update.confirm":                  (
+            "Update from {old} to {new}?\n\n"
+            "Your lists, settings and logs are left untouched. The current "
+            "program files are backed up in data/backup/."
+        ),
+        "update.done":                     (
+            "Updated to {version} ({files} files).\n"
+            "Backup: {backup}"
+        ),
+        "update.install_error":            "Could not update: {error}",
+        "update.restart_title":            "Restart",
+        "update.restart_question":         (
+            "The update is complete. Restart Semesterlista now to use "
+            "version {version}?"
+        ),
+        "update.restart_manual":           (
+            "Restart the app manually to use the new version."
+        ),
+        "update.release_page":             "Open the release page",
+        "update.notes":                    "Changes in the release:",
+        "update.no_zip":                   "The release has no downloadable file.",
+        "update.tray_title":               "Update available",
+        "update.tray_body":                (
+            "Semesterlista {version} is available on GitHub (you have {current})."
+        ),
+        "menu.help.check_updates":         "Check for &updates…",
 
         # ── Logging & errors (v2.8.0) ─────────────────────
         "log.started":                     "Logging started: {path}",

@@ -67,7 +67,7 @@ class PathTests(LoggingTestCase):
     """Sökvägar – ingen loggning behöver startas."""
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.8.1")
+        self.assertEqual(MODULE_VERSION, "2.9.0")
 
     def test_default_path(self) -> None:
         path = log_file_path(self.base)

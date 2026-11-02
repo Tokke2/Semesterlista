@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.8.1                                                             ║
+║  Version: 2.9.0                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -44,6 +44,7 @@
     - 4.19 core/app_icon.py
     - 4.20 core/logging_setup.py
     - 4.21 core/settings_dialog.py
+    - 4.22 core/updater.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -61,6 +62,7 @@
 19. Framtidsplan
 20. Hantering av Listor – Anställda, Fordon & Hyresgäster (v2.4.0)
 22. Loggning & Felsökning (v2.8.0)
+23. Uppdatering från GitHub (v2.9.0)
 21. Flikar & Logotyp i PDF (v2.5.0)
 
 ---
@@ -119,6 +121,7 @@ Semesterlista/ ← Rotmapp
 │ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
 │ ├── logging_setup.py ← Detaljerad loggning + felhakar ← NY v2.8.0
 │ ├── settings_dialog.py ← Inställningar (4 flikar) ← NY v2.8.0
+│ ├── updater.py ← Uppdatering från GitHub Releases ← NY v2.9.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -162,7 +165,9 @@ Semesterlista/ ← Rotmapp
 │ ├── test_pdf_layout.py ← Sidlayout & månader per blad
 │ ├── test_app_icon.py ← Appikonen (SVG/PNG/ICO)
 │ ├── test_logging_setup.py ← Loggning, rotering, felhakar ← NY v2.8.0
-│ └── test_settings_dialog.py ← Inställningsdialogen ← NY v2.8.0
+│ ├── test_settings_dialog.py ← Inställningsdialogen ← NY v2.8.0
+│ ├── test_hyra_view.py ← Årbytet i Hyra-fliken ← NY v2.8.1
+│ └── test_updater.py ← Uppdatering från GitHub ← NY v2.9.0
 ├── requirements.txt ← Python-beroenden
 └── spec.md ← Denna fil
 
@@ -191,6 +196,7 @@ Alla tekniska val och beroenden listade.
 | Trådsäkerhet     | threading.Lock                           | EventBus + SettingsManager               |
 | Loggning         | logging + RotatingFileHandler            | data/app.log, 2 MB × 5, INFO/DEBUG       |
 | Kraschlogg       | faulthandler                             | data/crash.log (hårda fel)               |
+| Uppdatering      | urllib + zipfile (stdlib)                | GitHub Releases API, zipball             |
 | Python-version   | 3.12+                                    |                                          |
 | Plattformar      | Windows, macOS, Linux                    |                                          |
 
@@ -1423,6 +1429,52 @@ orsaken skrivs till loggen (se `SETTINGS_DIALOG_ERROR` i `main.pyw`).
 
 ---
 
+### 4.22 `core/updater.py` ✅ v2.9.0
+
+**Ansvar:** Hämta, jämföra och installera nya versioner från GitHub
+Releases – helt utan externa beroenden (bara `urllib`, `json`, `zipfile`).
+
+```python
+from core import updater
+
+info = updater.check_for_update("2.9.0")        # → UpdateInfo
+if info.available:
+    zip_path = updater.download_release(info, tmp / "release.zip")
+    result   = updater.install_from_zip(zip_path, app_dir, local_version="2.9.0")
+    print(result.version, result.file_count, result.backup)
+```
+
+| Funktion | Beskrivning |
+|----------|-------------|
+| `check_for_update(local, timeout)` | `GET /releases/latest` + `GET /contents/config.json?ref=<tagg>` → `UpdateInfo` |
+| `fetch_latest_release()` | Rå JSON från GitHub (404/403 ger `UpdateError`) |
+| `fetch_version_at_tag(tag)` | Läser `version` ur `config.json` vid taggen (fallback: taggen själv) |
+| `download_release(info, target, progress)` | Laddar ner `zipball_url`, rapporterar byte, max 80 MB |
+| `safe_extract(zip, dest)` | Packar upp och stoppar `../`- och absoluta sökvägar |
+| `verify_payload(root)` | Kräver `main.pyw`, `config.json`, `core/`, `plugins/` |
+| `install_from_zip(zip, app_dir, local_version)` | Säkerhetskopierar, skriver filerna atomiskt, returnerar `InstallResult` |
+| `restart_command(app_dir)` | `[python(w).exe, main.pyw]` för omstart |
+| `parse_version()` / `is_newer()` | `"v2.9"` → `(2, 9)`; `2.9` > `2.8.9` |
+| `github_release_url()` | Länk till senaste releasen |
+
+**Vad som aldrig skrivs över**
+
+| Hoppas över | Orsak |
+|-------------|-------|
+| `data/` (settings.json, plugins.json, loggar, backup) | Användarens inställningar och historik |
+| `Anställda.txt`, `Fordon.txt`, `Hyresgäster.txt` | Användarens listor |
+| `.git/`, `__pycache__/`, `.venv/`, `build/`, `dist/` | Repo och byggartefakter |
+| `*.pyc`, `*.bak`, `*.tmp`, `*.log` | Skräp och säkerhetskopior |
+
+**Säkerhetskopia:** innan något skrivs sparas de filer som ersätts i
+`data/backup/uppdatering-<gammal>-till-<ny>-<datum>.zip`.
+
+**Felhantering:** nätverksfel, 404 (ingen release), 415, för stor fil,
+trasig zip, osäkra sökvägar, saknade filer i releasen och låsta filer ger
+alla `UpdateError` med ett begripligt meddelande – appen fortsätter köra.
+
+---
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -2187,7 +2239,7 @@ Redigeraren visar en lista per sektion (Hyresgäster.txt får två flikar) med:
 ### 20.6 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 134 tester
+python -m unittest discover -s tests -v      # 165 tester
 ```
 
 `tests/test_roster.py` täcker inläsning (kommentarer, BOM, CRLF, cp1252,
@@ -2242,7 +2294,7 @@ proportionerna bevaras alltid.
 ### 21.4 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 134 tester
+python -m unittest discover -s tests -v      # 165 tester
 ```
 
 `tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
@@ -2324,16 +2376,74 @@ layouten, korten uppdateras, panelen dupliceras inte, ingen
 ### 22.6 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 134 tester
+python -m unittest discover -s tests -v      # 165 tester
 ```
 
 `tests/test_logging_setup.py` (24 tester) täcker sökvägsval, reservplats,
 format, nivåer, `SEMESTERLISTA_DEBUG`, rotering, `tail_log`/`log_summary`,
 excepthook (inkl. `KeyboardInterrupt`), faulthandler och `reset_logging`.
-`tests/test_settings_dialog.py` (15 tester, offscreen) täcker de fyra
+`tests/test_settings_dialog.py` (22 tester, offscreen) täcker de fyra
 flikarna, inläsning, sparande, språk-/temabyte, autostart, plugin-status
 och att dialogen fungerar utan valfria komponenter.
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.8.1 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+## 23. UPPDATERING FRÅN GITHUB (v2.9.0)
+
+### 23.1 Knappen
+
+Uppdateringen finns på två ställen:
+
+| Ställe | Vad som händer |
+|--------|----------------|
+| **Hjälp → Sök efter uppdatering…** | Öppnar Inställningar på fliken **Avancerat** och söker direkt |
+| **Inställningar → Avancerat → Uppdatering** | Knapparna *Sök efter uppdatering*, *Uppdatera nu* och *Öppna release-sidan* |
+
+Gruppen visar nuvarande version, senaste versionens publiceringsdatum och
+de första raderna ur release-anteckningarna.
+
+### 23.2 Flöde
+
+1. **Sök** – `GET /repos/Tokke2/Semesterlista/releases/latest`, sedan
+   `GET /contents/config.json?ref=<tagg>` för att få appens version.
+   Sker i en bakgrundstråd; knappen är avstängd under tiden.
+2. **Jämför** – `is_newer("2.9.1", "2.9.0")` → *Uppdatera nu* aktiveras
+   bara om releasen är nyare.
+3. **Bekräfta** – fråga: *Uppdatera från 2.9.0 till 2.9.1?*
+4. **Ladda ner** – zipball (≈350 kB) med procent i statusraden.
+5. **Installera** – säkerhetskopia → filerna skrivs via `.new`-temp + `os.replace`.
+6. **Starta om** – fråga; *Ja* startar om appen med `QProcess.startDetached`.
+
+### 23.3 Automatisk kontroll vid start
+
+Om **Avancerat → Sök efter uppdatering vid start** är ikryssad
+(`advanced.check_updates`, standard på) söker `StartupUpdateChecker` i
+bakgrunden efter `app:started`. Hittas en nyare version visas en avisering i
+systemfältet – inget installeras automatiskt. Utan nät loggas felet och
+appen startar som vanligt.
+
+### 23.4 Felsökning
+
+| Symptom | Orsak | Åtgärd |
+|---------|-------|--------|
+| ”Ingen release hittades” | Ingen publik release på GitHub | Skapa en release, eller använd *Öppna release-sidan* |
+| ”GitHub nekade åtkomst (403)” | Rate limit (60 anrop/timme) | Vänta en stund |
+| ”Kunde inte skriva … filen kan vara låst” | Filen är låst (Windows) | Stäng appen och försök igen |
+| ”Releasen (x) är inte nyare” | Samma eller äldre version | Inget att göra |
+| Ingen avisering vid start | `advanced.check_updates` av eller inget nät | Slå på i Inställningar |
+
+Allt loggas till `data/app.log` (se kap. 22).
+
+### 23.5 Tester
+
+`tests/test_updater.py` (24 tester, helt offline): versionstolkning,
+jämförelse, sökning med mockat API, fallback till taggen, nätverksfel,
+uppackning (inkl. `../`-skydd och trasig zip), verifiering av innehåll,
+installation mot en temporär appmapp (programfiler uppdateras, `data/` och
+listorna orörda, säkerhetskopia skapad), torrkörning, vägran av äldre
+release samt omstarts-kommandot. Uppdateringsdelen i inställningsdialogen
+täcks av 7 tester i `tests/test_settings_dialog.py`.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.9.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

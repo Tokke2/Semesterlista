@@ -38,7 +38,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-MODULE_VERSION: str = "2.8.1"
+MODULE_VERSION: str = "2.9.0"
 
 #: Standardfil (relativt appens rotmapp)
 DEFAULT_LOG_DIR: str = "data"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Inställningsdialog för huvudfönstret (v2.8.0)
+Inställningsdialog för huvudfönstret (v2.9.0)
 =============================================
 
 Dialogen som öppnas från **Arkiv → Inställningar** (Ctrl+,):
@@ -38,10 +38,12 @@ import logging
 import os
 import platform
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, QProcess, Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -60,18 +62,31 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core import i18n
+from core import i18n, updater
 from core.logging_setup import get_log_file, log_summary, tail_log
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.8.1"
+MODULE_VERSION: str = "2.9.0"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark")
 
 #: Helgdagsregioner
 HOLIDAY_REGIONS: tuple = ("sv", "us")
+
+
+class _UpdateSignals(QObject):
+    """
+    Brygga mellan uppdateringens arbetstråd och gränssnittet.
+
+    Signalerna skickas från en vanlig ``threading.Thread`` och levereras
+    automatiskt i GUI-tråden (Qt köar signaler mellan trådar).
+    """
+
+    checked  = Signal(object, object)   # (UpdateInfo | None, fel | None)
+    progress = Signal(int, int)         # (nedladdat, totalt)
+    installed = Signal(object, object)  # (InstallResult | None, fel | None)
 
 
 class SettingsDialog(QDialog):
@@ -90,6 +105,7 @@ class SettingsDialog(QDialog):
         plugin_manager: Any = None,
         event_bus: Any = None,
         parent: Optional[QWidget] = None,
+        app_version: str = "",
     ):
         super().__init__(parent)
 
@@ -98,6 +114,16 @@ class SettingsDialog(QDialog):
         self.lock = lock
         self.plugin_manager = plugin_manager
         self.event_bus = event_bus
+        self.app_version = app_version
+        self._app_version = app_version or updater.app_version(self._app_dir())
+
+        # Uppdatering (v2.9.0)
+        self._update_info: Optional[updater.UpdateInfo] = None
+        self._update_busy = False
+        self._update_signals = _UpdateSignals(self)
+        self._update_signals.checked.connect(self._on_update_checked)
+        self._update_signals.progress.connect(self._on_update_progress)
+        self._update_signals.installed.connect(self._on_update_installed)
 
         self.setWindowTitle(i18n.t("settings.title"))
         self.setMinimumSize(560, 520)
@@ -329,8 +355,261 @@ class SettingsDialog(QDialog):
         inner.addLayout(button_row)
 
         layout.addWidget(group)
+        layout.addWidget(self._create_update_group())
         layout.addStretch()
         return page
+
+    def _create_update_group(self) -> QGroupBox:
+        """Uppdatering från GitHub Releases (v2.9.0)."""
+        group = QGroupBox(i18n.t("update.group"))
+        inner = QVBoxLayout(group)
+
+        self.update_version_label = QLabel(
+            i18n.t("update.current", version=self._app_version or "—")
+        )
+        self.update_version_label.setStyleSheet("color: #777; font-size: 11px;")
+        inner.addWidget(self.update_version_label)
+
+        self.update_status_label = QLabel("")
+        self.update_status_label.setWordWrap(True)
+        self.update_status_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        inner.addWidget(self.update_status_label)
+
+        button_row = QHBoxLayout()
+
+        self.update_check_button = QPushButton(i18n.t("update.check"))
+        self.update_check_button.clicked.connect(self.check_for_updates)
+        button_row.addWidget(self.update_check_button)
+
+        self.update_install_button = QPushButton(i18n.t("update.install"))
+        self.update_install_button.setEnabled(False)
+        self.update_install_button.clicked.connect(self.install_update)
+        button_row.addWidget(self.update_install_button)
+
+        self.update_release_button = QPushButton(i18n.t("update.release_page"))
+        self.update_release_button.clicked.connect(self._open_release_page)
+        button_row.addWidget(self.update_release_button)
+
+        button_row.addStretch()
+        inner.addLayout(button_row)
+        return group
+
+    # ──────────────────────────────────────────────────────
+    # Uppdatering från GitHub (v2.9.0)
+    # ──────────────────────────────────────────────────────
+
+    def _app_dir(self) -> Path:
+        """Appens rotmapp (data/-mappens förälder)."""
+        data_dir = Path(self._data_path())
+        return data_dir.parent if data_dir.name == "data" else data_dir
+
+    def check_for_updates(self) -> None:
+        """
+        Sök efter en nyare release på GitHub (i bakgrunden).
+
+        Knappen är avstängd medan sökningen pågår. Nätverksfel visas i
+        statusraden i stället för att kasta undantag.
+        """
+        if self._update_busy:
+            return
+
+        self._update_busy = True
+        self.update_check_button.setEnabled(False)
+        self.update_install_button.setEnabled(False)
+        self.update_status_label.setText(i18n.t("update.checking"))
+        logger.info("Söker efter uppdatering (lokal version %s)", self._app_version)
+
+        threading.Thread(target=self._check_worker, daemon=True).start()
+
+    def show_update_check(self) -> None:
+        """Visa Avancerat-fliken och sök direkt efter uppdatering."""
+        if self._tabs.count():
+            self._tabs.setCurrentIndex(self._tabs.count() - 1)
+        self.check_for_updates()
+
+    def _check_worker(self) -> None:
+        """Arbetstråd: fråga GitHub efter senaste releasen."""
+        try:
+            info = updater.check_for_update(self._app_version)
+            self._update_signals.checked.emit(info, None)
+        except Exception as exc:  # noqa: BLE001 – allt ska bli ett meddelande
+            logger.warning("Uppdateringskontrollen misslyckades: %s", exc)
+            self._update_signals.checked.emit(None, exc)
+
+    def _on_update_checked(self, info: Any, error: Any) -> None:
+        """Visa resultatet av sökningen."""
+        self._update_busy = False
+        self.update_check_button.setEnabled(True)
+
+        if error is not None or info is None:
+            self._update_info = None
+            self.update_install_button.setEnabled(False)
+            self.update_status_label.setText(
+                i18n.t("update.error", error=error or "?")
+            )
+            return
+
+        self._update_info = info
+        self.update_version_label.setText(
+            i18n.t("update.current", version=info.local_version or self._app_version)
+        )
+
+        if info.available:
+            text = i18n.t(
+                "update.available",
+                version=info.version,
+                date=info.published_date or "—",
+            )
+            notes = (info.notes or "").strip()
+            if notes:
+                text += "\n\n" + i18n.t("update.notes") + "\n" + notes[:600]
+            self.update_status_label.setText(text)
+            self.update_install_button.setEnabled(bool(info.zip_url))
+            if not info.zip_url:
+                self.update_status_label.setText(
+                    text + "\n" + i18n.t("update.no_zip")
+                )
+        else:
+            self.update_status_label.setText(
+                i18n.t("update.latest", version=info.version or self._app_version)
+            )
+            self.update_install_button.setEnabled(False)
+
+    def install_update(self) -> None:
+        """Fråga först, ladda sedan ner och installera i bakgrunden."""
+        info = self._update_info
+        if info is None or not info.available or self._update_busy:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            i18n.t("update.confirm_title"),
+            i18n.t("update.confirm", old=info.local_version, new=info.version),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        self._update_busy = True
+        self.update_check_button.setEnabled(False)
+        self.update_install_button.setEnabled(False)
+        self.update_status_label.setText(i18n.t("update.downloading", percent=0))
+
+        threading.Thread(target=self._install_worker, args=(info,), daemon=True).start()
+
+    def _install_worker(self, info: Any) -> None:
+        """Arbetstråd: ladda ner releasen och skriv filerna."""
+        import tempfile
+
+        try:
+            with tempfile.TemporaryDirectory(prefix="semesterlista_update_") as tmp:
+                zip_path = updater.download_release(
+                    info,
+                    Path(tmp) / "release.zip",
+                    progress=lambda done, total: self._update_signals.progress.emit(
+                        done, total
+                    ),
+                )
+                self._update_signals.progress.emit(0, 0)  # 0 = "installerar"
+                result = updater.install_from_zip(
+                    zip_path,
+                    self._app_dir(),
+                    local_version=info.local_version,
+                )
+            self._update_signals.installed.emit(result, None)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Uppdateringen misslyckades")
+            self._update_signals.installed.emit(None, exc)
+
+    def _on_update_progress(self, done: int, total: int) -> None:
+        """Visa nedladdningens förlopp."""
+        if done == 0 and total == 0:
+            self.update_status_label.setText(i18n.t("update.installing"))
+            return
+
+        percent = int(done * 100 / total) if total else 0
+        self.update_status_label.setText(
+            i18n.t("update.downloading", percent=min(percent, 99))
+        )
+
+    def _on_update_installed(self, result: Any, error: Any) -> None:
+        """Klar (eller fel) – erbjud omstart."""
+        self._update_busy = False
+        self.update_check_button.setEnabled(True)
+
+        if error is not None or result is None:
+            self.update_status_label.setText(
+                i18n.t("update.install_error", error=error or "?")
+            )
+            QMessageBox.warning(
+                self,
+                i18n.t("update.confirm_title"),
+                i18n.t("update.install_error", error=error or "?"),
+            )
+            return
+
+        self.update_status_label.setText(
+            i18n.t(
+                "update.done",
+                version=result.version,
+                files=result.file_count,
+                backup=result.backup or "—",
+            )
+        )
+        self.update_install_button.setEnabled(False)
+
+        if self.event_bus is not None:
+            try:
+                self.event_bus.emit("app:updated", {"version": result.version})
+            except Exception:  # pragma: no cover – defensivt
+                pass
+
+        answer = QMessageBox.question(
+            self,
+            i18n.t("update.restart_title"),
+            i18n.t("update.restart_question", version=result.version),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.restart_application()
+        else:
+            QMessageBox.information(
+                self,
+                i18n.t("update.restart_title"),
+                i18n.t("update.restart_manual"),
+            )
+
+    def restart_application(self) -> None:
+        """Starta om appen med den nya versionen."""
+        from PySide6.QtWidgets import QApplication
+
+        command = updater.restart_command(self._app_dir())
+        logger.info("Startar om appen: %s", " ".join(command))
+
+        started = QProcess.startDetached(command[0], command[1:])
+        if not started:
+            QMessageBox.warning(
+                self,
+                i18n.t("update.restart_title"),
+                i18n.t("update.restart_manual"),
+            )
+            return
+
+        QApplication.quit()
+
+    def _open_release_page(self) -> None:
+        """Öppna release-sidan i webbläsaren."""
+        url = (
+            self._update_info.html_url
+            if self._update_info is not None and self._update_info.html_url
+            else updater.github_release_url()
+        )
+        logger.info("Öppnar release-sidan: %s", url)
+        QDesktopServices.openUrl(QUrl(url))
 
     # ──────────────────────────────────────────────────────
     # Ladda / spara

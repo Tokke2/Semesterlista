@@ -1,6 +1,6 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02 (v2.8.1). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-02 (v2.9.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -65,6 +65,23 @@ Status per 2026-11-02 (v2.8.1). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
     varje push, plus `pytest-qt` för flikar, logotypdialog och PDF-knappar.
 
 ## Klart efter listan skrevs
+
+**v2.9.0 – Uppdatering från GitHub Releases**
+
+- **Knapp:** *Hjälp → Sök efter uppdatering…* och **Inställningar →
+  Avancerat → Uppdatering** (*Sök efter uppdatering*, *Uppdatera nu*,
+  *Öppna release-sidan*).
+- **`core/updater.py`:** läser `releases/latest` + `config.json` vid taggen,
+  jämför versioner, laddar ner zipball, packar upp säkert och skriver
+  programfilerna. Bara standardbiblioteket används.
+- **Användardata rörs aldrig:** `data/`, `*.txt`-listorna, `.git/`,
+  `__pycache__` och byggmappar hoppas över.
+- **Säkerhetskopia** av ersatta filer i `data/backup/` innan något skrivs.
+- **Automatisk kontroll vid start** (valfri) som visar en avisering i
+  systemfältet när en nyare version finns – inget installeras automatiskt.
+- **Tester:** `tests/test_updater.py` (24, offline) + 7 i dialogtestet =
+  165 tester totalt. Verifierat skarpt mot GitHub: nedladdning och
+  installation i en kopia av appen.
 
 **v2.8.1 – Årbytet i Hyra-fliken tömde sidan**
 
