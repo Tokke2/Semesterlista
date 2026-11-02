@@ -36,6 +36,8 @@
     - 4.11 plugins/hyra/plugin.py
     - 4.12 plugins/lista/__init__.py
     - 4.13 plugins/lista/plugin.py
+    - 4.14 core/roster.py
+    - 4.15 core/list_editor_dialog.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -51,6 +53,7 @@
 17. Checklista (50 Punkter)
 18. Kända Fel/Buggar & Åtgärdsplan
 19. Framtidsplan
+20. Hantering av Listor – Anställda, Fordon & Hyresgäster (v2.4.0)
 
 ---
 
@@ -80,6 +83,7 @@ semesterlistor, limokörningsscheman och hyresfakturering.
 | Korrekt färgkodning       | Röda=officiella helgdagar+söndagar. Gröna=halvdagar (inkl. midsommarafton). Blå=lördagar                        |
 | Autostart med OS          | Arkiv → Autostart vid inloggning (checkable). Windows/macOS/Linux plattformsspecifikt                           |
 | Dynamiskt copyright-år    | © {datetime.now().year} Rickard Längkvist – uppdateras automatiskt                                              |
+| Listhantering             | Anställda/fordon/hyresgäster redigeras i appen. Kommentarer, cp1252-fallback, dubblettkontroll, backup och atomär skrivning |
 
 ---
 
@@ -100,6 +104,8 @@ Semesterlista/ ← Rotmapp
 │ ├── settings_manager.py ← JSON-inställningshantering
 │ ├── single_instance.py ← Single-instance-lock + AutostartManager
 │ ├── theme_manager.py ← 3 teman + QSS-generator
+│ ├── roster.py ← Listor: anställda/fordon/hyresgäster ← NY v2.4.0
+│ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -116,9 +122,12 @@ Semesterlista/ ← Rotmapp
 │ ├── settings.json ← Huvudinställningar
 │ └── plugins.json ← Plugin-inställningar
 │
-├── Anställda.txt ← Indata: anställda
-├── Fordon.txt ← Indata: fordon
-├── Hyresgäster.txt ← Indata: hyresgäster
+├── Anställda.txt ← Indata: anställda (skapas vid behov)
+├── Fordon.txt ← Indata: fordon (skapas vid behov)
+├── Hyresgäster.txt ← Indata: hyresgäster (skapas vid behov)
+│
+├── tests/ ← Enhetstester (unittest) ← NY v2.4.0
+│ └── test_roster.py ← Listor, format, validering, skrivning
 ├── requirements.txt ← Python-beroenden
 └── spec.md ← Denna fil
 
@@ -1097,6 +1106,94 @@ KLASSER:
 
 ---
 
+
+### 4.14 `core/roster.py` ✅ v2.4.0
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ MODULE_VERSION = "2.4.0"                                    │
+│ Ansvar: EN gemensam inläsare/skrivare för alla textlistor   │
+│         (Anställda.txt, Fordon.txt, Hyresgäster.txt)        │
+└─────────────────────────────────────────────────────────────┘
+
+IMPORTER
+  codecs, os, shutil, unicodedata, dataclasses, pathlib, typing
+
+KLASSER
+  RosterIssue        – ett problem i listan
+    level ("error" | "warning"), message, section, entry
+    is_error / is_warning
+
+  RosterFile         – en lista (1..n sektioner)
+    load(path, name, base, create, default_sections)
+    reload()
+    sections / entries / section(i) / entry_count() / is_empty()
+    all_entries() / duplicates(index)
+    add(value, index, position)    → normaliserat värde
+    rename(position, value, index)
+    remove(position, index) / move(position, delta, index)
+    sort(index, reverse) / clear(index) / set_entries(entries, index)
+    validate() → List[RosterIssue]
+    has_errors() / as_text() / save(backup=True) / backup_path
+
+  RosterError        – fel vid läsning/redigering/skrivning
+
+FUNKTIONER
+  app_root()                       – appens rotmapp
+  resolve_path(path, base)         – relativa namn mot appens rotmapp
+  normalize_entry(value)           – trim + kollapsa blanksteg + styrtecken
+  sort_key(value)                  – svensk sortering (Å, Ä, Ö efter Z)
+  is_separator(line)               – rad med minst 3 streck
+  is_comment(line)                 – # eller ;
+  decode_bytes(raw)                – UTF-8 → cp1252 → latin-1
+  read_names(path, base)           – genväg för PDF-generatorn
+  ensure_file(path, name, ...)     – skapar filen om den saknas
+  open_in_editor(path)             – öppna i OS:ets textredigerare
+
+FILFORMAT
+  # Kommentar som ignoreras
+  Anna Andersson
+  -------                          ← sektionsbrytare (hyresgäster)
+  Företag AB
+
+SÄKERHET / ROBUSTHET
+  - läser UTF-8 (med/utan BOM), cp1252 och latin-1
+  - tar bort tomma rader, normaliserar blanksteg och dubbletter
+  - validerar före sparning (tom post, > 80 tecken, dubblett)
+  - sparar atomärt (tmp → rename) med backup *.bak, UTF-8 + CRLF
+```
+
+### 4.15 `core/list_editor_dialog.py` ✅ v2.4.0
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ MODULE_VERSION = "2.4.0"                                    │
+│ Ansvar: GUI för att redigera listorna i appen               │
+└─────────────────────────────────────────────────────────────┘
+
+IMPORTER
+  PySide6.QtWidgets (QDialog, QListWidget, QTabWidget, QInputDialog,
+  QMessageBox, QPushButton …), core.i18n, core.roster
+
+KLASSER
+  SectionEditor(QWidget)
+    changed (Signal)
+    set_entries(entries) / entries()
+    _on_add() / _on_edit() / _on_remove() / _on_move(delta)
+    _on_paste()  – klistra in flera rader samtidigt
+    _on_sort()   – sortering med svenska regler
+    Knappar: Lägg till, Ändra, Ta bort, Upp, Ner, Sortera, Klistra in flera
+
+  ListEditorDialog(QDialog)
+    __init__(path, name, parent, section_titles, base, create)
+    roster (property/attribut) – sparad lista efter Spara
+    En flik per sektion (Hyresgäster.txt → Månad + Kvartal)
+    _on_save() – validerar (fel blockerar, varningar frågar), sparar
+    _on_open_in_editor() – öppna samma fil i Anteckningar/TextEdit
+    reject()/close – frågar om osparade ändringar
+    edit(path, name, parent, section_titles, base) → bool (klassmetod)
+```
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -1723,7 +1820,10 @@ Version 2.3.0 – FÖRBÄTTRINGAR
   [ ] Snabbkommandon (QShortcut)
 
 Version 2.4.0 – AVANCERAT
-  [ ] Fler språk (i18n)
+  [✔] Hantering av anställda/fordon/hyresgäster (core/roster.py)
+  [✔] Listredigerare i appen (core/list_editor_dialog.py)
+  [✔] Enhetstester för listorna (tests/test_roster.py)
+  [✔] Fler språk (i18n)
   [ ] Plugin-sandbox
   [ ] Prestandaövervakning
   [ ] Crash reporter
@@ -1734,4 +1834,101 @@ Version 3.0.0 – FRAMTID
   [ ] Molnsynkronisering
   [ ] Plugin-marknad
   [ ] Profil-/användarhantering (på begäran)
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.2.0 | Datum: 2026-06-05 | Status: 44/50 (88%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+
+---
+
+## 20. HANTERING AV LISTOR – ANSTÄLLDA, FORDON & HYRESGÄSTER (v2.4.0)
+
+<!--
+Allt som rör textlistorna: format, inläsning, redigering och skrivning.
+-->
+
+### 20.1 Varför
+
+Tidigare lästes listorna på tre olika sätt:
+
+| Fil | Tidigare | Problem |
+|-----|----------|---------|
+| `Anställda.txt` / `Fordon.txt` | `open(..., encoding="utf-8")` och rad för rad | kraschade/tappade tecken vid cp1252, kommentarer blev "namn", dubbletter gick rakt in i PDF:en, ingen möjlighet att redigera i appen |
+| `Hyresgäster.txt` | egen `split("-------")` med `encoding="utf-8"` | samma brister, plus att filen skrevs icke-atomärt |
+
+Nu finns **en** implementation (`core/roster.py`) som alla tre listorna
+använder, och en gemensam redigerare (`core/list_editor_dialog.py`).
+
+### 20.2 Filformat
+
+```text
+# Anställda – en post per rad
+# Rader som börjar med # eller ; ignoreras
+Anna Andersson
+Bertil Bengtsson
+
+-------
+# Hyresgäster: allt efter strecken blir sektion 2
+Företag AB
+Konsult & Co
+```
+
+| Regel | Beteende |
+|-------|----------|
+| Kommentar | rad som börjar med `#` eller `;` ignoreras (sparas som rubrik) |
+| Tom rad | ignoreras |
+| Sektionsbrytare | rad med minst 3 streck (`---`, `-------`) |
+| Blanksteg | trimmas, flera blanksteg slås ihop, hårt mellanslag blir vanligt |
+| Dubbletter | tas bort vid inläsning (skiftlägesokänsligt) och rapporteras |
+| Teckenkodning | UTF-8 (med/utan BOM) → cp1252 → latin-1 |
+| Spara | UTF-8 utan BOM, CRLF, atomärt (tmp → rename) + `*.bak` |
+
+### 20.3 Redigering i appen
+
+```text
+Semesterlista & Limokörning:
+    Fil: [Anställda.txt] [Bläddra...] [📝 Hantera lista…]
+    8 poster i filen
+
+Hyresfakturering:
+    [📝 Hantera hyresgäster…] [🔄 Ladda om]
+```
+
+Redigeraren visar en lista per sektion (Hyresgäster.txt får två flikar) med:
+
+| Knapp | Funktion |
+|-------|----------|
+| Lägg till | ny post (QInputDialog, max 80 tecken) |
+| Ändra | dubbelklick eller knapp – dubbletter avvisas |
+| Ta bort | markerade poster (bekräftas vid flera) |
+| Upp / Ner | ändra ordning (påverkar PDF:ens radordning) |
+| Sortera A–Ö | svensk sortering, Å/Ä/Ö efter Z |
+| Klistra in flera… | klistra in en lista, en post per rad |
+| Öppna i textredigerare | samma fil i Anteckningar/TextEdit |
+| Spara | validerar, skriver atomärt och skapar backup |
+
+### 20.4 Validering
+
+| Nivå | Exempel | Effekt |
+|------|---------|--------|
+| error | dubblett, tom post, > 80 tecken | sparning blockeras, felet visas |
+| warning | post > 40 tecken (trång i PDF), listan tom | fråga "Vill du spara ändå?" |
+
+### 20.5 Bakåtkompatibilitet
+
+- Befintliga filer fungerar oförändrat (samma enkel-radsformat).
+- Filer som sparats i cp1252 läses korrekt och sparas som UTF-8 nästa gång.
+- `Hyresgäster.txt` skapas fortfarande med exempelposter första gången;
+  `Anställda.txt` och `Fordon.txt` skapas tomma (med rubrik) när man
+  öppnar redigeraren.
+- Kommentarer som låg mitt i listan flyttas till filens rubrik vid sparning.
+
+### 20.6 Tester
+
+```bash
+python -m unittest discover -s tests -v      # 46 tester
+```
+
+`tests/test_roster.py` täcker inläsning (kommentarer, BOM, CRLF, cp1252,
+dubbletter, sektioner), redigering (lägg till/ändra/ta bort/flytta/sortera),
+validering och skrivning (UTF-8, CRLF, backup, tmp-städning).
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.4.0 | Datum: 2026-11-02 | Status: 48/50 (96%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

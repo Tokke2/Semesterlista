@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Loggar och temporärfiler
+data/*.log
+*.tmp
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Användarlistor – skapas av appen, ska inte versionshanteras
+Anställda.txt
+Fordon.txt
+Hyresgäster.txt

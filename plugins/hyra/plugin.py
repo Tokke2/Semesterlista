@@ -65,6 +65,9 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 
+from core import i18n
+from core.roster import RosterError, RosterFile
+
 from plugins.base_plugin import BasePlugin
 
 if TYPE_CHECKING:
@@ -87,6 +90,17 @@ PLUGIN_INFO = {
 
 DEFAULT_TENANT_FILE = "Hyresgäster.txt"
 SEPARATOR           = "-------"
+
+#: Exempelinnehåll när Hyresgäster.txt skapas första gången
+EXAMPLE_MONTHLY_TENANTS: List[str] = [
+    "Anna Andersson",
+    "Bertil Bengtsson",
+    "Cecilia Carlsson",
+]
+EXAMPLE_QUARTERLY_TENANTS: List[str] = [
+    "Företag AB",
+    "Konsult & Co",
+]
 
 MONTHS: Dict[int, str] = {
     1: "Jan",  2: "Feb",  3: "Mar",  4: "Apr",
@@ -184,7 +198,17 @@ def calculate_text_width(text: str, font_size: int = 10) -> float:
 
 class TenantManager:
     """
-    Hanterar läsning av hyresgäster från textfil.
+    Hanterar hyresgästlistan (Hyresgäster.txt).
+
+    v2.4.0: all inläsning sker via core/roster.py och listan kan
+            redigeras direkt i appen (core/list_editor_dialog.py).
+
+    Läsning och skrivning sker via core/roster.py, vilket ger:
+      - kommentarer (# eller ;) ignoreras
+      - en rad med streck (-------) skiljer månads- från kvartalshyresgäster
+      - automatisk teckenkodning (UTF-8/cp1252), dubblettkontroll och
+        normaliserade blanksteg
+      - atomär skrivning med backup (*.bak)
 
     Textfilformat:
         # Kommentar
@@ -195,66 +219,75 @@ class TenantManager:
         Företag AB
     """
 
-    def __init__(self):
+    def __init__(self, tenant_file: Optional[str] = None):
         """Initiera TenantManager och ladda hyresgäster."""
-        self.tenant_file:         str       = os.path.join(
-            get_app_folder(), DEFAULT_TENANT_FILE
+        self.tenant_file: str = str(
+            tenant_file or os.path.join(get_app_folder(), DEFAULT_TENANT_FILE)
         )
-        self.monthly_tenants:     List[str] = []
-        self.quarterly_tenants:   List[str] = []
-        self.year:                int       = datetime.now().year
+        self.monthly_tenants:   List[str] = []
+        self.quarterly_tenants: List[str] = []
+        self.year:              int       = datetime.now().year
+        self.load_issues:       List[str] = []
+        self.roster:            RosterFile = RosterFile(path=Path(self.tenant_file),
+                                                        name="Hyresgäster")
         self._load_tenants()
 
+    # ──────────────────────────────────────────────────────
+    # Inläsning
+    # ──────────────────────────────────────────────────────
+
     def _load_tenants(self) -> None:
-        """Ladda hyresgäster från textfil."""
-        if not os.path.exists(self.tenant_file):
-            logger.info(f"Hyresgästfil finns inte: {self.tenant_file}")
-            self._create_example_file()
+        """Läs hyresgäster via core.roster (skapar filen vid behov)."""
+        try:
+            self.roster = RosterFile.load(
+                self.tenant_file,
+                name="Hyresgäster",
+                create=True,
+                default_sections=[
+                    EXAMPLE_MONTHLY_TENANTS,
+                    EXAMPLE_QUARTERLY_TENANTS,
+                ],
+            )
+        except RosterError as exc:
+            logger.error(f"Fel vid läsning av hyresgästfil: {exc}")
+            self.load_issues = [str(exc)]
+            self.monthly_tenants = []
+            self.quarterly_tenants = []
             return
 
-        try:
-            with open(self.tenant_file, 'r', encoding='utf-8') as f:
-                content = f.read()
+        self.monthly_tenants   = list(self.roster.section(0))
+        self.quarterly_tenants = list(self.roster.section(1))
+        self.load_issues = [
+            issue.message for issue in self.roster.load_issues
+        ] + [
+            issue.message for issue in self.roster.validate()
+        ]
 
-            parts = content.split(SEPARATOR)
+        for message in self.load_issues:
+            logger.warning(f"Hyresgäster: {message}")
 
-            if len(parts) >= 1:
-                self.monthly_tenants = [
-                    line.strip()
-                    for line in parts[0].strip().split('\n')
-                    if line.strip() and not line.strip().startswith('#')
-                ]
-
-            if len(parts) >= 2:
-                self.quarterly_tenants = [
-                    line.strip()
-                    for line in parts[1].strip().split('\n')
-                    if line.strip() and not line.strip().startswith('#')
-                ]
-
-            logger.info(
-                f"Laddade {len(self.monthly_tenants)} månadshyresgäster "
-                f"och {len(self.quarterly_tenants)} kvartalshyresgäster"
-            )
-
-        except Exception as e:
-            logger.error(f"Fel vid läsning av hyresgästfil: {e}")
+        logger.info(
+            f"Laddade {len(self.monthly_tenants)} månadshyresgäster "
+            f"och {len(self.quarterly_tenants)} kvartalshyresgäster"
+        )
 
     def _create_example_file(self) -> None:
-        """Skapa exempelfil med standard-innehåll."""
+        """Skapa Hyresgäster.txt med exempelinnehåll om den saknas."""
+        if Path(self.tenant_file).exists():
+            return
         try:
-            with open(self.tenant_file, 'w', encoding='utf-8') as f:
-                f.write("# Månadshyresgäster (en per rad)\n")
-                f.write("Anna Andersson\n")
-                f.write("Bertil Bengtsson\n")
-                f.write("Cecilia Carlsson\n")
-                f.write(f"{SEPARATOR}\n")
-                f.write("# Kvartalshyresgäster (en per rad)\n")
-                f.write("Företag AB\n")
-                f.write("Konsult & Co\n")
+            RosterFile.load(
+                self.tenant_file,
+                name="Hyresgäster",
+                create=True,
+                default_sections=[
+                    EXAMPLE_MONTHLY_TENANTS,
+                    EXAMPLE_QUARTERLY_TENANTS,
+                ],
+            )
             logger.info(f"Skapade exempelfil: {self.tenant_file}")
-        except Exception as e:
-            logger.error(f"Kunde inte skapa exempelfil: {e}")
+        except RosterError as exc:
+            logger.error(f"Kunde inte skapa exempelfil: {exc}")
 
     def reload(self) -> None:
         """Ladda om hyresgäster från fil."""
@@ -363,9 +396,9 @@ class HyraMainView(QWidget):
         layout.addWidget(file_label)
         layout.addStretch()
 
-        edit_btn = QPushButton("📝 Redigera")
-        edit_btn.clicked.connect(self.plugin._open_tenant_file)
-        edit_btn.setToolTip("Öppna Hyresgäster.txt i textredigerare")
+        edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
+        edit_btn.clicked.connect(self.plugin._manage_tenants)
+        edit_btn.setToolTip(i18n.t("hyra.manage_tenants.tooltip"))
         layout.addWidget(edit_btn)
 
         reload_btn = QPushButton("🔄 Ladda om")
@@ -517,10 +550,10 @@ class HyraMainView(QWidget):
         pdf_btn.setToolTip("Generera hyreslista som PDF")
         layout.addWidget(pdf_btn)
 
-        edit_btn = QPushButton("📝 Redigera Hyresgäster.txt")
+        edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
         edit_btn.setMinimumHeight(36)
-        edit_btn.clicked.connect(self.plugin._open_tenant_file)
-        edit_btn.setToolTip("Öppna textfilen i standard-redigeraren")
+        edit_btn.clicked.connect(self.plugin._manage_tenants)
+        edit_btn.setToolTip(i18n.t("hyra.manage_tenants.tooltip"))
         layout.addWidget(edit_btn)
 
         layout.addStretch()
@@ -920,6 +953,28 @@ class Plugin(BasePlugin):
                 "timestamp": datetime.now().isoformat(),
             })
 
+    def _manage_tenants(self) -> None:
+        """
+        Öppna listredigeraren för hyresgäster (v2.4.0).
+
+        Användaren kan lägga till, ändra, ta bort och sortera hyresgäster
+        direkt i programmet. Efter sparning laddas listan om automatiskt.
+        """
+        from core.list_editor_dialog import ListEditorDialog
+
+        saved = ListEditorDialog.edit(
+            self.tenant_manager.tenant_file,
+            name="Hyresgäster",
+            parent=self._main_view,
+            section_titles=[
+                i18n.t("hyra.tenants.monthly"),
+                i18n.t("hyra.tenants.quarterly"),
+            ],
+        )
+
+        if saved:
+            self._reload_tenants(show_message=False)
+
     def _open_tenant_file(self) -> None:
         """Öppna hyresgästfilen i standard-redigeraren."""
         file_path = self.tenant_manager.tenant_file
@@ -948,8 +1003,14 @@ class Plugin(BasePlugin):
                 f"Kunde inte öppna fil:\n{e}",
             )
 
-    def _reload_tenants(self) -> None:
-        """Ladda om hyresgäster och uppdatera UI."""
+    def _reload_tenants(self, show_message: bool = True) -> None:
+        """
+        Ladda om hyresgäster och uppdatera UI.
+
+        Args:
+            show_message: Visa en bekräftelseruta (False efter redigering
+                          i listredigeraren, där dialogen redan stängts).
+        """
         self.tenant_manager.reload()
 
         if self._main_view is not None:
@@ -962,6 +1023,9 @@ class Plugin(BasePlugin):
             "monthly_count":   monthly_count,
             "quarterly_count": quarterly_count,
         })
+
+        if not show_message:
+            return
 
         QMessageBox.information(
             None,

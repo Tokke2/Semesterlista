@@ -6,6 +6,14 @@ Semesterlista & Limokörning Plugin – UPPDATERAD (PySide6 + BasePlugin)
 
 Plugin för att generera semesterlistor och limokörningsscheman i PDF-format.
 
+NYTT v2.4.0:
+  - Listorna (Anställda.txt / Fordon.txt) läses via core/roster.py:
+    kommentarer, blandade teckenkodningar, tomma rader och dubbletter
+    hanteras automatiskt.
+  - Knappen "Hantera lista…" öppnar core/list_editor_dialog.py så att
+    namn/fordon kan läggas till, ändras, tas bort och sorteras i appen.
+  - Antal poster i vald fil visas under filväljaren.
+
 NYTT v2.2.0:
   - Manuellt val av startmånad via QComboBox
     "Standard (Januari)" = standardläge
@@ -81,6 +89,9 @@ from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
+
+from core import i18n
+from core.roster import RosterError, read_names, resolve_path
 
 from plugins.base_plugin import BasePlugin
 
@@ -690,7 +701,7 @@ class PDFGenerator:
 
         if not file_path:
             errors.append("Filnamn får inte vara tomt")
-        elif not os.path.exists(file_path):
+        elif not resolve_path(file_path).exists():
             errors.append(f"Filen '{file_path}' finns inte")
 
         if mode not in ["Semesterlista", "Limokörning"]:
@@ -699,15 +710,21 @@ class PDFGenerator:
         return errors
 
     def _read_list_from_file(self, file_path: str) -> List[str]:
-        """Läs lista med namn/fordon från txt-fil."""
+        """
+        Läs lista med namn/fordon från txt-fil (via core.roster).
+
+        Kommentarer (# eller ;), tomma rader, dubbletter och blandade
+        teckenkodningar hanteras automatiskt av core/roster.py.
+        """
         try:
-            if not os.path.exists(file_path):
-                return []
-            with open(file_path, "r", encoding="utf-8") as f:
-                return [line.strip() for line in f if line.strip()]
-        except Exception as e:
-            logger.error(f"Fel vid läsning av fil: {e}")
-            QMessageBox.critical(None, "Fel", f"Fel vid läsning av fil: {e}")
+            return read_names(resolve_path(file_path))
+        except RosterError as exc:
+            logger.error(f"Fel vid läsning av fil: {exc}")
+            QMessageBox.critical(
+                None,
+                i18n.t("roster.error.title"),
+                i18n.t("lista.error.read", error=exc),
+            )
             return []
 
     def _create_legend_with_colors(self) -> Table:
@@ -1294,15 +1311,28 @@ class SemesterlistaView(QWidget):
         self.file_edit = QLineEdit()
         self.file_edit.setText(self.plugin.settings.get("last_file", "Anställda.txt"))
         self.file_edit.setMinimumWidth(250)
+        self.file_edit.editingFinished.connect(self._update_list_count)
         file_row.addWidget(self.file_edit)
 
-        browse_btn = QPushButton("Bläddra...")
+        browse_btn = QPushButton(i18n.t("lista.button.browse"))
+        browse_btn.setToolTip(i18n.t("lista.file.browse_tooltip"))
         browse_btn.clicked.connect(self._browse_file)
         file_row.addWidget(browse_btn)
 
+        # Redigera listan direkt i programmet (v2.4.0)
+        self.manage_btn = QPushButton("📝 " + i18n.t("lista.manage_list"))
+        self.manage_btn.setToolTip(i18n.t("lista.manage_list.tooltip"))
+        self.manage_btn.clicked.connect(self._manage_list)
+        file_row.addWidget(self.manage_btn)
+
         form_layout.addLayout(file_row, 4, 1)
 
+        self.count_label = QLabel("")
+        self.count_label.setFont(QFont("Helvetica", 9))
+        form_layout.addWidget(self.count_label, 5, 0, 1, 2)
+
         self._on_mode_change(self.mode_combo.currentText())
+        self._update_list_count()
         return group
 
     def _create_button_bar(self) -> QHBoxLayout:
@@ -1371,15 +1401,17 @@ class SemesterlistaView(QWidget):
 
     @Slot(str)
     def _on_mode_change(self, mode: str) -> None:
-        """Uppdatera fil-label och default-filnamn vid lägesbyte."""
+        """Uppdatera fil-etikett, default-filnamn och antal poster."""
         if mode == "Semesterlista":
-            self.file_label.setText("Fil med anställda:")
+            self.file_label.setText(i18n.t("lista.file.employees"))
             if not self.file_edit.text() or self.file_edit.text() == "Fordon.txt":
                 self.file_edit.setText("Anställda.txt")
         else:
-            self.file_label.setText("Fil med fordon:")
+            self.file_label.setText(i18n.t("lista.file.vehicles"))
             if not self.file_edit.text() or self.file_edit.text() == "Anställda.txt":
                 self.file_edit.setText("Fordon.txt")
+
+        self._update_list_count()
 
     @Slot(int)
     def _on_start_month_change(self, index: int) -> None:
@@ -1402,6 +1434,53 @@ class SemesterlistaView(QWidget):
         )
         if filename:
             self.file_edit.setText(filename)
+            self._update_list_count()
+
+    def _current_list_path(self) -> Path:
+        """Sökväg till vald lista (relativa namn tolkas mot appens rotmapp)."""
+        name = self.file_edit.text().strip()
+        if not name:
+            name = (
+                "Fordon.txt"
+                if self.mode_combo.currentText() == "Limokörning"
+                else "Anställda.txt"
+            )
+        return resolve_path(name)
+
+    def _manage_list(self) -> None:
+        """
+        Öppna listredigeraren för vald lista (v2.4.0).
+
+        Användaren kan lägga till, ändra, ta bort och sortera poster
+        direkt i programmet – ingen extern textredigerare behövs.
+        """
+        from core.list_editor_dialog import ListEditorDialog
+
+        path = self._current_list_path()
+        if ListEditorDialog.edit(path, name=path.stem, parent=self):
+            self.file_edit.setText(str(path))
+            self.plugin.settings["last_file"] = str(path)
+            self.plugin._save_settings()
+            self._update_list_count()
+
+    def _update_list_count(self) -> None:
+        """Visa antal poster i vald fil (varning om filen inte kan läsas)."""
+        if not hasattr(self, "count_label"):
+            return
+
+        path = self._current_list_path()
+        try:
+            count = len(read_names(path))
+        except RosterError as exc:
+            self.count_label.setStyleSheet("color: #c0392b;")
+            self.count_label.setText(i18n.t("lista.error.read", error=exc))
+            return
+
+        self.count_label.setStyleSheet("")
+        if not path.exists():
+            self.count_label.setText(i18n.t("lista.list_missing", file=path.name))
+            return
+        self.count_label.setText(i18n.t("lista.list_count", count=count))
 
     def _generate_pdf(self) -> None:
         """

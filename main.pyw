@@ -8,6 +8,19 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.4.0: BÄTTRE HANTERING AV ANSTÄLLDA, FORDON & HYRESGÄSTER.
+                   Nytt: core/roster.py – en gemensam inläsare/skrivare för
+                   Anställda.txt, Fordon.txt och Hyresgäster.txt
+                   (kommentarer, teckenkodning, dubbletter, validering,
+                   atomär skrivning med backup).
+                   Nytt: core/list_editor_dialog.py – redigera listorna
+                   direkt i appen (lägg till, ändra, ta bort, sortera,
+                   klistra in flera) med flikar för hyresgästernas
+                   månads- och kvartalslista.
+                   Plugins: knapparna "Hantera lista…" (Semesterlista &
+                   Limokörning) och "Hantera hyresgäster…"
+                   (Hyresfakturering) öppnar redigeraren.
+                   APP_VERSION bumpat till 2.4.0.
 UPPDATERAD v2.3.0: TVÅSPRÅKIG (svenska/engelska) – väljs i
                    Arkiv → Inställningar → Språk.
                    Alla texter hämtas via core/i18n.py (core.i18n.t()).
@@ -129,7 +142,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.3.0"
+APP_VERSION: str = "2.4.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
