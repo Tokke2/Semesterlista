@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.7.0                                                             ║
+║  Version: 2.8.0                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -42,6 +42,8 @@
     - 4.17 core/logo_dialog.py
     - 4.18 plugins/fordon/plugin.py
     - 4.19 core/app_icon.py
+    - 4.20 core/logging_setup.py
+    - 4.21 core/settings_dialog.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -58,6 +60,7 @@
 18. Kända Fel/Buggar & Åtgärdsplan
 19. Framtidsplan
 20. Hantering av Listor – Anställda, Fordon & Hyresgäster (v2.4.0)
+22. Loggning & Felsökning (v2.8.0)
 21. Flikar & Logotyp i PDF (v2.5.0)
 
 ---
@@ -114,6 +117,8 @@ Semesterlista/ ← Rotmapp
 │ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
 │ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0
 │ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
+│ ├── logging_setup.py ← Detaljerad loggning + felhakar ← NY v2.8.0
+│ ├── settings_dialog.py ← Inställningar (4 flikar) ← NY v2.8.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -131,7 +136,9 @@ Semesterlista/ ← Rotmapp
 │
 ├── data/ ← JSON-datafiler
 │ ├── settings.json ← Huvudinställningar
-│ └── plugins.json ← Plugin-inställningar
+│ ├── plugins.json ← Plugin-inställningar
+│ ├── app.log ← Loggfil (roterar, versionshanteras ej) ← NY v2.8.0
+│ └── crash.log ← Hårda krascher via faulthandler ← NY v2.8.0
 │
 ├── Anställda.txt ← Indata: anställda (skapas vid behov)
 ├── Fordon.txt ← Indata: fordon (skapas vid behov)
@@ -151,7 +158,11 @@ Semesterlista/ ← Rotmapp
 │
 ├── tests/ ← Enhetstester (unittest) ← NY v2.4.0
 │ ├── test_roster.py ← Listor, format, validering, skrivning
-│ └── test_pdf_assets.py ← Logotyper, skalning, PDF-ritning
+│ ├── test_pdf_assets.py ← Logotyper, skalning, PDF-ritning
+│ ├── test_pdf_layout.py ← Sidlayout & månader per blad
+│ ├── test_app_icon.py ← Appikonen (SVG/PNG/ICO)
+│ ├── test_logging_setup.py ← Loggning, rotering, felhakar ← NY v2.8.0
+│ └── test_settings_dialog.py ← Inställningsdialogen ← NY v2.8.0
 ├── requirements.txt ← Python-beroenden
 └── spec.md ← Denna fil
 
@@ -178,6 +189,8 @@ Alla tekniska val och beroenden listade.
 | PDF-generering   | reportlab                                | Semesterlistor, limokörning, hyra        |
 | Helgdagar        | get_swedish_holidays() (intern)          | Svenska helgdagar, egen implementation   |
 | Trådsäkerhet     | threading.Lock                           | EventBus + SettingsManager               |
+| Loggning         | logging + RotatingFileHandler            | data/app.log, 2 MB × 5, INFO/DEBUG       |
+| Kraschlogg       | faulthandler                             | data/crash.log (hårda fel)               |
 | Python-version   | 3.12+                                    |                                          |
 | Plattformar      | Windows, macOS, Linux                    |                                          |
 
@@ -1326,6 +1339,90 @@ Inställningarna sparas i en egen lokal fil
 
 ---
 
+### 4.20 `core/logging_setup.py` ✅ v2.8.0
+
+**Ansvar:** Detaljerad loggning som sätts upp *före* PySide6 och plugins
+importeras, så att även importfel hamnar i fil.
+
+```python
+LOG_FILE = setup_logging(PROJECT_ROOT)   # → data/app.log
+install_excepthook(on_crash)             # valfri callback → felruta
+install_faulthandler()                   # → data/crash.log
+install_qt_message_handler()             # efter QApplication
+log_startup_context(PROJECT_ROOT)        # miljöinfo
+```
+
+| Funktion | Beskrivning |
+|----------|-------------|
+| `setup_logging(base_dir, level, to_file, to_console, file_name)` | Sätter rot-loggern, roterande fil + konsol (hoppas över i pythonw) |
+| `log_file_path(base_dir, file_name)` | `data/app.log` (eller eget namn) |
+| `get_log_file()` / `is_configured()` | Aktiv loggfil / om setup körts |
+| `startup_context()` / `log_startup_context()` | Python, Qt, OS, cwd, pid, argv m.m. |
+| `install_excepthook(on_crash)` | Huvudtråd + `threading.excepthook`; `KeyboardInterrupt` släpps igenom |
+| `last_crash()` | Senaste ohanterade felet som text |
+| `install_faulthandler()` | `crash.log` – fångar även segmenteringsfel |
+| `install_qt_message_handler()` | `qInstallMessageHandler` → logger `qt` |
+| `tail_log(lines)` | Sista raderna (används av inställningsdialogen) |
+| `log_summary()` | Fil, nivå, antal handlers, senaste krasch |
+| `reset_logging()` | Städar handlers, faulthandler och excepthook (tester) |
+
+**Format & nivåer**
+
+```
+[2026-11-02 13:33:08] INFO     main:189 – Loggning startad … (nivå=INFO, fil=…)
+[2026-11-02 13:33:08] DEBUG    plugins.lista.plugin:1128 – PDF-start: läge=…
+```
+
+| Inställning | Standard |
+|-------------|----------|
+| Fil | `data/app.log` (reserv: `%TEMP%/Semesterlista/app.log`, sedan `~/.semesterlista/`) |
+| Rotering | 2 MB × 5 filer (`app.log.1` … `app.log.5`) |
+| Nivå | `INFO`; `DEBUG` om `SEMESTERLISTA_DEBUG` är satt |
+| Format | `[tid] NIVÅ-8 modul:rad – meddelande` |
+| Loggers | `main`, `main.startup`, `crash`, `qt`, `warnings` |
+
+**Var det loggas**
+
+- `main.pyw`: steg för steg (`STEG 1 … STEG 12`) med ms per steg, plugins
+  med version, flikantal, tray-status, exit-kod och total körtid.
+- `plugins/lista/plugin.py`: PDF-parametrar före bygget och antal
+  månader/sidor, filstorlek och tidsåtgång efter.
+- `MainWindow._open_settings()`: öppning/stängning, språk och tema.
+
+---
+
+### 4.21 `core/settings_dialog.py` ✅ v2.8.0
+
+**Ansvar:** Inställningsdialogen bakom **Arkiv → Inställningar** (Ctrl+,).
+
+```python
+SettingsDialog(
+    settings_manager=…, theme_manager=…, lock=…,
+    plugin_manager=…, event_bus=…, parent=self,
+).exec()
+```
+
+| Flik | Innehåll | Sparas som |
+|------|----------|------------|
+| Allmänt | Språk (sv/en), tema (system/ljust/mörkt), helgdagsregion (sv/us) | `language`, `theme`, `holiday_region` |
+| Fönster | Autostart, starta minimerad, minimera/stäng till systemfältet, aviseringar + varaktighet | `advanced.autostart`, `systray.*` |
+| Plugins | Kryssruta per plugin (kräver omstart) | `plugins.json` → `enabled` |
+| Avancerat | Felsökningsläge, loggning till fil, uppdateringskontroll, loggfilens väg, **Öppna loggmapp** och **Kopiera senaste loggen** | `advanced.debug_mode`, `advanced.log_to_file`, `advanced.check_updates` |
+
+| Metod | Beskrivning |
+|-------|-------------|
+| `apply_settings()` | Skriver alla fält till `SettingsManager` utan dialogruta (används av testerna) |
+| `_load_settings()` | Läser in nuvarande värden; okända värden faller tillbaka på standard |
+| `_save()` | `apply_settings()` + bekräftelseruta + `accept()` |
+| `_plugin_names()` | Plugins från `plugins.json` **och** laddade plugins (id → visningsnamn) |
+| `_open_log_folder()` / `_copy_log_tail()` | Öppnar loggmappen i filhanteraren / kopierar `tail_log(60)` |
+
+**Robusthet:** alla komponenter utom `settings_manager` är valfria. Saknas
+`core/settings_dialog.py` startar appen ändå – menyvalet inaktiveras och
+orsaken skrivs till loggen (se `SETTINGS_DIALOG_ERROR` i `main.pyw`).
+
+---
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -2090,7 +2187,7 @@ Redigeraren visar en lista per sektion (Hyresgäster.txt får två flikar) med:
 ### 20.6 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 46 tester
+python -m unittest discover -s tests -v      # 126 tester
 ```
 
 `tests/test_roster.py` täcker inläsning (kommentarer, BOM, CRLF, cp1252,
@@ -2145,7 +2242,7 @@ proportionerna bevaras alltid.
 ### 21.4 Tester
 
 ```bash
-python -m unittest discover -s tests -v      # 86 tester
+python -m unittest discover -s tests -v      # 126 tester
 ```
 
 `tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
@@ -2154,4 +2251,66 @@ logotyp på varje sida via `canvasmaker` samt felhantering (`AssetError`).
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.7.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+## 22. LOGGNING & FELSÖKNING (v2.8.0)
+
+### 22.1 Vad som loggas
+
+| Händelse | Nivå | Exempel |
+|----------|------|---------|
+| Uppstart, steg för steg | INFO | `STEG 7b  Plugins laddade  12 ms (totalt 480 ms) 3 st` |
+| Miljö (Python, Qt, OS) | INFO | `python = 3.12.4 …`, `platform = Windows-11…` |
+| Plugin laddad | INFO | `✓ Semesterlista & Limokörning v2.8.0  9 ms` |
+| Plugin misslyckad | ERROR | `✗ fordon  kunde inte laddas` |
+| PDF skapad | INFO | `… 12 månader, 6 sidor, 84 kB, 210 ms` |
+| Inställningar sparade | INFO | `språk=sv, tema=light, plugins={…}` |
+| Ohanterat fel | CRITICAL | traceback + `Loggfil: …/data/app.log` |
+| Qt-varningar | WARNING | `qt: QWidget::setLayout: …` |
+
+### 22.2 Felsökningsläge
+
+```bash
+set SEMESTERLISTA_DEBUG=1     # Windows (cmd)
+export SEMESTERLISTA_DEBUG=1  # macOS/Linux
+python main.pyw
+```
+
+…eller **Arkiv → Inställningar → Avancerat → Felsökningsläge** (sparas som
+`advanced.debug_mode`). `data/app.log` får då även DEBUG-rader; appens
+loggmoduler (`main`, `core`, `plugins`) loggar alltid INFO.
+
+### 22.3 Vanliga fel
+
+| Symptom | Trolig orsak | Åtgärd |
+|---------|--------------|--------|
+| Appen startar inte alls (pythonw) | Importfel – ingen konsol att se felet i | Läs `data/app.log`, kör `python main.pyw` i terminal |
+| `ModuleNotFoundError: core.settings_dialog` | Filen saknas/är inte synkad | `git pull`; menyvalet är inaktiverat men appen startar |
+| Ingen `data/app.log` | `data/` är inte skrivbar | Loggen hamnar i `%TEMP%/Semesterlista/app.log` |
+| Krasch utan traceback | Fel i Qt/C++ | Läs `data/crash.log` (faulthandler) |
+| Loggen är tom | `advanced.log_to_file` av | Slå på i Avancerat-fliken |
+
+### 22.4 Filer som skapas (versionshanteras inte)
+
+```
+data/app.log       aktuell logg
+data/app.log.1–5   roterade filer (2 MB styck)
+data/crash.log     hårda krascher
+```
+
+`data/*.log` och `data/*.log.*` står i `.gitignore`.
+
+### 22.5 Tester
+
+```bash
+python -m unittest discover -s tests -v      # 126 tester
+```
+
+`tests/test_logging_setup.py` (24 tester) täcker sökvägsval, reservplats,
+format, nivåer, `SEMESTERLISTA_DEBUG`, rotering, `tail_log`/`log_summary`,
+excepthook (inkl. `KeyboardInterrupt`), faulthandler och `reset_logging`.
+`tests/test_settings_dialog.py` (15 tester, offscreen) täcker de fyra
+flikarna, inläsning, sparande, språk-/temabyte, autostart, plugin-status
+och att dialogen fungerar utan valfria komponenter.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.8.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

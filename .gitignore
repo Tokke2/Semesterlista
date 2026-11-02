@@ -24,3 +24,5 @@ Thumbs.db
 Anställda.txt
 Fordon.txt
 Hyresgäster.txt
+
+data/*.log.*

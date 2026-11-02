@@ -292,6 +292,34 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.plugin_restart_hint":    "Ändring av plugins kräver omstart.",
         "settings.saved":                  "Inställningar sparade.",
         "settings.no_plugins":             "Inga plugins hittades.",
+        "settings.tab.general":            "Allmänt",
+        "settings.tab.window":             "Fönster",
+        "settings.tab.plugins":            "Plugins",
+        "settings.tab.advanced":           "Avancerat",
+        "settings.save":                   "Spara",
+        "settings.cancel":                 "Avbryt",
+        "settings.notification_duration":  "Aviseringens längd:",
+        "settings.debug_mode.tooltip":     (
+            "Skriver mer detaljerad information till loggen "
+            "(data/app.log). Används vid felsökning."
+        ),
+        "settings.log_file":               "Loggfil:",
+        "settings.open_log_folder":        "Öppna loggmapp",
+        "settings.copy_log":               "Kopiera senaste loggen",
+        "settings.log_empty":              "Loggen är tom ännu.",
+        "settings.open_log_error":         "Kunde inte öppna mappen:\n{error}",
+        "settings.save_error":             "Kunde inte spara inställningarna:\n{error}",
+        "settings.autostart.unavailable":  "Autostart kunde inte läsas i den här miljön.",
+
+        # ── Loggning & fel (v2.8.0) ───────────────────────
+        "log.started":                     "Loggning startad: {path}",
+        "log.file_missing":                "Filen {module} saknas – {feature} är avstängt.",
+        "log.import_failed":               "Kunde inte importera {module}: {error}",
+        "log.crash_title":                 "Ett fel inträffade",
+        "log.crash_body":                  (
+            "Applikationen stötte på ett fel.\n\n"
+            "{error}\n\nLoggfil: {log}"
+        ),
 
         # ── Sidlayout (v2.6.0) ────────────────────────────
         "lista.orientation.landscape":     "Liggande (A4)",
@@ -640,6 +668,34 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.plugin_restart_hint":    "Changing plugins requires a restart.",
         "settings.saved":                  "Settings saved.",
         "settings.no_plugins":             "No plugins found.",
+        "settings.tab.general":            "General",
+        "settings.tab.window":             "Window",
+        "settings.tab.plugins":            "Plugins",
+        "settings.tab.advanced":           "Advanced",
+        "settings.save":                   "Save",
+        "settings.cancel":                 "Cancel",
+        "settings.notification_duration":  "Notification duration:",
+        "settings.debug_mode.tooltip":     (
+            "Writes more detailed information to the log "
+            "(data/app.log). Used for troubleshooting."
+        ),
+        "settings.log_file":               "Log file:",
+        "settings.open_log_folder":        "Open log folder",
+        "settings.copy_log":               "Copy latest log",
+        "settings.log_empty":              "The log is empty so far.",
+        "settings.open_log_error":         "Could not open the folder:\n{error}",
+        "settings.save_error":             "Could not save the settings:\n{error}",
+        "settings.autostart.unavailable":  "Autostart could not be read in this environment.",
+
+        # ── Logging & errors (v2.8.0) ─────────────────────
+        "log.started":                     "Logging started: {path}",
+        "log.file_missing":                "{module} is missing – {feature} is disabled.",
+        "log.import_failed":               "Could not import {module}: {error}",
+        "log.crash_title":                 "An error occurred",
+        "log.crash_body":                  (
+            "The application encountered an error.\n\n"
+            "{error}\n\nLog file: {log}"
+        ),
 
         # ── Page layout (v2.6.0) ──────────────────────────
         "lista.orientation.landscape":     "Landscape (A4)",

@@ -6,6 +6,11 @@ Semesterlista & Limokörning Plugin – UPPDATERAD (PySide6 + BasePlugin)
 
 Plugin för att generera semesterlistor och limokörningsscheman i PDF-format.
 
+NYTT v2.8.0:
+  - Detaljerad loggning: PDF-genereringen loggar läge, år, startmånad,
+    månader per blad, layout, antal poster/sidor, filnamn, storlek och
+    tidsåtgång till data/app.log.
+
 NYTT v2.7.0:
   - Inställningsdialogen använder appikonen (core/app_icon.py) så att
     fönster, systemfält och aktivitetsfält visar samma ikon.
@@ -166,7 +171,7 @@ DEFAULT_MONTHS_PER_PAGE: int = 3
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.7.0",
+    "version": "2.8.0",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -1127,6 +1132,23 @@ class PDFGenerator:
         range_label = self._format_range_label(month_sequence)
         filename = self._build_output_filename(documents_path, mode, month_sequence)
 
+        # Detaljerad loggning (v2.8.0)
+        from time import perf_counter
+
+        started = perf_counter()
+        logger.info(
+            "PDF-start: läge=%s, år=%s, startmånad=%s, %s mån/blad, "
+            "layout=%s, %s poster, %s sidor, fil=%s",
+            mode,
+            year,
+            start_month if start_month is not None else "standard",
+            months_per_page,
+            orientation,
+            len(data_list),
+            len(pages),
+            filename,
+        )
+
         if mode == "Semesterlista":
             title_prefix = "Semesterlista"
             header = "Anställd"
@@ -1352,10 +1374,18 @@ class PDFGenerator:
             else f"{MONTHS_SV[start_month]} {year}"
         )
 
+        # Storlek och tidsåtgång (v2.8.0)
+        try:
+            size_kb = Path(filename).stat().st_size / 1024
+        except OSError:
+            size_kb = 0.0
+
         logger.info(
             f"{title_prefix} genererad: {range_label} "
             f"({months_per_page} mån/blad, start={start_text}, "
-            f"layout={orientation})"
+            f"layout={orientation}) – {len(month_sequence)} månader, "
+            f"{len(pages)} sidor, {size_kb:.0f} kB, "
+            f"{(perf_counter() - started) * 1000:.0f} ms"
         )
 
         QMessageBox.information(
@@ -1907,7 +1937,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.7.0"
+    VERSION: str = "2.8.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 

@@ -8,13 +8,22 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.8.0: DETALJERAD LOGGNING OCH INSTÄLLNINGSDIALOG.
+                   Nytt: core/logging_setup.py – data/app.log (roterande,
+                   2 MB × 5), data/crash.log via faulthandler, Qt:s egna
+                   meddelanden i loggen och SEMESTERLISTA_DEBUG=1 för
+                   DEBUG-nivå. Uppstarten loggas steg för steg med
+                   tidsåtgång, och fel visas i en ruta med loggfilens väg.
+                   Nytt: core/settings_dialog.py – flikarna Allmänt,
+                   Fönster, Plugins och Avancerat. Saknas modulen startar
+                   appen ändå (menyvalet inaktiveras och felet loggas).
+                   APP_VERSION bumpat till 2.8.0.
 UPPDATERAD v2.7.0: GEMENSAM APP-IKON ÖVERALLT.
                    Nytt: assets/ikon med SVG, PNG (16–256 px) och ICO samt
                    core/app_icon.py. Ikonen används av fönstret,
                    systemfältet och aktivitetsfältet (även
                    aktivitetshanteraren via AppUserModelID på Windows).
                    Reservikon ritas programmatiskt om bilderna saknas.
-                   APP_VERSION bumpat till 2.7.0.
 UPPDATERAD v2.6.0: VALBAR SIDLAYOUT OCH 1–3 MÅNADER PER BLAD.
                    Nytt: PDF:en kan skrivas ut liggande (A4, 270 mm
                    tabell – standard) eller stående (A4, 190 mm).
@@ -83,6 +92,7 @@ from __future__ import annotations
 
 import sys
 import os
+import time
 import ctypes
 import importlib
 import importlib.util
@@ -93,48 +103,113 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, TYPE_CHECKING
 
 # ──────────────────────────────────────────────────────────
+# Projekt-root – måste ligga först, importerna nedan kräver den
+# ──────────────────────────────────────────────────────────
+PROJECT_ROOT: Path = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# ──────────────────────────────────────────────────────────
+# Loggning (v2.8.0)
+# ──────────────────────────────────────────────────────────
+# Sätts upp INNAN PySide6 och plugins importeras, så att även importfel och
+# saknade filer hamnar i data/app.log i stället för bara i konsolen
+# (pythonw.exe har ingen konsol).
+#
+#   Fil     data/app.log   (roterar vid 2 MB, 5 gamla filer sparas)
+#   Reserv  %TEMP%/Semesterlista/app.log om data/ inte går att skriva
+#   Nivå    INFO, eller DEBUG om miljövariabeln SEMESTERLISTA_DEBUG är satt
+#   Krasch  data/crash.log (faulthandler, t.ex. segmenteringsfel)
+#
+try:
+    from core.logging_setup import (
+        get_log_file,
+        install_excepthook,
+        install_faulthandler,
+        install_qt_message_handler,
+        log_startup_context,
+        setup_logging,
+        tail_log,
+    )
+
+    LOG_FILE: Optional[Path] = setup_logging(PROJECT_ROOT)
+    install_excepthook()
+    install_faulthandler()
+    _LOGGING_ERROR: Optional[BaseException] = None
+except Exception as _exc:  # pragma: no cover – loggningen får aldrig stoppa appen
+    LOG_FILE = None
+    _LOGGING_ERROR = _exc
+    setup_logging = None  # type: ignore[assignment]
+    install_excepthook = None  # type: ignore[assignment]
+    install_faulthandler = None  # type: ignore[assignment]
+    install_qt_message_handler = None  # type: ignore[assignment]
+    log_startup_context = None  # type: ignore[assignment]
+    get_log_file = lambda: None  # type: ignore[assignment]
+    tail_log = lambda lines=40: []  # type: ignore[assignment]
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+logger = logging.getLogger("main")
+
+if _LOGGING_ERROR is not None:
+    logger.error("Kunde inte sätta upp fil-loggning: %s", _LOGGING_ERROR)
+
+# ──────────────────────────────────────────────────────────
 # PySide6 – Modern GUI
 # ──────────────────────────────────────────────────────────
-from PySide6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QTabWidget,
-    QTabBar,
-    QMenu,
-    QMenuBar,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QStatusBar,
-    QLabel,
-    QPushButton,
-    QMessageBox,
-    QSizePolicy,
-    QFrame,
-    QSystemTrayIcon,
-)
-from PySide6.QtCore import (
-    Qt,
-    QEvent,
-    QTimer,
-    QSize,
-    Signal,
-    Slot,
-)
-from PySide6.QtGui import (
-    QAction,
-    QActionGroup,
-    QIcon,
-    QFont,
-    QPalette,
-    QColor,
-    QMouseEvent,
-    QWheelEvent,
-    QKeySequence,
-    QShortcut,
-    QPainter,
-    QPixmap,
-)
+try:
+    from PySide6.QtWidgets import (
+        QApplication,
+        QMainWindow,
+        QTabWidget,
+        QTabBar,
+        QMenu,
+        QMenuBar,
+        QWidget,
+        QVBoxLayout,
+        QHBoxLayout,
+        QStatusBar,
+        QLabel,
+        QPushButton,
+        QMessageBox,
+        QSizePolicy,
+        QFrame,
+        QSystemTrayIcon,
+    )
+    from PySide6.QtCore import (
+        Qt,
+        QEvent,
+        QTimer,
+        QSize,
+        Signal,
+        Slot,
+    )
+    from PySide6.QtGui import (
+        QAction,
+        QActionGroup,
+        QIcon,
+        QFont,
+        QPalette,
+        QColor,
+        QMouseEvent,
+        QWheelEvent,
+        QKeySequence,
+        QShortcut,
+        QPainter,
+        QPixmap,
+    )
+except Exception as _qt_error:  # pragma: no cover – miljö utan PySide6
+    logger.critical("PySide6 kunde inte importeras", exc_info=_qt_error)
+    print(
+        "PySide6 saknas. Installera beroendena med:\n"
+        "    pip install PySide6 reportlab\n"
+        f"Loggfil: {LOG_FILE or 'kunde inte skapas'}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 # ──────────────────────────────────────────────────────────
 # Kärnmoduler
@@ -145,32 +220,32 @@ from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
 from core import i18n
 from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
-from core.settings_dialog import SettingsDialog
 from plugins.base_plugin import BasePlugin
+
+# Inställningsdialogen är valfri: saknas filen ska appen ändå starta, men
+# menyvalet inaktiveras och orsaken skrivs till loggen (v2.8.0).
+try:
+    from core.settings_dialog import SettingsDialog
+
+    SETTINGS_DIALOG_ERROR: Optional[BaseException] = None
+except Exception as _sd_error:
+    SettingsDialog = None  # type: ignore[assignment,misc]
+    SETTINGS_DIALOG_ERROR = _sd_error
+    logger.error(
+        "core/settings_dialog.py kunde inte importeras (%s). "
+        "Arkiv → Inställningar inaktiveras. Kontrollera att filen finns i "
+        "core/ (git pull) och att den går att läsa.",
+        _sd_error,
+        exc_info=True,
+    )
 
 if TYPE_CHECKING:
     pass
 
 # ──────────────────────────────────────────────────────────
-# Projekt-root
-# ──────────────────────────────────────────────────────────
-PROJECT_ROOT: Path = Path(__file__).parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# ──────────────────────────────────────────────────────────
-# Loggning
-# ──────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
-logger = logging.getLogger("main")
-
-# ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.7.0"
+APP_VERSION: str = "2.8.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -439,6 +514,7 @@ class MainWindow(QMainWindow):
 
         # Autostart-action (referens för uppdatering)
         self._autostart_action: Optional[QAction] = None
+        self._settings_action:  Optional[QAction] = None
 
         # Menyer och systemfält (referenser för språkbyte, v2.3.0)
         self._arkiv_menu:   Optional[QMenu] = None
@@ -567,6 +643,17 @@ class MainWindow(QMainWindow):
         # Inställningar (v2.3.0: riktig dialog)
         settings_action = QAction(i18n.t("menu.file.settings"), self)
         settings_action.triggered.connect(self._open_settings)
+        settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        if SettingsDialog is None:  # v2.8.0 – saknad modul
+            settings_action.setEnabled(False)
+            settings_action.setToolTip(
+                i18n.t(
+                    "log.file_missing",
+                    module="core/settings_dialog.py",
+                    feature=i18n.t("settings.title"),
+                )
+            )
+        self._settings_action = settings_action
         self._arkiv_menu.addAction(settings_action)
 
         self._arkiv_menu.addSeparator()
@@ -1076,6 +1163,20 @@ class MainWindow(QMainWindow):
         helgdagsval (Sverige/USA), fönster/systemfält, plugins
         och avancerade inställningar.
         """
+        if SettingsDialog is None:  # v2.8.0 – filen kunde inte importeras
+            QMessageBox.warning(
+                self,
+                i18n.t("settings.title"),
+                i18n.t(
+                    "log.file_missing",
+                    module="core/settings_dialog.py",
+                    feature=i18n.t("settings.title"),
+                )
+                + f"\n\n{LOG_FILE or ''}",
+            )
+            return
+
+        logger.info("Öppnar inställningsdialogen")
         dialog = SettingsDialog(
             settings_manager=self._settings_manager,
             theme_manager=self._theme_manager,
@@ -1084,7 +1185,13 @@ class MainWindow(QMainWindow):
             event_bus=self._event_bus,
             parent=self,
         )
-        dialog.exec()
+        result = dialog.exec()
+        logger.info(
+            "Inställningsdialogen stängd (resultat=%s, språk=%s, tema=%s)",
+            result,
+            i18n.current_language(),
+            self._settings_manager.get("theme", "system"),
+        )
 
         # Autostart kan ha ändrats i dialogen
         if self._autostart_action is not None:
@@ -1095,18 +1202,22 @@ class MainWindow(QMainWindow):
         Visa Om-dialog med dynamiskt copyright-år.
         """
         app_name = self._app_name()
-        QMessageBox.about(
-            self,
-            i18n.t("about.title", app=app_name),
-            i18n.t(
-                "about.body",
-                app=app_name,
-                version=APP_VERSION,
-                py_major=sys.version_info.major,
-                py_minor=sys.version_info.minor,
-                year=COPYRIGHT_YEAR,
-            ),
+        log_file = get_log_file()
+
+        body = i18n.t(
+            "about.body",
+            app=app_name,
+            version=APP_VERSION,
+            py_major=sys.version_info.major,
+            py_minor=sys.version_info.minor,
+            year=COPYRIGHT_YEAR,
         )
+        if log_file:
+            # Loggfilens väg i Om-rutan gör felsökning mycket enklare (v2.8.0)
+            body += f"\n\n{i18n.t('settings.log_file')} {log_file}"
+
+        QMessageBox.about(self, i18n.t("about.title", app=app_name), body)
+        logger.info("Om-dialogen visad (loggfil: %s)", log_file or "—")
 
     # ──────────────────────────────────────────────────────
     # EventBus-lyssnare
@@ -1273,17 +1384,47 @@ def main() -> None:
     12. Emittera app:started
     13. Starta Qt event-loop
     """
+    # ──────────────────────────────────────────────────
+    # Detaljerad stegloggning (v2.8.0)
+    # ──────────────────────────────────────────────────
+    # Varje steg loggas med tid sedan föregående steg, så att en långsam
+    # eller hängande uppstart syns direkt i data/app.log.
+    t_start = time.perf_counter()
+    _last = {"t": t_start}
+
+    def step(number: str, text: str, detail: str = "") -> None:
+        """Logga ett uppstartssteg med tidsåtgång."""
+        now = time.perf_counter()
+        logger.info(
+            "STEG %-3s %-40s %6.0f ms (totalt %5.0f ms)%s",
+            number,
+            text,
+            (now - _last["t"]) * 1000,
+            (now - t_start) * 1000,
+            f"  {detail}" if detail else "",
+        )
+        _last["t"] = now
+
+    logger.info("=" * 64)
+    logger.info("  Semesterlista startar – version %s", APP_VERSION)
+    logger.info("=" * 64)
+
     # 1. Dölj terminal
     hide_console_window()
+    step("1", "Dölj terminalfönster")
 
     # 2. Single-instance
     app_name = "Semesterlista"
     lock     = SingleInstanceLock(app_name)
 
     if lock.is_running():
+        logger.warning(
+            "En instans körs redan – skickar 'visa fönster' till den och avslutar"
+        )
         lock.send_to_existing()
         print(f"{app_name} körs redan. Visar befintlig instans.")
         sys.exit(0)
+    step("2", "Single-instance-lås", f"pid={os.getpid()}")
 
     # 3. QApplication
     app = QApplication(sys.argv)
@@ -1291,6 +1432,39 @@ def main() -> None:
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Rickard Längkvist")
     app.setApplicationDisplayName(app_name)
+
+    # Qt:s egna meddelanden (varningar, plugin-fel) → loggen
+    if install_qt_message_handler is not None:
+        try:
+            install_qt_message_handler()
+        except Exception:
+            logger.exception("Kunde inte installera Qt-meddelandehanteraren")
+
+    # Miljöinformation (Python, Qt, OS, sökvägar) i loggen
+    if log_startup_context is not None:
+        try:
+            log_startup_context(PROJECT_ROOT)
+        except Exception:
+            logger.exception("Kunde inte logga uppstartsmiljön")
+
+    def _on_crash(traceback_text: str) -> None:
+        """Visa felruta med loggfilens sökväg vid ett ohanterat fel."""
+        try:
+            last_line = (traceback_text.strip().splitlines() or [""])[-1]
+            QMessageBox.critical(
+                None,
+                i18n.t("log.crash_title"),
+                i18n.t(
+                    "log.crash_body",
+                    error=last_line,
+                    log=str(LOG_FILE or "—"),
+                ),
+            )
+        except Exception:  # pragma: no cover – får aldrig kasta vidare
+            logger.exception("Kunde inte visa kraschdialogen")
+
+    if install_excepthook is not None:
+        install_excepthook(_on_crash)
 
     # Appikon överallt (v2.7.0): aktivitetshanterare/fält, tray, fönster.
     # AppUserModelID måste sättas innan fönstret skapas (Windows).
@@ -1301,42 +1475,62 @@ def main() -> None:
     app.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
+    step("3", "QApplication, appikon, Qt-loggning")
 
     # 4. SettingsManager
     settings_manager = SettingsManager(str(PROJECT_ROOT))
+    step(
+        "4",
+        "SettingsManager",
+        f"data={settings_manager.get_data_path()}",
+    )
 
     # 4b. Språk (i18n) – läses från settings.json innan UI byggs (v2.3.0)
     i18n.init(settings_manager)
     logger.info(f"  Språk: {i18n.current_language()}")
+    step("4b", "i18n initierat", f"språk={i18n.current_language()}")
 
     # 5. EventBus
     event_bus = EventBus()
+    step("5", "EventBus")
 
     # 6. ThemeManager
     theme_manager = ThemeManager(settings_manager)
     saved_theme   = settings_manager.get("theme", "system")
     if saved_theme in theme_manager.VALID_THEMES:
         theme_manager._current_theme = saved_theme
+    step("6", "ThemeManager", f"tema={saved_theme}")
 
     # 7. PluginManager
     plugin_manager = PluginManager(event_bus, settings_manager)
     plugins_dir    = PROJECT_ROOT / "plugins"
     discovered     = plugin_manager.discover_plugins(plugins_dir)
 
-    logger.info(f"{'='*50}")
-    logger.info(f"  {app_name} v{APP_VERSION}")
-    logger.info(f"{'='*50}")
-    logger.info(f"  Laddar plugins...")
+    logger.info("  Hittade %d plugin-mappar i %s", len(discovered), plugins_dir)
+    step("7", "Plugin-sökning", f"{len(discovered)} hittade")
 
     for plugin_info in discovered:
-        plugin_manager.load_plugin(plugin_info)
+        name = str(plugin_info.get("name", "?"))
+        t_plugin = time.perf_counter()
+        loaded = plugin_manager.load_plugin(plugin_info)
+        plugin = plugin_manager.plugins.get(name)
+        if loaded and plugin is not None:
+            logger.info(
+                "  ✓ %-28s v%-8s %5.0f ms",
+                plugin.get_name(),
+                getattr(plugin, "VERSION", "?"),
+                (time.perf_counter() - t_plugin) * 1000,
+            )
+        else:
+            logger.error("  ✗ %-28s kunde inte laddas", name)
 
+    t_init = time.perf_counter()
     plugin_manager.initialize_all()
-
-    logger.info(
-        f"  {len(plugin_manager.plugins)} plugins laddade"
+    step(
+        "7b",
+        "Plugins laddade",
+        f"{len(plugin_manager.plugins)} st, init {int((time.perf_counter() - t_init) * 1000)} ms",
     )
-    logger.info(f"{'='*50}")
 
     # 8. MainWindow – visas EJ (startar minimerat)
     main_window = MainWindow(
@@ -1347,26 +1541,40 @@ def main() -> None:
         plugin_manager=plugin_manager,
         lock=lock,
     )
+    tab_count = (
+        main_window._tab_widget.count()
+        if main_window._tab_widget is not None
+        else 0
+    )
+    step("8", "MainWindow", f"flikar={tab_count}")
 
     # 9. Applicera tema
     def _apply_theme(_: str = "") -> None:
         """Applicera QSS från ThemeManager på hela applikationen."""
-        qss = theme_manager.get_button_tab_stylesheet()
-        app.setStyleSheet(qss)
+        try:
+            qss = theme_manager.get_button_tab_stylesheet()
+            app.setStyleSheet(qss)
+            logger.debug("Tema applicerat (%d tecken QSS)", len(qss))
+        except Exception:
+            logger.exception("Kunde inte applicera temat")
 
     theme_manager.theme_changed.connect(_apply_theme)
     _apply_theme()  # Applicera direkt vid start
+    step("9", "Tema applicerat")
 
     # 10. Koppla single-instance-signal → visa fönster
     lock.instance_started.connect(main_window.show_application)
+    step("10", "Single-instance-signal kopplad")
 
     # 11. SystrayManager
     systray = SystrayManager(app, main_window)
     main_window.attach_tray(systray)   # så att språkbytet når systemfältet
+    step("11", "Systray", f"visas={systray._tray_icon.isVisible()}")
 
     # Synka autostart från sparad inställning
     saved_autostart = settings_manager.get("advanced.autostart", False)
     if saved_autostart != lock.get_autostart():
+        logger.info("Synkar autostart till %s", saved_autostart)
         lock.set_autostart(bool(saved_autostart))
 
     # 12. Notifiera att appen är redo
@@ -1383,15 +1591,37 @@ def main() -> None:
             "systray.notification_duration_ms", 3000
         ),
     )
+    step("12", "app:started emitterat")
+
+    logger.info(
+        "%s är redo – uppstart klar på %.0f ms",
+        app_name,
+        (time.perf_counter() - t_start) * 1000,
+    )
+    logger.info("Loggfil: %s", LOG_FILE or "—")
 
     # 13. Event-loop
     # OBS: main_window.show() anropas EJ → startar minimerat!
+    exit_code = 0
     try:
         exit_code = app.exec()
+    except Exception:
+        logger.exception("Ohanterat fel i event-loopen")
+        exit_code = 1
     finally:
+        logger.info("Stänger ned – exit-kkod %s", exit_code)
+        try:
+            plugin_manager.shutdown_all()
+        except Exception:
+            logger.exception("Fel vid avstängning av plugins")
         lock.release()
         event_bus.clear_all()
-        logger.info(f"{app_name} avslutat.")
+        logger.info(
+            "%s avslutat efter %.1f s.",
+            app_name,
+            time.perf_counter() - t_start,
+        )
+        logging.shutdown()
 
     sys.exit(exit_code)
 

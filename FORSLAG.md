@@ -1,6 +1,6 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02 (v2.6.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-02 (v2.8.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -66,18 +66,37 @@ Status per 2026-11-02 (v2.6.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** =
 
 ## Klart efter listan skrevs
 
-**v2.6.0**
+**v2.8.0 – Detaljerad loggning & inställningsdialog**
 
-- **Valbar sidlayout** för semester-/fordons-PDF: liggande A4 (270 mm tabell)
-  eller stående A4 (190 mm tabell).
-- **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
-  startmånad – allt sparas per flik.
+- **Loggning** (`core/logging_setup.py`): `data/app.log` med rotering
+  (2 MB × 5), tidsstämplar och modul:rad, `data/crash.log` via faulthandler,
+  Qt:s egna meddelanden i loggen och `SEMESTERLISTA_DEBUG=1` för DEBUG.
+- **Stegloggning** i `main.pyw`: varje uppstartssteg loggas med ms, plugins
+  med version, flikantal, tray-status, exit-kod och total körtid.
+- **Felruta** vid ohanterat fel med loggfilens sökväg; `core/settings_dialog.py`
+  saknas inte längre – och om den gör det startar appen ändå (menyvalet
+  inaktiveras och felet loggas).
+- **Inställningsdialog** (`core/settings_dialog.py`): flikarna Allmänt,
+  Fönster, Plugins och Avancerat – språk, tema, helgdagsregion, autostart,
+  systemfält, plugin-status, felsökningsläge samt knappar för att öppna
+  loggmappen och kopiera senaste loggen.
+- **PDF-loggning**: läge, år, startmånad, månader per blad, layout, antal
+  poster/sidor, filstorlek och tidsåtgång.
+- **Tester**: 126 (24 för loggningen, 15 för dialogen).
+
 
 **v2.7.0**
 
 - **Egen appikon överallt** (`assets/ikon` + `core/app_icon.py`): fönster,
   systemfält, aktivitetsfält och aktivitetshanterare (Windows
   AppUserModelID), dialoger och meddelanderutor.
+
+**v2.6.0**
+
+- **Valbar sidlayout** för semester-/fordons-PDF: liggande A4 (270 mm tabell)
+  eller stående A4 (190 mm tabell).
+- **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
+  startmånad – allt sparas per flik.
 
 ## Rekommenderad ordning härnäst
 

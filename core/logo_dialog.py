@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Logotypväljare (v2.7.0)
+Logotypväljare (v2.8.0)
 =======================
 
 Dialog som visar alla bilder som ligger i appens assets-mapp (även
@@ -48,7 +48,7 @@ from core.pdf_assets import AssetFile, assets_root, ensure_assets_dir, scan_asse
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.7.0"
+MODULE_VERSION: str = "2.8.0"
 
 #: Data-roll för den valda sökvägen på listobjekt
 _PATH_ROLE = Qt.ItemDataRole.UserRole
