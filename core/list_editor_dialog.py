@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Listredigerare (PySide6) – anställda, fordon och hyresgäster.
-v2.4.0
+v2.5.0
 =============================================================
 
 En gemensam dialog för att redigera appens textlistor direkt i programmet
@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.4.0"
+MODULE_VERSION: str = "2.5.0"
 
 
 # ══════════════════════════════════════════════════════════

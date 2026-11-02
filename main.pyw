@@ -8,6 +8,18 @@ laddar plugins som tabbar och hanterar all UI via PySide6.
 
 Körs utan terminalfönster (använd pythonw.exe eller .pyw på Windows).
 
+UPPDATERAD v2.5.0: FLIKAR FÖR HYRA, SEMESTERLISTA OCH FORDON + SVG-LOGOTYP.
+                   Nytt: fliken "Fordon" (plugins/fordon) – ärver
+                   lista-pluginets vy men låser läget till Limokörning.
+                   Flikarna sorteras på TAB_ORDER: Hyra → Semesterlista
+                   → Fordon, oberoende av mappordning.
+                   Nytt: core/pdf_assets.py – logotyper från assets/
+                   (även undermappar) bäddas in i PDF:en på varje sida.
+                   SVG stöds som vektor via svglib, annars rasteriseras
+                   den i 300 dpi med Qt (inget extra beroende).
+                   Nytt: core/logo_dialog.py – välj logotyp med
+                   förhandsgranskning; sparas per flik.
+                   APP_VERSION bumpat till 2.5.0.
 UPPDATERAD v2.4.0: BÄTTRE HANTERING AV ANSTÄLLDA, FORDON & HYRESGÄSTER.
                    Nytt: core/roster.py – en gemensam inläsare/skrivare för
                    Anställda.txt, Fordon.txt och Hyresgäster.txt
@@ -142,7 +154,7 @@ logger = logging.getLogger("main")
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.4.0"
+APP_VERSION: str = "2.5.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -251,9 +263,13 @@ class PluginManager:
                 )
                 return False
 
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
+            # Om modulen redan importerats (t.ex. för att en annan plugin
+            # ärver den) återanvänds den i stället för att köras igen.
+            module = sys.modules.get(module_name)
+            if module is None or getattr(module, "Plugin", None) is None:
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[spec.name] = module
+                spec.loader.exec_module(module)
 
             plugin_class = getattr(module, "Plugin", None)
             if plugin_class is None:
@@ -718,8 +734,14 @@ class MainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────
 
     def _load_plugin_tabs(self) -> None:
-        """Skapa tabbar för alla laddade plugins."""
-        for name in self._plugin_manager.get_plugin_order():
+        """
+        Skapa tabbar för alla laddade plugins.
+
+        v2.5.0: flikarna sorteras på pluginets TAB_ORDER (Hyra = 10,
+        Semesterlista = 20, Fordon = 30) så att ordningen blir densamma
+        oavsett i vilken ordning mapparna hittas.
+        """
+        for name in self._sorted_plugin_names():
             plugin = self._plugin_manager.get_plugin(name)
             if plugin is None:
                 continue
@@ -733,6 +755,24 @@ class MainWindow(QMainWindow):
                     )
             except Exception as e:
                 logger.error(f"Kunde inte skapa tabb för {name}: {e}")
+
+    def _sorted_plugin_names(self) -> List[str]:
+        """
+        Plugin-namn sorterade på TAB_ORDER, sedan på namn.
+
+        Returns:
+            List[str]: namn i den ordning flikarna ska skapas.
+        """
+        def order_key(plugin_name: str) -> tuple:
+            plugin = self._plugin_manager.get_plugin(plugin_name)
+            order = getattr(plugin, "TAB_ORDER", 100)
+            try:
+                order = int(order)
+            except (TypeError, ValueError):
+                order = 100
+            return (order, plugin_name.casefold())
+
+        return sorted(self._plugin_manager.get_plugin_order(), key=order_key)
 
     def _register_tab(
         self,

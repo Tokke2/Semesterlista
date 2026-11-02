@@ -80,6 +80,10 @@ class BasePlugin(ABC):
     AUTHOR:       str       = ""
     DEPENDENCIES: List[str] = []  # Plugin-namn (NAME) som krävs
 
+    #: Ordning bland flikarna i huvudfönstret (v2.4.0).
+    #: Lägre värde hamnar längre till vänster; lika värde sorteras på namn.
+    TAB_ORDER:    int       = 100
+
     # ──────────────────────────────────────────────────────────
     # Konstruktor
     # ──────────────────────────────────────────────────────────

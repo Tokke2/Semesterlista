@@ -3,7 +3,7 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.2.0                                                             ║
+║  Version: 2.5.0                                                             ║
 ║  Datum: 2026-06-05                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
@@ -38,6 +38,9 @@
     - 4.13 plugins/lista/plugin.py
     - 4.14 core/roster.py
     - 4.15 core/list_editor_dialog.py
+    - 4.16 core/pdf_assets.py
+    - 4.17 core/logo_dialog.py
+    - 4.18 plugins/fordon/plugin.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -54,6 +57,7 @@
 18. Kända Fel/Buggar & Åtgärdsplan
 19. Framtidsplan
 20. Hantering av Listor – Anställda, Fordon & Hyresgäster (v2.4.0)
+21. Flikar & Logotyp i PDF (v2.5.0)
 
 ---
 
@@ -106,6 +110,8 @@ Semesterlista/ ← Rotmapp
 │ ├── theme_manager.py ← 3 teman + QSS-generator
 │ ├── roster.py ← Listor: anställda/fordon/hyresgäster ← NY v2.4.0
 │ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
+│ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
+│ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0
 │ └── plugin_base.py ← Bakåtkompatibel brygga
 │
 ├── plugins/ ← Plugin-katalog
@@ -114,9 +120,12 @@ Semesterlista/ ← Rotmapp
 │ ├── hyra/ ← Hyresfakturering
 │ │ ├── init.py
 │ │ └── plugin.py ← Hyreslista-PDF
-│ └── lista/ ← Semesterlista & Limokörning
-│ ├── init.py
-│ └── plugin.py ← Semester- & limo-PDF
+│ ├── lista/ ← Semesterlista
+│ │ ├── init.py
+│ │ └── plugin.py ← Semesterlista-PDF
+│ └── fordon/ ← Fordon (limokörning) ← NY v2.5.0
+│   ├── init.py
+│   └── plugin.py ← Ärver lista-pluginets vy, låst läge
 │
 ├── data/ ← JSON-datafiler
 │ ├── settings.json ← Huvudinställningar
@@ -126,8 +135,14 @@ Semesterlista/ ← Rotmapp
 ├── Fordon.txt ← Indata: fordon (skapas vid behov)
 ├── Hyresgäster.txt ← Indata: hyresgäster (skapas vid behov)
 │
+├── assets/ ← Bilder till PDF:en ← NY v2.5.0
+│ ├── README.md ← Så används logotyperna
+│ └── logotyper/ ← Egna undermappar läses rekursivt
+│   └── exempel-logotyp.svg
+│
 ├── tests/ ← Enhetstester (unittest) ← NY v2.4.0
-│ └── test_roster.py ← Listor, format, validering, skrivning
+│ ├── test_roster.py ← Listor, format, validering, skrivning
+│ └── test_pdf_assets.py ← Logotyper, skalning, PDF-ritning
 ├── requirements.txt ← Python-beroenden
 └── spec.md ← Denna fil
 
@@ -1194,6 +1209,77 @@ KLASSER
     edit(path, name, parent, section_titles, base) → bool (klassmetod)
 ```
 
+### 4.16 `core/pdf_assets.py` ✅ v2.5.0
+
+**Ansvar:** Hitta bilder i `assets/` (rekursivt) och rita dem i PDF:en.
+
+| Funktion | Beskrivning |
+|----------|-------------|
+| `assets_root(base=None)` | `assets/` i appens rotmapp |
+| `ensure_assets_dir(base=None)` | Skapar mappen om den saknas |
+| `scan_assets(root=None, suffixes=..., recursive=True)` | Alla bilder, sorterade på relativ sökväg |
+| `find_asset(namn, root=None)` | Sök på relativ sökväg, filnamn eller stam |
+| `PdfLogo.load(path, max_width_mm=35, max_height_mm=16)` | Laddar SVG/PNG/JPG, bevarar proportioner |
+| `PdfLogo.draw_on(canvas, x, y)` | Ritar på en reportlab-canvas |
+| `PdfLogo.draw_corner(canvas, doc, margin_mm=8, corner="right")` | Övre högra hörnet |
+| `make_logo_canvas(logo, ...)` | Canvas-klass som ritar logotypen på **varje** sida |
+| `make_page_logo_drawer(logo, ...)` | onPage-callback (för reportlab-versioner som stöder det) |
+| `logo_for_settings(settings, key="logo_svg")` | Läser vald logotyp från inställningarna |
+
+**SVG-hantering (två vägar):**
+1. `svglib` installerat → `svg2rlg()` → vektorgrafik i PDF:en (bäst kvalitet).
+2. Annars → `QSvgRenderer` (PySide6) → PNG i 300 dpi, cachas i
+   `%TEMP%/Semesterlista/logotyper/`. Kräver inga extra beroenden.
+
+Misslyckas båda kastas `AssetError` med tydligt meddelande – PDF:en
+genereras ändå, utan logotyp (felet loggas som varning).
+
+**Varför `canvasmaker`:** `onFirstPage`/`onLaterPages` är inte giltiga
+argument i alla reportlab-versioner (de ignoreras då tyst). Genom att
+ärva `Canvas` och rita i `showPage()` hamnar logotypen på varje sida i
+alla versioner.
+
+---
+
+### 4.17 `core/logo_dialog.py` ✅ v2.5.0
+
+**Ansvar:** Låta användaren välja logotyp bland bilderna i `assets/`.
+
+- Lista (vänster) med alla bilder – även i undermappar, t.ex.
+  `logotyper/exempel-logotyp.svg`.
+- Förhandsgranskning (höger): `QSvgWidget` för SVG, `QLabel`/`QPixmap`
+  för PNG/JPG.
+- Knappar: **Bläddra till fil…** (bild utanför assets), **Uppdatera
+  lista**, **Ta bort** (ingen logotyp), **Använd**, **Avbryt**.
+- `choose_logo(parent, current="")` → `(ändrad, sökväg)`, där `""` =
+  ingen logotyp. Används av både Hyra- och Semester/Fordon-vyn.
+
+---
+
+### 4.18 `plugins/fordon/plugin.py` ✅ v2.5.0
+
+**Ansvar:** Egen flik för fordon/limokörning.
+
+Ärver `plugins/lista/plugin.py::Plugin` och ändrar bara:
+
+| Attribut | Värde | Effekt |
+|----------|-------|--------|
+| `NAME` | `"Fordon"` | Egen nyckel i `data/plugins.json` |
+| `FIXED_MODE` | `"Limokörning"` | Lägesväljaren döljs, PDF:en blir limokörningsschema |
+| `DEFAULT_LIST_FILE` | `"Fordon.txt"` | Standardlista |
+| `TAB_ORDER` | `30` | Fliken hamnar sist (Hyra 10, Semesterlista 20) |
+
+Vyn, PDF-generatorn, listredigeraren och logotypvalet återanvänds utan
+kopior. `Plugin._load_settings()` migrerar automatiskt gamla
+limo-inställningar (fil, startmånad, månader/blad) från den tidigare
+kombinerade fliken om den pekade på en fordonsfil.
+
+Inställningarna sparas i en egen lokal fil
+(`.../plugins/lista/settings-fordon.json`) så att flikarna inte skriver
+över varandra.
+
+---
+
 ## 5. DETALJERAD FUNKTIONALITET
 
 <!--
@@ -1302,6 +1388,12 @@ Dolda tabbar sparas i _tab_widgets dict, kan återställas
 Dynamiskt – fungerar med plugins som laddas/avlastas
 Tabb-ordning sparas i settings.json → tabs.order
 Scroll via mushjul på QTabBar (eventFilter)
+
+v2.5.0 – tre flikar med fast ordning:
+  Hyra (TAB_ORDER 10) → Semesterlista (20) → Fordon (30)
+  Ordningen styrs av pluginets TAB_ORDER (BasePlugin, standard 100)
+  och sorteras i MainWindow._sorted_plugin_names() – oberoende av i
+  vilken ordning mapparna hittas.
 text
 
 
@@ -1931,4 +2023,59 @@ validering och skrivning (UTF-8, CRLF, backup, tmp-städning).
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.4.0 | Datum: 2026-11-02 | Status: 48/50 (96%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+## 21. FLIKAR & LOGOTYP I PDF (v2.5.0)
+
+### 21.1 Flikar – hyra, semester, fordon
+
+| Flik | Plugin | Läge | Standardfil | Tabb |
+|------|--------|------|-------------|------|
+| 🏠 Hyra | `plugins/hyra` | – | `Hyresgäster.txt` | 1 |
+| 📅 Semesterlista | `plugins/lista` | `Semesterlista` (låst) | `Anställda.txt` | 2 |
+| 🚗 Fordon | `plugins/fordon` | `Limokörning` (låst) | `Fordon.txt` | 3 |
+
+- Lägesväljaren ("Semesterlista"/"Limokörning") döljs när fliken har ett
+  fast läge – fel lista kan inte skrivas ut av misstag.
+- Flikarna kan fortfarande döljas/visas via **Visa**-menyn och
+  högerklick på fliken; inställning görs i `data/plugins.json`
+  (`enabled: false`).
+- Namnen översätts: sv *Hyra/Semesterlista/Fordon*, en *Rent/Vacation
+  Schedule/Vehicles*.
+
+### 21.2 Logotyp i PDF
+
+1. Lägg bilden i `assets/` eller en undermapp (t.ex.
+   `assets/logotyper/`). SVG rekommenderas.
+2. Klicka **🖼️ Välj logotyp…** i fliken och välj fil
+   (förhandsgranskning + **Använd**).
+3. Logotypen ritas i övre högra hörnet på **varje sida** vid export –
+   både i Hyreslistan och i Semester-/Fordonslistan.
+4. **Ta bort** tar bort logotypen igen.
+
+Lagring: `data/plugins.json` → respektive plugin → `settings.logo_svg`
+(tom sträng = ingen logotyp). Relativa sökvägar tolkas mot appens rot.
+
+Storlek: max 35 × 16 mm (Semesterlista/Fordon), 30 × 12 mm (Hyra);
+proportionerna bevaras alltid.
+
+### 21.3 Felsökning
+
+| Symptom | Orsak / åtgärd |
+|---------|----------------|
+| "Inga bilder hittades i assets-mappen" | Mappen saknas/tom – lägg en SVG eller PNG där |
+| "Saknas: filnamn" i fliken | Filen är flyttad – välj logotyp igen |
+| SVG syns men blir suddig | `svglib` saknas → rasteriseras i 300 dpi; installera `svglib` för vektor |
+| Logotypen syns inte i PDF:en | Kontrollera att rätt flik valts – inställningen sparas per flik |
+
+### 21.4 Tester
+
+```bash
+python -m unittest discover -s tests -v      # 62 tester
+```
+
+`tests/test_pdf_assets.py` täcker sökning i undermappar, dolda filer,
+filtrering på ändelse, skalning/proportioner, PNG-ritning i PDF,
+logotyp på varje sida via `canvasmaker` samt felhantering (`AssetError`).
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.5.0 | Datum: 2026-11-02 | Status: 49/50 (98%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

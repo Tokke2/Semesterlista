@@ -6,6 +6,15 @@ Semesterlista & Limokörning Plugin – UPPDATERAD (PySide6 + BasePlugin)
 
 Plugin för att generera semesterlistor och limokörningsscheman i PDF-format.
 
+NYTT v2.5.0:
+  - Fliken visar ett LÅST läge (Semesterlista). Limokörning har fått en
+    egen flik: plugins/fordon (FIXED_MODE = "Limokörning").
+  - Logotyp i PDF:en: knappen "Välj logotyp…" hämtar en SVG/PNG/JPG från
+    appens assets-mapp (även undermappar) via core/logo_dialog.py och
+    core/pdf_assets.py. Logotypen ritas på varje sida.
+  - Inställningarna sparas per plugin (settings-fordon.json för Fordon)
+    så att flikarna inte skriver över varandra.
+
 NYTT v2.4.0:
   - Listorna (Anställda.txt / Fordon.txt) läses via core/roster.py:
     kommentarer, blandade teckenkodningar, tomma rader och dubbletter
@@ -91,6 +100,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 
 from core import i18n
+from core.pdf_assets import AssetError, PdfLogo, logo_for_settings, make_logo_canvas
 from core.roster import RosterError, read_names, resolve_path
 
 from plugins.base_plugin import BasePlugin
@@ -117,7 +127,7 @@ FONT_SIZE = 7
 PLUGIN_INFO = {
     "id": "semesterlista",
     "name": "Semesterlista & Limokörning",
-    "version": "2.2.0",
+    "version": "2.5.0",
     "author": "Din Organisation",
     "description": "Genererar semesterlistor och limokörningsscheman i PDF-format",
 }
@@ -683,6 +693,19 @@ class PDFGenerator:
             QMessageBox.critical(None, "Fel", f"Fel vid PDF-generering: {e}")
             return False
 
+    def _page_logo(self) -> Optional[PdfLogo]:
+        """
+        Ladda logotypen som valts i inställningarna (v2.4.0).
+
+        Returnerar None om ingen logotyp är vald eller om filen inte kan
+        läsas – PDF:en genereras ändå, utan logotyp.
+        """
+        try:
+            return logo_for_settings(self.plugin.settings, key="logo_svg")
+        except AssetError as exc:
+            logger.warning(f"Logotypen kunde inte laddas: {exc}")
+            return None
+
     def _validate_inputs(
         self,
         year_str: str,
@@ -943,6 +966,14 @@ class PDFGenerator:
         side_margin = (297.0 - 270.0) / 2.0
         top_margin = 12.0
 
+        # Logotyp (v2.4.0) – ritas i övre högra hörnet på varje sida.
+        # Används som canvasmaker eftersom onFirstPage/onLaterPages inte
+        # stöds av alla reportlab-versioner.
+        logo_canvas = make_logo_canvas(self._page_logo(), margin_mm=6.0)
+        build_kwargs: Dict[str, Any] = {}
+        if logo_canvas is not None:
+            build_kwargs["canvasmaker"] = logo_canvas
+
         doc = SimpleDocTemplate(
             filename,
             pagesize=landscape(A4),
@@ -1135,7 +1166,7 @@ class PDFGenerator:
             if page_index < len(pages) - 1:
                 elements.append(PageBreak())
 
-        doc.build(elements)
+        doc.build(elements, **build_kwargs)
 
         selected_start_value = 0 if start_month is None else start_month
         start_text = (
@@ -1197,9 +1228,27 @@ class SemesterlistaView(QWidget):
     generate_requested = Signal(str, str, str, int, int)
     # (year_str, file_path, mode, months_per_page, start_month_index)
 
-    def __init__(self, plugin: "Plugin", parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        plugin: "Plugin",
+        parent: Optional[QWidget] = None,
+        mode: Optional[str] = None,
+        file_name: str = "",
+    ):
+        """
+        Skapa vyn.
+
+        Args:
+            plugin:    Pluginet som äger vyn.
+            parent:    Förälder-widget.
+            mode:      Låst läge ("Semesterlista"/"Limokörning"). None =
+                       användaren kan välja läge i listan.
+            file_name: Standardfil när inget annat sparats.
+        """
         super().__init__(parent)
         self.plugin: "Plugin" = plugin
+        self._fixed_mode: Optional[str] = mode or plugin.FIXED_MODE
+        self._default_file: str = file_name or plugin.DEFAULT_LIST_FILE
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
@@ -1211,12 +1260,13 @@ class SemesterlistaView(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(12)
 
-        title = QLabel("📅 Semesterlista & Limokörning")
+        is_vehicle = (self._fixed_mode or "Semesterlista") != "Semesterlista"
+        title = QLabel(i18n.t("fordon.title") if is_vehicle else i18n.t("lista.title"))
         title.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
         main_layout.addWidget(title)
 
         desc = QLabel(
-            "Generera PDF-listor för semesterplanering eller limokörningsscheman"
+            i18n.t("fordon.description") if is_vehicle else i18n.t("lista.description")
         )
         desc.setFont(QFont("Helvetica", 10))
         desc.setStyleSheet("color: #666;")
@@ -1243,18 +1293,25 @@ class SemesterlistaView(QWidget):
         form_layout.setContentsMargins(15, 20, 15, 15)
         form_layout.setSpacing(10)
 
-        mode_label = QLabel("Läge:")
-        mode_label.setFont(QFont("Helvetica", 10))
-        form_layout.addWidget(mode_label, 0, 0)
+        self.mode_label = QLabel("Läge:")
+        self.mode_label.setFont(QFont("Helvetica", 10))
+        form_layout.addWidget(self.mode_label, 0, 0)
 
         self.mode_combo = QComboBox()
         self.mode_combo.addItems(["Semesterlista", "Limokörning"])
-        default_mode = self.plugin.settings.get("default_mode", "Semesterlista")
+        default_mode = self._fixed_mode or self.plugin.settings.get(
+            "default_mode", "Semesterlista"
+        )
         idx = self.mode_combo.findText(default_mode)
         if idx >= 0:
             self.mode_combo.setCurrentIndex(idx)
         self.mode_combo.currentTextChanged.connect(self._on_mode_change)
         form_layout.addWidget(self.mode_combo, 0, 1)
+
+        if self._fixed_mode:
+            # Fliken har ett fast läge (t.ex. Fordon) – ingen väljare behövs
+            self.mode_label.setVisible(False)
+            self.mode_combo.setVisible(False)
 
         year_label = QLabel("År:")
         year_label.setFont(QFont("Helvetica", 10))
@@ -1309,7 +1366,9 @@ class SemesterlistaView(QWidget):
 
         file_row = QHBoxLayout()
         self.file_edit = QLineEdit()
-        self.file_edit.setText(self.plugin.settings.get("last_file", "Anställda.txt"))
+        self.file_edit.setText(
+            self.plugin.settings.get("last_file") or self._default_file
+        )
         self.file_edit.setMinimumWidth(250)
         self.file_edit.editingFinished.connect(self._update_list_count)
         file_row.addWidget(self.file_edit)
@@ -1331,6 +1390,29 @@ class SemesterlistaView(QWidget):
         self.count_label.setFont(QFont("Helvetica", 9))
         form_layout.addWidget(self.count_label, 5, 0, 1, 2)
 
+        # Logotyp i PDF:en (v2.4.0) – väljs från assets-mappen
+        logo_label = QLabel(i18n.t("logo.label"))
+        logo_label.setFont(QFont("Helvetica", 10))
+        form_layout.addWidget(logo_label, 6, 0)
+
+        logo_row = QHBoxLayout()
+        self.logo_status = QLabel("")
+        self.logo_status.setFont(QFont("Helvetica", 9))
+        self.logo_status.setStyleSheet("color: #666;")
+        logo_row.addWidget(self.logo_status, 1)
+
+        self.logo_btn = QPushButton("🖼️ " + i18n.t("logo.choose"))
+        self.logo_btn.setToolTip(i18n.t("logo.dialog_hint"))
+        self.logo_btn.clicked.connect(self._choose_logo)
+        logo_row.addWidget(self.logo_btn)
+
+        self.logo_clear_btn = QPushButton(i18n.t("logo.clear"))
+        self.logo_clear_btn.clicked.connect(self._clear_logo)
+        logo_row.addWidget(self.logo_clear_btn)
+
+        form_layout.addLayout(logo_row, 6, 1)
+
+        self._update_logo_label()
         self._on_mode_change(self.mode_combo.currentText())
         self._update_list_count()
         return group
@@ -1402,6 +1484,9 @@ class SemesterlistaView(QWidget):
     @Slot(str)
     def _on_mode_change(self, mode: str) -> None:
         """Uppdatera fil-etikett, default-filnamn och antal poster."""
+        if self._fixed_mode:
+            mode = self._fixed_mode
+
         if mode == "Semesterlista":
             self.file_label.setText(i18n.t("lista.file.employees"))
             if not self.file_edit.text() or self.file_edit.text() == "Fordon.txt":
@@ -1424,6 +1509,55 @@ class SemesterlistaView(QWidget):
         self.plugin.settings["start_month"] = index
         self.plugin._save_settings()
 
+    # ──────────────────────────────────────────────────────
+    # Logotyp
+    # ──────────────────────────────────────────────────────
+
+    def _logo_path(self) -> str:
+        """Sökvägen till vald logotyp ('' om ingen är vald)."""
+        return str(self.plugin.settings.get("logo_svg") or "")
+
+    def _update_logo_label(self) -> None:
+        """Visa vald logotyp i formuläret."""
+        if not hasattr(self, "logo_status"):
+            return
+
+        value = self._logo_path()
+        if not value:
+            self.logo_status.setStyleSheet("color: #666;")
+            self.logo_status.setText(i18n.t("logo.no_logo"))
+            return
+
+        path = resolve_path(value)
+        if not path.exists():
+            self.logo_status.setStyleSheet("color: #c0392b;")
+            self.logo_status.setText(i18n.t("logo.missing_file", path=path.name))
+            return
+
+        self.logo_status.setStyleSheet("color: #666;")
+        self.logo_status.setText(i18n.t("logo.selected", name=path.name))
+
+    def _choose_logo(self) -> None:
+        """Öppna logotypväljaren (assets-mappen + undermappar)."""
+        from core.logo_dialog import choose_logo
+
+        changed, path = choose_logo(self, current=self._logo_path())
+        if not changed:
+            return
+
+        self.plugin.settings["logo_svg"] = path
+        self.plugin._save_settings()
+        self._update_logo_label()
+
+    def _clear_logo(self) -> None:
+        """Ta bort logotypen från PDF-exporten."""
+        if not self._logo_path():
+            return
+
+        self.plugin.settings["logo_svg"] = ""
+        self.plugin._save_settings()
+        self._update_logo_label()
+
     def _browse_file(self) -> None:
         """Öppna filväljardialog."""
         filename, _ = QFileDialog.getOpenFileName(
@@ -1440,11 +1574,8 @@ class SemesterlistaView(QWidget):
         """Sökväg till vald lista (relativa namn tolkas mot appens rotmapp)."""
         name = self.file_edit.text().strip()
         if not name:
-            name = (
-                "Fordon.txt"
-                if self.mode_combo.currentText() == "Limokörning"
-                else "Anställda.txt"
-            )
+            mode = self._fixed_mode or self.mode_combo.currentText()
+            name = self._default_file if mode == "Limokörning" else "Anställda.txt"
         return resolve_path(name)
 
     def _manage_list(self) -> None:
@@ -1556,9 +1687,19 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.2.0"
+    VERSION: str = "2.5.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
+
+    #: Flikens läge. None = användaren väljer mellan semester och limo.
+    #: Fordonspluginet ärver denna klass och sätter "Limokörning".
+    FIXED_MODE: Optional[str] = "Semesterlista"
+
+    #: Standardfil när inget annat sparats
+    DEFAULT_LIST_FILE: str = "Anställda.txt"
+
+    #: Ordning bland flikarna i huvudfönstret (lägre = längre vänster)
+    TAB_ORDER: int = 20
 
     def __init__(
         self,
@@ -1577,7 +1718,11 @@ class Plugin(BasePlugin):
 
     def get_tab_widget(self) -> QWidget:
         if self._main_view is None:
-            self._main_view = SemesterlistaView(plugin=self)
+            self._main_view = SemesterlistaView(
+                plugin=self,
+                mode=self.FIXED_MODE,
+                file_name=self.DEFAULT_LIST_FILE,
+            )
         return self._main_view
 
     def _load_settings(self) -> Dict[str, Any]:
@@ -1599,7 +1744,12 @@ class Plugin(BasePlugin):
             "last_file": "",
             "months_per_page": 3,
             "start_month": 0,
+            "logo_svg": "",
         }
+
+        if self.FIXED_MODE:
+            default_settings["default_mode"] = self.FIXED_MODE
+            default_settings["last_file"] = self.DEFAULT_LIST_FILE
 
         try:
             saved = self.get_settings()
@@ -1609,7 +1759,7 @@ class Plugin(BasePlugin):
         except Exception:
             pass
 
-        settings_file = os.path.join(get_plugin_data_folder(), "settings.json")
+        settings_file = self._settings_file()
         try:
             if os.path.exists(settings_file):
                 with open(settings_file, "r", encoding="utf-8") as f:
@@ -1620,6 +1770,23 @@ class Plugin(BasePlugin):
 
         return default_settings
 
+    def _settings_file(self) -> str:
+        """
+        Sökväg till pluginets lokala JSON-inställningsfil (v2.4.0).
+
+        Huvudpluginet behåller "settings.json" för bakåtkompatibilitet;
+        ärvda plugins (t.ex. Fordon) får en egen fil så att de inte
+        skriver över varandras inställningar.
+        """
+        folder = get_plugin_data_folder()
+        if self.get_name() == PLUGIN_INFO["name"]:
+            return os.path.join(folder, "settings.json")
+
+        safe = "".join(
+            char for char in self.get_name().casefold() if char.isalnum()
+        ) or "plugin"
+        return os.path.join(folder, f"settings-{safe}.json")
+
     def _save_settings(self) -> None:
         """Spara inställningar till SettingsManager + lokal JSON."""
         try:
@@ -1627,7 +1794,7 @@ class Plugin(BasePlugin):
         except Exception:
             pass
 
-        settings_file = os.path.join(get_plugin_data_folder(), "settings.json")
+        settings_file = self._settings_file()
         try:
             with open(settings_file, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=4, ensure_ascii=False)

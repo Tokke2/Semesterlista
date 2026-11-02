@@ -293,12 +293,39 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.saved":                  "Inställningar sparade.",
         "settings.no_plugins":             "Inga plugins hittades.",
 
+        # ── Flikar: Hyra, Semesterlista, Fordon ───────────
+        "fordon.tab_name":                 "Fordon",
+        "fordon.plugin_description":       "Limokörningsscheman per fordon som PDF",
+        "fordon.title":                    "\U0001F697 Fordonsschema",
+        "fordon.description":              "Generera limokörningsscheman per fordon som PDF",
+
+        # ── Logotyp i PDF ─────────────────────────────────
+        "logo.label":                      "Logotyp:",
+        "logo.no_logo":                    "Ingen logotyp",
+        "logo.choose":                     "Välj logotyp…",
+        "logo.clear":                      "Ta bort",
+        "logo.browse":                     "Bläddra till fil…",
+        "logo.rescan":                     "Uppdatera lista",
+        "logo.dialog_title":               "Välj logotyp",
+        "logo.dialog_hint":                "Bilder från mappen assets och dess undermappar. SVG rekommenderas.",
+        "logo.preview":                    "Förhandsgranskning",
+        "logo.folder":                     "Mapp: {path}",
+        "logo.assets":                     "Bilder i assets:",
+        "logo.empty":                      "Inga bilder hittades i assets-mappen.",
+        "logo.outside_assets":             "utanför assets",
+        "logo.missing":                    "Filen finns inte: {path}",
+        "logo.error":                      "Kunde inte läsa logotypen: {error}",
+        "logo.ok":                         "Använd",
+        "logo.cancel":                     "Avbryt",
+        "logo.selected":                   "Logotyp: {name}",
+        "logo.missing_file":               "Saknas: {path}",
+
         # ── Semesterlista & Limokörning ───────────────────
-        "lista.tab_name":                  "Semesterlista & Limokörning",
+        "lista.tab_name":                  "Semesterlista",
         "lista.plugin_description":        "Semesterlistor och limokörningsscheman som PDF",
         "lista.window_title":              "Inställningar – Semesterlista",
-        "lista.title":                     "📅 Semesterlista & Limokörning",
-        "lista.description":               "Generera PDF-listor för semesterplanering eller limokörningsscheman",
+        "lista.title":                     "📅 Semesterlista",
+        "lista.description":               "Generera semesterlistor som PDF",
         "lista.group.settings":            "Inställningar",
         "lista.group.legend":              "Färgförklaring i PDF",
         "lista.mode":                      "Läge:",
@@ -381,7 +408,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "lista.tests.12":                  "12. Helgdagsval följer Inställningar",
 
         # ── Hyresfakturering ──────────────────────────────
-        "hyra.tab_name":                   "Hyresfakturering",
+        "hyra.tab_name":                   "Hyra",
         "hyra.plugin_description":         "Hyreslistor med tomma kryssrutor som PDF",
         "hyra.title":                      "🏠 Hyresfakturering",
         "hyra.year":                       "År:",
@@ -610,12 +637,39 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.saved":                  "Settings saved.",
         "settings.no_plugins":             "No plugins found.",
 
+        # ── Tabs: Rent, Vacation, Vehicles ────────────────
+        "fordon.tab_name":                 "Vehicles",
+        "fordon.plugin_description":       "Limo run schedules per vehicle as PDF",
+        "fordon.title":                    "\U0001F697 Vehicle Schedule",
+        "fordon.description":              "Generate limo run schedules per vehicle as PDF",
+
+        # ── Logo in PDF ───────────────────────────────────
+        "logo.label":                      "Logo:",
+        "logo.no_logo":                    "No logo",
+        "logo.choose":                     "Choose logo…",
+        "logo.clear":                      "Remove",
+        "logo.browse":                     "Browse…",
+        "logo.rescan":                     "Refresh",
+        "logo.dialog_title":               "Choose logo",
+        "logo.dialog_hint":                "Images from the assets folder and its subfolders. SVG recommended.",
+        "logo.preview":                    "Preview",
+        "logo.folder":                     "Folder: {path}",
+        "logo.assets":                     "Images in assets:",
+        "logo.empty":                      "No images found in the assets folder.",
+        "logo.outside_assets":             "outside assets",
+        "logo.missing":                    "File not found: {path}",
+        "logo.error":                      "Could not read the logo: {error}",
+        "logo.ok":                         "Use",
+        "logo.cancel":                     "Cancel",
+        "logo.selected":                   "Logo: {name}",
+        "logo.missing_file":               "Missing: {path}",
+
         # ── Vacation schedule & Limo runs ─────────────────
-        "lista.tab_name":                  "Vacation Schedule & Limo Runs",
+        "lista.tab_name":                  "Vacation Schedule",
         "lista.plugin_description":        "Vacation schedules and limo run schedules as PDF",
         "lista.window_title":              "Settings – Vacation Schedule",
-        "lista.title":                     "📅 Vacation Schedule & Limo Runs",
-        "lista.description":               "Generate PDF lists for vacation planning or limo run schedules",
+        "lista.title":                     "📅 Vacation Schedule",
+        "lista.description":               "Generate PDF vacation schedule lists",
         "lista.group.settings":            "Settings",
         "lista.group.legend":              "Colour key in the PDF",
         "lista.mode":                      "Mode:",
@@ -698,7 +752,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "lista.tests.12":                  "12. Holiday region follows Settings",
 
         # ── Rent invoicing ────────────────────────────────
-        "hyra.tab_name":                   "Rent Invoicing",
+        "hyra.tab_name":                   "Rent",
         "hyra.plugin_description":         "Rent lists with empty check boxes as PDF",
         "hyra.title":                      "🏠 Rent Invoicing",
         "hyra.year":                       "Year:",
@@ -788,12 +842,16 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 PLUGIN_NAME_KEYS: Dict[str, str] = {
     "Semesterlista & Limokörning": "lista.tab_name",
     "Hyresfakturering":            "hyra.tab_name",
+    "Semesterlista":               "lista.tab_name",
+    "Hyra":                        "hyra.tab_name",
+    "Fordon":                      "fordon.tab_name",
 }
 
 # Mappnamn i plugins/ → internt plugin-namn
 PLUGIN_FOLDER_NAMES: Dict[str, str] = {
-    "lista": "Semesterlista & Limokörning",
-    "hyra":  "Hyresfakturering",
+    "lista":   "Semesterlista",
+    "hyra":    "Hyra",
+    "fordon":  "Fordon",
 }
 
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 List- och namnhantering (roster) – anställda, fordon och hyresgäster.
-v2.4.0
+v2.5.0
 =====================================================================
 
 En gemensam, Qt-fri modul för de textlistor appen bygger på:
@@ -57,7 +57,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.4.0"
+MODULE_VERSION: str = "2.5.0"
 
 # ──────────────────────────────────────────────────────────
 # Format

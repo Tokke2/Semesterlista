@@ -5,6 +5,12 @@ Hyresfakturering Plugin – UPPDATERAD (PySide6 + BasePlugin)
 Plugin för att generera hyreslistor med tomma kryssrutor för
 månads- och kvartalshyresgäster.
 
+UPPDATERAD v2.5.0: Fliken heter "Hyra" (TAB_ORDER 10).
+                   Logotyp i PDF:en: "Välj logotyp…" hämtar en bild från
+                   appens assets-mapp (även undermappar) och ritar den i
+                   övre högra hörnet på varje sida.
+                   Inställningarna sparas per plugin (self.settings).
+
 UPPDATERAD v2.2.0: Synkad med settings_manager.py v2.2.0,
                    base_plugin.py v2.2.0, event_bus.py v2.2.0
                    och theme_manager.py v2.2.0.
@@ -66,7 +72,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 
 from core import i18n
-from core.roster import RosterError, RosterFile
+from core.pdf_assets import (
+    AssetError,
+    PdfLogo,
+    logo_for_settings,
+    make_logo_canvas,
+)
+from core.roster import RosterError, RosterFile, resolve_path
 
 from plugins.base_plugin import BasePlugin
 
@@ -83,7 +95,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.2.0",
+    "version":     "2.5.0",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -361,6 +373,7 @@ class HyraMainView(QWidget):
 
         main_layout.addLayout(self._create_top_panel())
         main_layout.addLayout(self._create_file_info_row())
+        self._update_logo_label()
         main_layout.addWidget(self._create_quarter_info_panel())
         main_layout.addWidget(self._create_tenant_overview(), stretch=1)
         main_layout.addLayout(self._create_button_bar())
@@ -396,6 +409,21 @@ class HyraMainView(QWidget):
         layout.addWidget(file_label)
         layout.addStretch()
 
+        # Logotyp i PDF:en (v2.4.0) – väljs från assets-mappen
+        self.logo_status = QLabel("")
+        self.logo_status.setFont(QFont("Helvetica", 9))
+        self.logo_status.setStyleSheet("color: #666;")
+        layout.addWidget(self.logo_status)
+
+        self.logo_btn = QPushButton("🖼️ " + i18n.t("logo.choose"))
+        self.logo_btn.setToolTip(i18n.t("logo.dialog_hint"))
+        self.logo_btn.clicked.connect(self._choose_logo)
+        layout.addWidget(self.logo_btn)
+
+        self.logo_clear_btn = QPushButton(i18n.t("logo.clear"))
+        self.logo_clear_btn.clicked.connect(self._clear_logo)
+        layout.addWidget(self.logo_clear_btn)
+
         edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
         edit_btn.clicked.connect(self.plugin._manage_tenants)
         edit_btn.setToolTip(i18n.t("hyra.manage_tenants.tooltip"))
@@ -407,6 +435,55 @@ class HyraMainView(QWidget):
         layout.addWidget(reload_btn)
 
         return layout
+
+    # ──────────────────────────────────────────────────────
+    # Logotyp (v2.4.0)
+    # ──────────────────────────────────────────────────────
+
+    def _logo_path(self) -> str:
+        """Sökvägen till vald logotyp ('' om ingen är vald)."""
+        return str(self.plugin.settings.get("logo_svg") or "")
+
+    def _update_logo_label(self) -> None:
+        """Visa vald logotyp i fil-raden."""
+        if not hasattr(self, "logo_status"):
+            return
+
+        value = self._logo_path()
+        if not value:
+            self.logo_status.setStyleSheet("color: #666;")
+            self.logo_status.setText(i18n.t("logo.no_logo"))
+            return
+
+        path = resolve_path(value)
+        if not path.exists():
+            self.logo_status.setStyleSheet("color: #c0392b;")
+            self.logo_status.setText(i18n.t("logo.missing_file", path=path.name))
+            return
+
+        self.logo_status.setStyleSheet("color: #666;")
+        self.logo_status.setText(i18n.t("logo.selected", name=path.name))
+
+    def _choose_logo(self) -> None:
+        """Öppna logotypväljaren (assets-mappen + undermappar)."""
+        from core.logo_dialog import choose_logo
+
+        changed, path = choose_logo(self, current=self._logo_path())
+        if not changed:
+            return
+
+        self.plugin.settings["logo_svg"] = path
+        self.plugin._save_settings()
+        self._update_logo_label()
+
+    def _clear_logo(self) -> None:
+        """Ta bort logotypen från PDF-exporten."""
+        if not self._logo_path():
+            return
+
+        self.plugin.settings["logo_svg"] = ""
+        self.plugin._save_settings()
+        self._update_logo_label()
 
     def _create_quarter_info_panel(self) -> QGroupBox:
         """Skapa färgkodad info-panel för kvartalsfakturor."""
@@ -635,6 +712,14 @@ class PDFGenerator:
             return False
 
         try:
+            # Logotyp (v2.4.0) – ritas i övre högra hörnet på varje sida
+            logo_canvas = make_logo_canvas(
+                self._page_logo(), margin_mm=8.0, corner="right"
+            )
+            build_kwargs: Dict[str, Any] = {}
+            if logo_canvas is not None:
+                build_kwargs["canvasmaker"] = logo_canvas
+
             doc = SimpleDocTemplate(
                 filename,
                 pagesize=A4,
@@ -701,7 +786,7 @@ class PDFGenerator:
                 footer_style,
             ))
 
-            doc.build(elements)
+            doc.build(elements, **build_kwargs)
 
             QMessageBox.information(
                 None,
@@ -726,6 +811,19 @@ class PDFGenerator:
                 f"Kunde inte generera PDF:\n{e}",
             )
             return False
+
+    def _page_logo(self) -> Optional[PdfLogo]:
+        """Ladda vald logotyp (None om ingen är vald eller filen saknas)."""
+        try:
+            return logo_for_settings(
+                self.plugin.settings,
+                key="logo_svg",
+                max_width_mm=30.0,
+                max_height_mm=12.0,
+            )
+        except AssetError as exc:
+            logger.warning(f"Logotypen kunde inte laddas: {exc}")
+            return None
 
     def _add_quarter_info(self, elements: list, styles) -> None:
         """Lägg till kvartalsfaktura-information i PDF."""
@@ -865,9 +963,12 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.2.0"
+    VERSION:     str = "2.5.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
+
+    #: Ordning bland flikarna i huvudfönstret (lägst = längst till vänster)
+    TAB_ORDER:   int = 10
 
     def __init__(
         self,
@@ -877,6 +978,10 @@ class Plugin(BasePlugin):
         super().__init__(event_bus, settings_manager)
         self.tenant_manager: TenantManager          = TenantManager()
         self._main_view:     Optional[HyraMainView] = None
+
+        # Lokal kopia av pluginets inställningar (v2.4.0 – logotyp m.m.)
+        self.settings: Dict[str, Any] = dict(self.get_settings() or {})
+        self.settings.setdefault("logo_svg", "")
 
         # Återställ sparat år
         saved = self.get_settings()
@@ -889,6 +994,13 @@ class Plugin(BasePlugin):
     def get_name(self) -> str:
         """Returnera pluginens unika namn."""
         return self.NAME
+
+    def _save_settings(self) -> None:
+        """Spara pluginets inställningar till plugins.json (v2.4.0)."""
+        try:
+            self.save_settings(self.settings)
+        except Exception as exc:  # pragma: no cover – defensivt
+            logger.error(f"Kunde inte spara inställningar: {exc}")
 
     def get_version(self) -> str:
         """Returnera pluginens versionssträng."""
