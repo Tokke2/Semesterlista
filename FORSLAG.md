@@ -1,6 +1,8 @@
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
-Status per 2026-11-02 (v2.10.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Status per 2026-11-03 (v2.11.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.
+Den ursprungliga listan står kvar nedan; **25 helt nya förslag** finns i
+avsnittet ”25 nya förslag” längst ner.
 
 ## Flikar & logotyp (från senaste önskemålen)
 
@@ -160,7 +162,128 @@ Status per 2026-11-02 (v2.10.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** 
 - **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
   startmånad – allt sparas per flik.
 
-## Rekommenderad ordning härnäst
+## 25 nya förslag (2026-11-03, v2.11.0)
+
+Nya idéer som bygger vidare på det som finns i koden i dag (298 tester,
+frånvarostöd, smart cache). N-numren krockar inte med listan ovan.
+
+### Listor & frånvaro
+
+**N1. Bemanningsvarning** – appen vet redan vem som är ledig. Varna i vyn när
+fler än *N* personer (inställning, t.ex. 3) är lediga samma vecka, och visa
+veckan med en notis i PDF:en. Fångar den vanligaste missen: att halva laget är
+borta v. 52. *Insats: liten.*
+
+**N2. Ledighetsöversikt i PDF:en** – en valfri extra sida som listar alla
+perioder: namn, från–till, antal dagar, vecka. Ekonomi och HR slipper läsa tolv
+tabeller för att hitta frånvaron. *Insats: liten–medel.*
+
+**N3. Sökfält i listredigeraren** – filtrera listan medan du skriver
+(`QLineEdit` + filtrerande modell). Oumbärligt vid 50+ namn. *Insats: liten.*
+
+**N4. Direktvalidering när man skriver** – röd rad om posten är längre än 80
+tecken eller frånvaron inte går att tolka, med orsaken i verktygstipset. I dag
+upptäcks felet först när filen läses in. *Insats: liten.*
+
+**N5. Visa tolkad frånvaro i listan** – verktygstips eller kolumn med
+”21/12 2026 – 4/1 2027 (15 dagar)”, så man ser att veckosnäppningen blev rätt
+innan man skriver ut. *Insats: liten.*
+
+**N6. Dra och släpp en txt-fil på fönstret** – byt lista genom att släppa filen
+på fliken (`dragEnterEvent`/`dropEvent`) med bekräftelse. *Insats: liten.*
+
+**N7. Automatisk säkerhetskopia av listfilerna** – kopiera till
+`data/backup/listor/<datum>_Anställda.txt` (behåll 10) före varje sparning,
+plus *Återställ från kopia*. I dag säkerhetskopieras bara vid uppdatering.
+*Insats: liten.*
+
+**N8. Statusrad + automatisk omläsning** – under listan: ”12 anställda ·
+3 med frånvaro · filen ändrad 14:12”. `QFileSystemWatcher` läser om filen om
+någon redigerar den i Notepad samtidigt. *Insats: medel.*
+
+### PDF & utskrift
+
+**N9. Sidfot med sidnummer och datum** – ”Sida 2 av 4 · 2026-11-03”. PDF:en har
+ingen sidfot alls i dag, vilket märks när bladen tappas bort. *Insats: liten.*
+
+**N10. PDF-metadata** – titel, författare, ämne och nyckelord via
+`doc.setTitle(...)`, så filen går att söka upp i Utforskaren och i
+dokumenthanteringssystem. *Insats: liten.*
+
+**N11. Egen rubrik överst** – valfri text (företag/avdelning) ovanför tabellen,
+sparas per flik och kan användas i filnamnet. *Insats: liten.*
+
+**N12. Utskrift som fungerar i svartvitt** – mönster eller symboler i cellerna
+(helg, halvdag, lördag, ledig) som komplement till färgerna. Fungerar på
+kontorets svartvita skrivare och för färgblinda. *Insats: medel.*
+
+**N13. Årsöversikt på ett blad** – 12 miniatyrmånader på A3 för anslagstavlan:
+samma data som i dag, men överskådligt på en enda sida. *Insats: medel.*
+
+**N14. Filnamnsmall + ”öppna mappen efter export”** – inställning som ger t.ex.
+`Semesterlista_2026_v44.pdf`, och en kryssruta som öppnar mappen i Utforskaren
+när filen är klar. *Insats: liten.*
+
+**N15. Tidsstämpel i sidfoten** – ”underlag 2026-11-03 14:12”, så att ingen
+skriver ut en gammal version utan att märka det. *Insats: liten.*
+
+### Vyn & arbetsflödet
+
+**N16. Klicka på ett datum → vilka är lediga?** – klick i tabellen visar en
+lista för dagen (och veckan). Bra vid akuta bemanningsfrågor. *Insats: medel.*
+
+**N17. Påminnelse i systemfältet** – ”dags att uppdatera listan” på valt
+intervall (t.ex. första måndagen i månaden), med en länk som öppnar fliken.
+*Insats: liten–medel.*
+
+**N18. Hjälpmenyn: ”Visa senaste felen” och ”Kopiera systeminfo”** – sista
+raderna ur `data/app.log`/`crash.log` i en dialog, plus en knapp som kopierar
+version, Python, Qt, pluginversioner och sökvägar. Halverar
+felsökningsfrågorna. *Insats: liten.*
+
+**N19. Snabbvägar i Arkiv-menyn** – *Öppna data-mappen*, *Öppna
+Dokument-mappen* och *Öppna senaste PDF*. I dag nås mapparna bara via
+Inställningar och loggknappen. *Insats: liten.*
+
+**N20. Exportera/importera inställningar** – hela `settings.json` som en fil,
+så ett kontor kan dela uppsättning eller man kan flytta till ny dator.
+*Insats: liten–medel.*
+
+### Teknisk kvalitet & drift
+
+**N21. Schemaversion, migrering och backup av `settings.json`** – filen har
+ingen version i dag; en trasig eller äldre JSON kan tyst nollställa
+inställningarna. Inför `schema_version`, migreringssteg och en kopia före varje
+skrivning. *Insats: medel.*
+
+**N22. PDF-innehållstester i CI** – verifiera cellfärger och markeringar i den
+färdiga PDF:en (t.ex. med `pymupdf`) i stället för bara sidantal och MediaBox
+som i dag. Fångar regressionsfel i färglogiken. *Insats: medel.*
+
+**N23. `core/pdf_style.py`** – samla färger, fonter och mått på ett ställe
+(i dag 19 ställen med `Helvetica` och 17 hårdkodade färger). Gör teman och N12
+möjliga utan att röra layoutkoden. *Insats: medel.*
+
+**N24. Kvalitetsgrindar i CI** – `ruff`/pyflakes som gate, kodtäckning som
+kommentar på varje push och `.editorconfig` + `pre-commit` som håller
+CRLF/LF-regeln (den finns bara i dokumentationen i dag). *Insats: liten–medel.*
+
+**N25. Release-workflow** – vid tagg: kör testerna, `bump_version.py --check`,
+bygg zip och skapa releasen automatiskt. I dag görs releasen för hand och kan
+hamna ur synk med `config.json`. *Insats: medel.*
+
+### Rekommenderad ordning (första fem)
+
+1. **N21** (settings-säkerhet) – billigast skydd mot datatapp, rör ingen UI.
+2. **N9 + N10 + N15** (sidfot, metadata, tidsstämpel) – samma kod, stor nytta
+   vid varje utskrift.
+3. **N1** (bemanningsvarning) – bygger direkt på frånvarostödet i v2.11.0.
+4. **N3 + N4 + N5** (sök, validering, tolkad frånvaro) – gör listredigeraren
+   färdig när listorna växer.
+5. **N22 + N24** (PDF-innehållstester och kvalitetsgrindar) – billigt nu när
+   sviten redan har 298 tester.
+
+## Rekommenderad ordning härnäst (ursprungliga listan)
 
 1. **4 + 13** (sidhuvud/sidfot och samlings-PDF) – störst nytta för utskrifter.
 2. **7 + 6** (kopiera in bilder, dra-och-släpp) – gör logotypflödet stabilt.
