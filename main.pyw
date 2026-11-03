@@ -119,7 +119,6 @@ import ctypes
 import threading
 import importlib
 import importlib.util
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -188,44 +187,28 @@ try:
         QApplication,
         QMainWindow,
         QTabWidget,
-        QTabBar,
-        QMenu,
-        QMenuBar,
-        QWidget,
+            QMenu,
+            QWidget,
         QVBoxLayout,
-        QHBoxLayout,
-        QStatusBar,
+            QStatusBar,
         QLabel,
-        QPushButton,
-        QMessageBox,
+            QMessageBox,
         QSizePolicy,
-        QFrame,
-        QSystemTrayIcon,
+            QSystemTrayIcon,
     )
     from PySide6.QtCore import (
         Qt,
         QEvent,
         QObject,
-        QTimer,
-        QSize,
-        Signal,
+                Signal,
         Slot,
     )
     from PySide6.QtGui import (
         QAction,
         QActionGroup,
         QGuiApplication,
-        QIcon,
-        QFont,
-        QPalette,
-        QColor,
-        QMouseEvent,
-        QWheelEvent,
-        QKeySequence,
-        QShortcut,
-        QPainter,
-        QPixmap,
-    )
+                                QKeySequence,
+                )
 except Exception as _qt_error:  # pragma: no cover – miljö utan PySide6
     logger.critical("PySide6 kunde inte importeras", exc_info=_qt_error)
     print(
@@ -242,7 +225,7 @@ except Exception as _qt_error:  # pragma: no cover – miljö utan PySide6
 from core.event_bus import EventBus
 from core.settings_manager import SettingsManager
 from core.theme_manager import ThemeManager
-from core.single_instance import SingleInstanceLock, AutostartManager
+from core.single_instance import SingleInstanceLock
 from core import i18n, updater
 from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
 from core.window_state import clamp_geometry

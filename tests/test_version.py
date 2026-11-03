@@ -13,7 +13,6 @@ den kan kontrolleras och höjas utan att något glöms.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import sys
 import tempfile

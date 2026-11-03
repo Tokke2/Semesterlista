@@ -48,12 +48,14 @@ A4_LANDSCAPE_H = 595.0
 A4_H = 842.0
 
 try:  # reportlab är en vanlig beroende men kan saknas i testmiljö
-    from reportlab.pdfgen import canvas as rl_canvas  # noqa: F401
-    from reportlab.lib.pagesizes import A4  # noqa: F401
+    import importlib.util
 
-    HAVE_REPORTLAB = True
+    from reportlab.lib.pagesizes import A4
+
+    HAVE_REPORTLAB = importlib.util.find_spec("reportlab") is not None
 except Exception:  # pragma: no cover
     HAVE_REPORTLAB = False
+    A4 = (595.0, 842.0)
 
 def _write_png(path: Path, width: int, height: int, rgb: tuple = (31, 78, 121)) -> None:
     """Skriv en enfärgad PNG utan externa beroenden (för rastertesterna)."""

@@ -50,7 +50,7 @@ import hashlib
 import platform
 import subprocess
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtNetwork import QLocalServer, QLocalSocket

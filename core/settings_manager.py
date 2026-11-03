@@ -30,11 +30,10 @@ copyright Rickard Längkvist 2025 – dynamiskt år
 from __future__ import annotations
 
 import json
-import os
+from typing import Any, Dict, List
 import shutil
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Union
 
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py

@@ -27,10 +27,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PySide6.QtWidgets import QApplication
-    import reportlab  # noqa: F401
+    from PySide6.QtWidgets import QApplication  # noqa: F401
 
-    HAVE_GUI = True
+    HAVE_GUI = importlib.util.find_spec("reportlab") is not None
 except Exception:  # pragma: no cover – miljö utan Qt/reportlab
     HAVE_GUI = False
 
