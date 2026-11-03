@@ -97,7 +97,7 @@ import webbrowser
 import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Set, TYPE_CHECKING
+from typing import List, Dict, Any, Optional, Set, Tuple, TYPE_CHECKING
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -114,7 +114,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 
 from core import i18n
@@ -149,6 +149,23 @@ MIN_DAY_COL_WIDTH = 8
 FONT_SIZE = 7
 #: Krysset ritas fetare och större än celltexten så att det syns på avstånd
 LEAVE_FONT_SIZE = FONT_SIZE + 3
+#: Luft ovan/under texten i tabellraderna. 2 räcker för att tre månader
+#: med sex anställda ska rymmas på ett liggande A4 (v2.11.0).
+ROW_PADDING = 2
+#: Marginal innan en månad flyttas till nästa sida, så att reportlab inte
+#: delar en tabell som "precis" fick plats (v2.11.0).
+PAGE_SAFETY = 8.0
+#: reportlab lägger 6 punkter luft runt innehållet i varje sidas ram
+FRAME_PADDING = 6.0
+
+#: Färgförklaringens rutor i ordning, med i18n-nyckeln för etiketten
+LEGEND_ITEMS: Tuple[Tuple[colors.Color, str], ...] = (
+    (colors.Color(0.94, 0.5, 0.5), "lista.pdf.legend.red"),
+    (colors.Color(0.68, 0.85, 0.9), "lista.pdf.legend.blue"),
+    (colors.Color(0.56, 0.93, 0.56), "lista.pdf.legend.green"),
+    (colors.Color(1, 0.65, 0), "lista.pdf.legend.orange"),
+    (LEAVE_COLOR, "lista.pdf.legend.leave"),
+)
 
 # ── Sidlayout (v2.6.0) ─────────────────────────────────
 # Användaren väljer liggande (standard) eller stående A4.
@@ -917,43 +934,162 @@ class PDFGenerator:
         self,
         table_width_pt: float = TABLE_WIDTH_PT,
     ) -> Table:
-        """Skapa färgförklaringstabell för PDF (skalas till sidbredden)."""
-        light_coral = colors.Color(0.94, 0.5, 0.5)
-        light_blue = colors.Color(0.68, 0.85, 0.9)
-        light_green = colors.Color(0.56, 0.93, 0.56)
-        orange = colors.Color(1, 0.65, 0)
+        """
+        Färgförklaring för PDF:en (skalas till sidbredden).
 
-        leave_color = LEAVE_COLOR
-
-        legend_data = [[
-            "", i18n.t("lista.pdf.legend.red"),
-            "", i18n.t("lista.pdf.legend.blue"),
-            "", i18n.t("lista.pdf.legend.green"),
-            "", i18n.t("lista.pdf.legend.orange"),
-            "", i18n.t("lista.pdf.legend.leave"),
-        ]]
-
-        legend_table = Table(
-            legend_data,
-            colWidths=[15, 115, 15, 70, 15, 150, 15, 75, 15, 70],
+        Etiketterna är stycken som radbryts inom sin kolumn och kolumn­
+        bredderna följer textens längd. Då kan ingen text hamna ovanpå
+        nästa färgruta, oavsett vilket språk som är valt (v2.11.0).
+        """
+        swatch_width = 14.0
+        label_style = ParagraphStyle(
+            "LegendLabel",
+            fontName="Helvetica",
+            fontSize=7,
+            leading=8.5,
+            textColor=colors.black,
         )
-        legend_table.setStyle(TableStyle([
-            ("FONTSIZE", (0, 0), (-1, -1), 7),
-            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+
+        labels = [i18n.t(key) for _, key in LEGEND_ITEMS]
+        total_label_width = table_width_pt - swatch_width * len(LEGEND_ITEMS)
+        weights = [max(len(text), 1) for text in labels]
+        label_widths = [
+            total_label_width * weight / sum(weights) for weight in weights
+        ]
+
+        data: List[Any] = [[]]
+        col_widths: List[float] = []
+        commands: List[Any] = [
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (0, 0), (0, 0), light_coral),
-            ("BACKGROUND", (2, 0), (2, 0), light_blue),
-            ("BACKGROUND", (4, 0), (4, 0), light_green),
-            ("BACKGROUND", (6, 0), (6, 0), orange),
-            ("BACKGROUND", (8, 0), (8, 0), leave_color),
-            ("BOX", (0, 0), (0, 0), 0.5, colors.black),
-            ("BOX", (2, 0), (2, 0), 0.5, colors.black),
-            ("BOX", (4, 0), (4, 0), 0.5, colors.black),
-            ("BOX", (6, 0), (6, 0), 0.5, colors.black),
-            ("BOX", (8, 0), (8, 0), 0.5, colors.black),
-        ]))
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+        ]
+
+        for index, ((color, _key), label, label_w) in enumerate(
+            zip(LEGEND_ITEMS, labels, label_widths)
+        ):
+            column = index * 2
+            data[0].extend(["", Paragraph(label, label_style)])
+            col_widths.extend([swatch_width, label_w])
+            commands.append(("BACKGROUND", (column, 0), (column, 0), color))
+            commands.append(("BOX", (column, 0), (column, 0), 0.5, colors.black))
+
+        legend_table = Table(data, colWidths=col_widths, hAlign="LEFT")
+        legend_table.setStyle(TableStyle(commands))
         self._apply_table_scaling(legend_table, table_width_pt)
         return legend_table
+
+    def _fit_layout(
+        self,
+        months_per_page: int,
+        rows: int,
+        title_prefix: str,
+        months: List[tuple[int, int]],
+        styles: Any,
+        table_width_pt: float,
+        available_height: float,
+    ) -> Tuple[int, int, int]:
+        """
+        Anpassa layouten till listans längd (v2.11.0).
+
+        Utgår från användarens val av månader per blad men sänker antalet om
+        tabellerna inte får plats, och provar mindre radluft innan dess.
+        Hellre färre månader per blad än en tabell som klipps av.
+
+        Returns:
+            (månader per blad, radluft, mellanrum mellan tabellerna)
+        """
+        header_height = self._estimate_header_height(
+            title_prefix, months, styles, table_width_pt
+        )
+        budget = available_height - PAGE_SAFETY
+        candidates = (
+            (3, 16),
+            (3, 12),
+            (ROW_PADDING, 12),
+            (ROW_PADDING, 8),
+            (1, 8),
+            (1, 4),
+            (0, 4),
+            (0, 2),
+        )
+
+        for count in range(max(1, int(months_per_page)), 0, -1):
+            for pad, gap in candidates:
+                month_height = self._estimate_month_height(
+                    rows, 31, pad, table_width_pt
+                )
+                needed = header_height + count * month_height + (count - 1) * gap
+                if needed <= budget:
+                    if count != months_per_page:
+                        logger.info(
+                            "Layout: %s månader per blad får inte plats med "
+                            "%s rader – använder %s i stället.",
+                            months_per_page,
+                            rows,
+                            count,
+                        )
+                    return count, pad, gap
+
+        return 1, 0, 2
+
+    def _estimate_header_height(
+        self,
+        title_prefix: str,
+        months: List[tuple[int, int]],
+        styles: Any,
+        table_width_pt: float,
+    ) -> float:
+        """Höjd för rubrik + färgförklaring (samma mått som på sidan)."""
+        header = [
+            Paragraph(self._format_page_title(title_prefix, months), styles["Title"]),
+            Spacer(1, 3),
+            self._create_legend_with_colors(table_width_pt),
+            Spacer(1, 6),
+        ]
+        return sum(self._flowable_height(flow, table_width_pt) for flow in header)
+
+    def _estimate_month_height(
+        self,
+        rows: int,
+        days: int,
+        row_padding: int,
+        table_width_pt: float,
+    ) -> float:
+        """
+        Uppskatta höjden för en månadstabell med ``rows`` rader.
+
+        Bygger en tabell med samma kolumnbredder, typsnitt och luft som den
+        riktiga – då stämmer höjden utan att behöva gissa.
+        """
+        name_w, day_w = self._calc_column_widths(days, table_width_pt)
+        data = [["1"] * (days + 1) for _ in range(rows)]
+        sample = Table(data, colWidths=[name_w] + [day_w] * days)
+        sample.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), FONT_SIZE),
+            ("TOPPADDING", (0, 0), (-1, -1), row_padding),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), row_padding),
+            ("LEFTPADDING", (0, 0), (-1, -1), 1),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+        ]))
+        self._apply_table_scaling(sample, table_width_pt)
+        return self._flowable_height(sample, table_width_pt)
+
+    @staticmethod
+    def _flowable_height(flowable: Any, width: float) -> float:
+        """
+        Höjd i punkter för en flowable vid given bredd.
+
+        Används för att avgöra om nästa månad får plats på sidan. Går
+        höjden inte att mäta returneras 0, så att en tabell aldrig tappas.
+        """
+        try:
+            return float(flowable.wrap(width, 10 ** 6)[1])
+        except (AttributeError, TypeError, ValueError):
+            return 0.0
 
     @staticmethod
     def _calc_column_widths(
@@ -1151,9 +1287,41 @@ class PDFGenerator:
         leave_calendar = leave if leave is not None else self._leave_calendar
         documents_path = get_documents_folder()
         month_sequence = self._build_month_sequence(year, start_month)
-        pages = self._chunk_months(month_sequence, months_per_page)
         range_label = self._format_range_label(month_sequence)
         filename = self._build_output_filename(documents_path, mode, month_sequence)
+
+        if mode == "Semesterlista":
+            title_prefix = "Semesterlista"
+            header = "Anställd"
+        else:
+            title_prefix = "Limokörningsschema"
+            header = "Fordon"
+
+        # Sidlayout (v2.6.0) – liggande (standard) eller stående A4
+        orientation = normalize_orientation(orientation)
+        layout = LAYOUT_SETTINGS[orientation]
+        pagesize, table_width_pt = page_geometry(orientation)
+        side_margin = layout["side_margin_mm"]
+        top_margin = layout["top_margin_mm"]
+        styles = getSampleStyleSheet()
+
+        # Anpassa layouten till listans längd innan månaderna fördelas
+        # (v2.11.0): hellre färre månader per blad än tabeller som klipps av.
+        frame_width = pagesize[0] - 2 * side_margin * mm
+        available_height = (
+            pagesize[1] - 2 * top_margin * mm - 2 * FRAME_PADDING
+        )
+        months_per_page, row_padding, month_gap = self._fit_layout(
+            months_per_page=months_per_page,
+            rows=3 + len(data_list),
+            title_prefix=title_prefix,
+            months=month_sequence[:months_per_page],
+            styles=styles,
+            table_width_pt=table_width_pt,
+            available_height=available_height,
+        )
+
+        pages = self._chunk_months(month_sequence, months_per_page)
 
         # Detaljerad loggning (v2.8.0)
         from time import perf_counter
@@ -1172,20 +1340,6 @@ class PDFGenerator:
             filename,
         )
 
-        if mode == "Semesterlista":
-            title_prefix = "Semesterlista"
-            header = "Anställd"
-        else:
-            title_prefix = "Limokörningsschema"
-            header = "Fordon"
-
-        # Sidlayout (v2.6.0) – liggande (standard) eller stående A4
-        orientation = normalize_orientation(orientation)
-        layout = LAYOUT_SETTINGS[orientation]
-        pagesize, table_width_pt = page_geometry(orientation)
-        side_margin = layout["side_margin_mm"]
-        top_margin = layout["top_margin_mm"]
-
         # Logotyp (v2.4.0) – ritas i övre högra hörnet på varje sida.
         # Används som canvasmaker eftersom onFirstPage/onLaterPages inte
         # stöds av alla reportlab-versioner.
@@ -1203,7 +1357,6 @@ class PDFGenerator:
             bottomMargin=top_margin * mm,
         )
 
-        styles = getSampleStyleSheet()
         elements: List[Any] = []
 
         # Samla alla år som förekommer i sekvensen
@@ -1233,18 +1386,29 @@ class PDFGenerator:
             6: "Sön",
         }
 
+        def build_header(months: List[tuple[int, int]]) -> List[Any]:
+            """Rubrik + färgförklaring – upprepas på varje fysisk sida."""
+            return [
+                Paragraph(self._format_page_title(title_prefix, months), styles["Title"]),
+                Spacer(1, 3),
+                self._create_legend_with_colors(table_width_pt),
+                Spacer(1, 6),
+            ]
+
+
         for page_index, page_months in enumerate(pages):
-            page_title = self._format_page_title(title_prefix, page_months)
-            elements.append(Paragraph(page_title, styles["Title"]))
-            elements.append(Spacer(1, 3))
-            elements.append(self._create_legend_with_colors(table_width_pt))
-            elements.append(Spacer(1, 6))
+            page_header = build_header(page_months)
+            elements.extend(page_header)
+            used_height = sum(
+                self._flowable_height(flow, frame_width) for flow in page_header
+            )
 
             for month_year, month_num in page_months:
                 days_in_month = calendar.monthrange(month_year, month_num)[1]
                 name_w, day_w = self._calc_column_widths(
                     days_in_month, table_width_pt
                 )
+                day_label_size = FONT_SIZE if day_w >= 18 else FONT_SIZE - 1
 
                 official_holidays = official_holidays_by_year[month_year]
                 half_days = half_days_by_year[month_year]
@@ -1283,7 +1447,9 @@ class PDFGenerator:
                     table_data.append(row)
 
                 col_widths = [name_w] + [day_w] * days_in_month
-                table = Table(table_data, colWidths=col_widths)
+                # repeatRows: om en månad med väldigt många anställda ändå
+                # måste delas upprepas de tre rubrikraderna på nästa sida.
+                table = Table(table_data, colWidths=col_widths, repeatRows=3)
 
                 style = TableStyle([
                     ("GRID", (0, 0), (-1, -1), 0.25, colors.black),
@@ -1293,8 +1459,11 @@ class PDFGenerator:
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("FONTNAME", (0, 0), (-1, 2), "Helvetica-Bold"),
                     ("FONTSIZE", (0, 0), (-1, -1), FONT_SIZE),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    # Trånga dagkolumner (stående A4) får en mindre etikett,
+                    # så att "Sön" och "Mån" inte går i varandra (v2.11.0).
+                    ("FONTSIZE", (1, 2), (-1, 2), day_label_size),
+                    ("TOPPADDING", (0, 0), (-1, -1), row_padding),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), row_padding),
                     ("LEFTPADDING", (0, 0), (-1, -1), 1),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 1),
                 ])
@@ -1417,10 +1586,25 @@ class PDFGenerator:
 
                 table.setStyle(style)
                 self._apply_table_scaling(table, table_width_pt)
+
+                table_height = self._flowable_height(table, frame_width)
+                if used_height + table_height > available_height - PAGE_SAFETY:
+                    # Månaden får inte plats – ny sida med samma rubrik och
+                    # förklaring, så att ingen tabell klipps av (v2.11.0).
+                    elements.append(PageBreak())
+                    page_header = build_header(page_months)
+                    elements.extend(page_header)
+                    used_height = sum(
+                        self._flowable_height(flow, frame_width)
+                        for flow in page_header
+                    )
+
                 elements.append(table)
+                used_height += table_height
 
                 if (month_year, month_num) != page_months[-1]:
-                    elements.append(Spacer(1, 12))
+                    elements.append(Spacer(1, month_gap))
+                    used_height += month_gap
 
             if page_index < len(pages) - 1:
                 elements.append(PageBreak())
@@ -1444,7 +1628,7 @@ class PDFGenerator:
             f"{title_prefix} genererad: {range_label} "
             f"({months_per_page} mån/blad, start={start_text}, "
             f"layout={orientation}) – {len(month_sequence)} månader, "
-            f"{len(pages)} sidor, {size_kb:.0f} kB, "
+            f"{doc.page} sidor, {size_kb:.0f} kB, "
             f"{(perf_counter() - started) * 1000:.0f} ms"
         )
 

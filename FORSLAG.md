@@ -163,6 +163,17 @@ avsnittet ”25 nya förslag” längst ner.
 - **1, 2 eller 3 månader per blad** (tidigare bara 2 och 3) samt vald
   startmånad – allt sparas per flik.
 
+**v2.11.0 – layout som anpassas till listan**
+
+- **Färgförklaringen** ritas som en rad med fem rutor och radbrytbar text
+  (`Paragraph`) i stället för klippta celler – ingen överlappande text.
+- **Anpassat antal månader per blad:** antalet sänks automatiskt när listan är
+  för lång (mindre radluft provas först), så att ingen tabell klipps av.
+  Rubrik + färgförklaring upprepas på varje sida.
+- **Trånga dagkolumner** (stående A4) får mindre dagnamnsgrad.
+- Se `spec.md` kap. 27. N22 (PDF-innehållstester) blir delvis överflödig –
+  `tests/test_pdf_layout.py` mäter redan sidantal och legend.
+
 ## 25 nya förslag (2026-11-03, v2.11.0)
 
 Nya idéer som bygger vidare på det som finns i koden i dag (298 tester,

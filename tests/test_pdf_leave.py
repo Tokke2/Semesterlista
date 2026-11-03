@@ -211,8 +211,14 @@ class LeaveInPdfTests(unittest.TestCase):
         legends = [data for data in self._captured if len(data) == 1]
         self.assertTrue(legends, "ingen färgförklaring hittades")
         legend = legends[0][0]
-        self.assertIn(self.module.i18n.t("lista.pdf.legend.leave"), legend)
-        self.assertEqual(len(legend), 10, "fyra färger + en för lediga dagar")
+        labels = [cell.text for cell in legend if hasattr(cell, "text")]
+        self.assertIn(self.module.i18n.t("lista.pdf.legend.leave"), labels)
+        self.assertEqual(len(legend), 10, "fem färgrutor med etiketter")
+        # Etiketterna är hela texter (de radbryts i stället för att klippas)
+        self.assertEqual(
+            labels,
+            [self.module.i18n.t(key) for _color, key in self.module.LEGEND_ITEMS],
+        )
 
     def test_leave_mark_is_latin1(self) -> None:
         self.assertEqual(self.module.LEAVE_MARK, "\u00d7")

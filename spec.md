@@ -2706,7 +2706,66 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
 | `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **317 tester**.
+Svitens total: **326 tester**.
+
+
+---
+
+## 27. Layout som anpassas till listan (v2.11.0)
+
+PDF:en får aldrig visa en tabell som klipps av eller delas mitt i. Sedan
+v2.11.0 mäts innehållet **före** ritning och layouten anpassas efter listans
+längd.
+
+### 27.1 Färgförklaringen på en rad
+
+`_create_legend_with_colors()` bygger en tabell med **tio celler** (fem
+färgrutor + fem etiketter). Etiketterna är `Paragraph` med stilen
+`LegendLabel` (7 pt) och proportionella kolumnbredder, så långa texter som
+”Grön = Halvdag (midsommarafton, julafton m.fl.)” **radbryts** i stället för
+att klippas eller skriva över nästa ruta.
+
+### 27.2 Månader per blad mäts fram
+
+| Steg | Vad som händer |
+|------|----------------|
+| 1 | `page_geometry()` + marginaler ger `frame_width` och `available_height` (ramens 6 pt luft räknas bort, `FRAME_PADDING`) |
+| 2 | `_estimate_header_height()` mäter rubrik + färgförklaring |
+| 3 | `_estimate_month_height()` bygger en provtabell med samma kolumnbredder, typsnitt och luft och mäter den |
+| 4 | `_fit_layout()` provar kandidaterna `(3,16) (3,12) (2,12) (2,8) (1,8) (1,4) (0,4) (0,2)` = (radluft, mellanrum). Först när ingen radluft räcker sänks antalet månader |
+| 5 | Budgeten är `available_height − PAGE_SAFETY` (8 pt) |
+
+Resultat för 12 månader (start oktober 2026, liggande A4):
+
+| Anställda | 3 mån/blad | 2 mån/blad |
+|-----------|------------|------------|
+| 3–9 | **4 sidor** (3 mån/blad) | 6 sidor |
+| 10–16 | **6 sidor** (2 mån/blad, anpassat) | 6 sidor |
+
+Antalet som faktiskt används syns i loggen, i ”Klart”-rutan och i
+`semesterlista:pdf_generated`.
+
+### 27.3 Sidbrytning utan klippta tabeller
+
+- Varje månad får plats mätas före `elements.append(table)`. Räcker inte
+  utrymmet läggs en `PageBreak()` och **samma rubrik + färgförklaring byggs
+  om för den nya sidan** (`build_header(months)`).
+- `repeatRows=3` upprepar vecko-, dag- och veckodagsraderna om reportlab ändå
+  delar en tabell.
+- Rubriken ”Anställd” ligger i den lokala variabeln `page_header`, så att den
+  aldrig skuggar rubriklistan (fel som gav tabeller utanför ramen).
+
+### 27.4 Trånga kolumner
+
+Dagnamnen (`Mån` … `Sön`) får **6 pt** i stället för 7 pt när dagkolumnen är
+smalare än 18 pt (stående A4), så att etiketterna inte går i varandra.
+
+### 27.5 Tester
+
+| Fil | Antal | Innehåll |
+|-----|-------|----------|
+| `tests/test_pdf_layout.py` | 23 | sidantal för 6/16 anställda, `_fit_layout` (kort, lång, mycket lång lista), radhöjdens beroende av rader och radluft, legendens fullständiga etiketter och bredd |
+| `tests/test_pdf_leave.py` | 11 | legendens fem rutor (även att etiketterna är hela texter) |
 
 ---
 
