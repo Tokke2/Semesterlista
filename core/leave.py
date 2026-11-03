@@ -7,18 +7,20 @@ Lediga dagar per anställd (v2.11.0)
 Semesterlistan blir mycket mer användbar om man ser **när varje person är
 ledig** – då syns det direkt vem som är kvar på jobbet.
 
-I ``Anställda.txt`` skrivs frånvaron efter namnet, avskilt med ``;`` eller
-``|``::
+I ``Anställda.txt`` skrivs frånvaron efter namnet, avskilt med ``;``, ``|``
+eller ``:``::
 
+    Roland: 18/12 - 7/1
     Anna Andersson ; 18/12 - 7/1
     Bertil Berg
     Cecilia Carlsson ; 2026-12-21 - 2027-01-04
     David Dahl ; 18/12-7/1, 6/7-20/7
 
-Datumen tolkas som **veckor**: varje datum flyttas till *närmaste måndag*
-(torsdag och tidigare → måndagen före, fredag och senare → måndagen efter).
-Det gör att man kan skriva ungefärliga datum som ``18/12`` och ändå få en
-period som börjar och slutar på en vecka.
+Perioden tolkas som **hela veckor**: startdatumet flyttas till *närmaste
+måndag* och slutdatumet till *närmaste söndag*. Det gör att man kan skriva
+ungefärliga datum som ``18/12`` och ``7/1`` och ändå få en period som börjar
+en måndag och slutar en söndag – ``18/12 - 7/1`` blir alltså
+**21/12 2026 – 10/1 2027**.
 
 Stöds också:
 
@@ -131,6 +133,47 @@ def snap_to_monday(day: date) -> date:
     return day + timedelta(days=7 - offset)
 
 
+def snap_to_sunday(day: date) -> date:
+    """
+    Flytta ett datum till *närmaste söndag*.
+
+    Torsdag–söndag → söndagen i samma vecka, måndag–onsdag → söndagen
+    innan. (Torsdag ligger 3 dagar från söndagen och 4 från den föregående,
+    alltså närmast den kommande.)
+
+    Exempel:
+        >>> snap_to_sunday(date(2027, 1, 7))     # torsdag
+        datetime.date(2027, 1, 10)
+        >>> snap_to_sunday(date(2027, 1, 10))    # söndag
+        datetime.date(2027, 1, 10)
+    """
+    offset = day.weekday()  # 0 = måndag, 6 = söndag
+    return day + timedelta(days=6 - offset) if offset >= 3 else day - timedelta(
+        days=offset + 1
+    )
+
+
+def snap_range(start: date, end: date) -> Tuple[date, date]:
+    """
+    Gör om en period till hela veckor: måndag → söndag.
+
+    * starten flyttas till närmaste måndag
+    * slutet flyttas till närmaste söndag
+    * en enstaka dag (samma start och slut) rörs inte
+    * blir slutet före starten efter snäppningen behålls de exakta datumen,
+      så att en kort ledighet (t.ex. mån–tis) inte försvinner
+    """
+    if start == end:
+        return start, end
+
+    snapped_start = snap_to_monday(start)
+    snapped_end = snap_to_sunday(end)
+
+    if snapped_end < snapped_start:
+        return start, end
+    return snapped_start, snapped_end
+
+
 def _parse_date(text: str, default_year: int) -> date:
     """Tolka ``18/12``, ``18/12/2026`` eller ``2026-12-18``."""
     text = text.strip()
@@ -175,8 +218,8 @@ def parse_leave(
         default_year: år för datum utan år (standard: i år).
         snap:         flytta datumen till närmaste måndag (standard: True).
 
-    Enstaka datum (``"18/12"``) markerar **bara den dagen** och snäpps inte
-    till måndag – snäppningen gäller periodernas start- och slutdatum.
+    Enstaka datum (``"18/12"``) markerar **bara den dagen** och snäpps inte –
+    snäppningen gäller periodernas start (→ måndag) och slut (→ söndag).
 
     Returns:
         Lista med ``LeaveRange`` i den ordning de skrevs.
@@ -187,7 +230,7 @@ def parse_leave(
 
     Exempel:
         >>> [str(r) for r in parse_leave("18/12 - 7/1", 2026)]
-        ['2026-12-21 – 2027-01-04']
+        ['2026-12-21 – 2027-01-10']
     """
     text = (text or "").strip()
     if not text:
@@ -207,8 +250,8 @@ def parse_leave(
             end = _parse_date(match.group("end"), start.year)
             end_has_year = _has_year(match.group("end"))
             end = _end_year(start, end, end_has_year)
-            start = snap_to_monday(start) if snap else start
-            end = snap_to_monday(end) if snap else end
+            if snap:
+                start, end = snap_range(start, end)
             ranges.append(LeaveRange(start, end))
             continue
 

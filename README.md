@@ -33,7 +33,8 @@ i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess under
   `data/backup/` och automatisk omstart – dina listor och inställningar rörs aldrig.
 - **Lediga dagar**: skriv `Roland: 18/12 - 7/1` (eller `;` / `|`) i `Anställda.txt`
   så markeras frånvaron med ett **fett kryss i gråblå cell** i PDF:en – namnet
-  står kvar rent i namnkolumnen och datumen snäpps till närmaste måndag
+  står kvar rent i namnkolumnen. Starten snäpps till **närmaste måndag** och
+  slutet till **närmaste söndag**, så `18/12 - 7/1` blir 21/12 – 10/1 (hela veckor)
 - **Smart cache**: rastrerade logotyper cachas under körningen i `%TEMP%/Semesterlista`
   och **städas automatiskt när appen avslutas** (kan stängas av i
   *Inställningar → Avancerat*). Vid start rensas bara gammalt skräp, så en

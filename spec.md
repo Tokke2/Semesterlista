@@ -2631,16 +2631,22 @@ dagcellerna och aldrig som text i listan.
 | **Saknat år** | listans år; om slutet ligger före starten menas **nästa år** (så `18/12 - 7/1` blir rätt) |
 | **Enstaka datum** | `18/12` markerar bara den dagen – ingen veckosnäppning |
 
-**Veckosnäppning till närmaste måndag** (så att listan följer veckor):
+**Veckosnäppning** – perioden blir alltid en eller flera hela veckor:
 
 | Datum | Blir |
 |-------|------|
-| Måndag–torsdag | måndagen **före** (torsdag ligger 3 dagar efter måndagen) |
-| Fredag–söndag | måndagen **efter** |
+| **Start:** måndag–torsdag | måndagen **före** (torsdag ligger 3 dagar efter måndagen) |
+| **Start:** fredag–söndag | måndagen **efter** |
+| **Slut:** torsdag–söndag | söndagen **efter** (torsdag ligger 3 dagar före söndagen) |
+| **Slut:** måndag–onsdag | söndagen **före** |
 
-Exempel: `18/12 - 7/1` (fredag → måndag, torsdag → måndag) blir
-**21/12 2026 – 4/1 2027**. Närmaste måndag räknas alltid fram – även för
+Exempel: `18/12 - 7/1` (fredag → måndag, torsdag → söndag) blir
+**21/12 2026 – 10/1 2027**, alltså tre hela veckor. Snäppningen gäller även
 `18/12/2026` och `2026-12-18`.
+
+Två skyddsnät: en **enstaka dag** (`18/12`, eller `6/7 - 6/7`) rörs inte, och
+om slutet skulle hamna före starten efter snäppningen (t.ex. `6/7 - 7/7`,
+mån–tis) behålls de exakta datumen – en kort ledighet försvinner aldrig.
 
 En rad som **börjar** med `;` är fortfarande en kommentar (se kap 20), och
 raden får vara högst `MAX_ENTRY_LENGTH` (80) tecken inklusive frånvaron.
@@ -2649,7 +2655,9 @@ raden får vara högst `MAX_ENTRY_LENGTH` (80) tecken inklusive frånvaron.
 
 | Funktion / klass | Gör |
 |------------------|-----|
-| `snap_to_monday(day)` | Flyttar ett datum till närmaste måndag |
+| `snap_to_monday(day)` | Flyttar ett datum till närmaste måndag (periodens **start**) |
+| `snap_to_sunday(day)` | Flyttar ett datum till närmaste söndag (periodens **slut**) |
+| `snap_range(start, end)` | måndag → söndag, med skydd för enstaka dagar och korta perioder |
 | `parse_leave(text, default_year=None, snap=True)` | Text → `list[LeaveRange]`; höjer `LeaveError` vid skräp |
 | `split_entry(line)` | `"Anna ; 18/12 - 7/1"` → `("Anna", "18/12 - 7/1")`, `"Roland: 18/12-7/1"` → `("Roland", "18/12-7/1")` |
 | `looks_like_leave(text)` | True om texten innehåller ett datum (används av `:`) |
@@ -2693,12 +2701,12 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 
 | Fil | Antal | Innehåll |
 |-----|-------|----------|
-| `tests/test_leave.py` | 48 | veckosnäppning alla veckodagar, årskifte, ISO/explicit år, flera perioder, `split_entry` (alla tre avskiljarna), `looks_like_leave`, `is_off`, `off_dates`, felhantering |
+| `tests/test_leave.py` | 57 | veckosnäppning till måndag **och** söndag (alla veckodagar), årskifte, ISO/explicit år, flera perioder, `split_entry` (alla tre avskiljarna), `looks_like_leave`, `is_off`, `off_dates`, felhantering |
 | `tests/test_pdf_leave.py` | 11 | cellmarkering i december/januari (fångar tabelldata), namncell utan frånvaro, kryssets storlek, ingen markering utan frånvaro, legendens fem rutor, Latin-1, inläsning från fil (även `:`-formatet) |
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
 | `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **308 tester**.
+Svitens total: **317 tester**.
 
 ---
 

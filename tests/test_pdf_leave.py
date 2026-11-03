@@ -175,8 +175,10 @@ class LeaveInPdfTests(unittest.TestCase):
             data for data in self._month_tables() if "Januari 2027" in str(data[0][0])
         )
         anna = self._row(january, "Anna Andersson")
-        self.assertEqual(anna[1:5], [self.module.LEAVE_MARK] * 4, "1–4/1 ska vara lediga")
-        self.assertEqual(anna[5:31], [""] * 26, "5/1 och framåt ska vara tomma")
+        self.assertEqual(
+            anna[1:11], [self.module.LEAVE_MARK] * 10, "1–10/1 ska vara lediga (t.o.m. söndag)"
+        )
+        self.assertEqual(anna[11:32], [""] * 21, "11/1 och framåt ska vara tomma")
 
     def test_without_leave_nothing_is_marked(self) -> None:
         from core.leave import LeaveCalendar
@@ -284,11 +286,11 @@ class ReadListWithLeaveTests(unittest.TestCase):
 
         ranges = calendar.ranges_for("Anna Andersson")
         self.assertEqual(len(ranges), 1)
-        # 21/12 – 4/1 oavsett vilket år listan avser
+        # 21/12 – 10/1 oavsett vilket år listan avser
         self.assertEqual((ranges[0].start.month, ranges[0].start.day), (12, 21))
-        self.assertEqual((ranges[0].end.month, ranges[0].end.day), (1, 4))
+        self.assertEqual((ranges[0].end.month, ranges[0].end.day), (1, 10))
         self.assertEqual(ranges[0].start.weekday(), 0, "start ska vara måndag")
-        self.assertEqual(ranges[0].end.weekday(), 0, "slut ska vara måndag")
+        self.assertEqual(ranges[0].end.weekday(), 6, "slut ska vara söndag")
 
         self.assertTrue(calendar.is_off("Cecilia Carlsson", date(ranges[0].start.year, 7, 6)))
         self.assertFalse(calendar.is_off("Bertil Bengtsson", date(ranges[0].start.year, 7, 6)))
@@ -300,7 +302,9 @@ class ReadListWithLeaveTests(unittest.TestCase):
         ranges = self.generator._leave_calendar.ranges_for("Roland")
         self.assertEqual(len(ranges), 1)
         self.assertEqual((ranges[0].start.month, ranges[0].start.day), (12, 21))
-        self.assertEqual((ranges[0].end.month, ranges[0].end.day), (1, 4))
+        self.assertEqual((ranges[0].end.month, ranges[0].end.day), (1, 10))
+        self.assertEqual(ranges[0].start.weekday(), 0)
+        self.assertEqual(ranges[0].end.weekday(), 6)
 
     def test_generate_uses_read_calendar(self) -> None:
         self.generator._read_list_from_file(str(self.list_file))

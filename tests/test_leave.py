@@ -28,7 +28,9 @@ from core.leave import (  # noqa: E402
     format_leave,
     looks_like_leave,
     parse_leave,
+    snap_range,
     snap_to_monday,
+    snap_to_sunday,
     split_entry,
 )
 
@@ -60,6 +62,52 @@ class SnapToMondayTests(unittest.TestCase):
             day += timedelta(days=1)
 
 
+class SnapToSundayTests(unittest.TestCase):
+    """Närmaste söndag – to–sö framåt, må–on bakåt (slutet på perioden)."""
+
+    def test_sunday_stays(self) -> None:
+        self.assertEqual(snap_to_sunday(date(2027, 1, 10)), date(2027, 1, 10))
+
+    def test_thursday_goes_forward(self) -> None:
+        # torsdag 7/1 ligger 3 dagar från söndagen och 4 från den föregående
+        self.assertEqual(snap_to_sunday(date(2027, 1, 7)), date(2027, 1, 10))
+
+    def test_friday_and_saturday_go_forward(self) -> None:
+        self.assertEqual(snap_to_sunday(date(2027, 1, 8)), date(2027, 1, 10))
+        self.assertEqual(snap_to_sunday(date(2027, 1, 9)), date(2027, 1, 10))
+
+    def test_monday_to_wednesday_go_back(self) -> None:
+        self.assertEqual(snap_to_sunday(date(2027, 1, 4)), date(2027, 1, 3))
+        self.assertEqual(snap_to_sunday(date(2027, 1, 5)), date(2027, 1, 3))
+        self.assertEqual(snap_to_sunday(date(2027, 1, 6)), date(2027, 1, 3))
+
+    def test_result_is_always_sunday(self) -> None:
+        day = date(2026, 1, 1)
+        while day.year == 2026:
+            self.assertEqual(snap_to_sunday(day).weekday(), 6, day)
+            day += timedelta(days=1)
+
+
+class SnapRangeTests(unittest.TestCase):
+    """Perioden blir måndag → söndag."""
+
+    def test_week_range(self) -> None:
+        start, end = snap_range(date(2026, 12, 18), date(2027, 1, 7))
+        self.assertEqual(start, date(2026, 12, 21))
+        self.assertEqual(end, date(2027, 1, 10))
+        self.assertEqual(start.weekday(), 0)
+        self.assertEqual(end.weekday(), 6)
+
+    def test_single_day_is_not_snapped(self) -> None:
+        day = date(2026, 12, 18)
+        self.assertEqual(snap_range(day, day), (day, day))
+
+    def test_short_leave_keeps_exact_dates(self) -> None:
+        """Mån–tis får inte bli en vecka eller försvinna."""
+        start, end = snap_range(date(2026, 7, 6), date(2026, 7, 7))
+        self.assertEqual((start, end), (date(2026, 7, 6), date(2026, 7, 7)))
+
+
 class ParseLeaveTests(unittest.TestCase):
     """Tolkning av frånvarosträngar."""
 
@@ -67,8 +115,10 @@ class ParseLeaveTests(unittest.TestCase):
         ranges = parse_leave("18/12 - 7/1", 2026)
         self.assertEqual(len(ranges), 1)
         self.assertEqual(ranges[0].start, date(2026, 12, 21))   # fredag → måndag
-        self.assertEqual(ranges[0].end, date(2027, 1, 4))       # torsdag → måndag
-        self.assertEqual(str(ranges[0]), "2026-12-21 – 2027-01-04")
+        self.assertEqual(ranges[0].end, date(2027, 1, 10))      # torsdag → söndag
+        self.assertEqual(str(ranges[0]), "2026-12-21 – 2027-01-10")
+        self.assertEqual(ranges[0].start.weekday(), 0, "start ska vara måndag")
+        self.assertEqual(ranges[0].end.weekday(), 6, "slut ska vara söndag")
 
     def test_end_before_start_means_next_year(self) -> None:
         start, end = parse_leave("18/12-7/1", 2026)[0].start, parse_leave("18/12-7/1", 2026)[0].end
@@ -80,16 +130,17 @@ class ParseLeaveTests(unittest.TestCase):
         self.assertEqual(ranges[0].start.year, date.today().year)
 
     def test_explicit_years_are_respected(self) -> None:
-        # 18/12 2028 är en måndag, 8/1 2029 en måndag → oförändrat
+        # 18/12 2028 är en måndag, 8/1 2029 en måndag → slutet blir 7/1 (söndag)
         ranges = parse_leave("18/12/2028 - 8/1/2029", 2026)
         self.assertEqual(ranges[0].start, date(2028, 12, 18))
-        self.assertEqual(ranges[0].end, date(2029, 1, 8))
+        self.assertEqual(ranges[0].end, date(2029, 1, 7))
+        self.assertEqual(ranges[0].end.weekday(), 6)
 
     def test_iso_format(self) -> None:
-        # fredag 18/12 → måndag 21/12, torsdag 7/1 → måndag 4/1
+        # fredag 18/12 → måndag 21/12, torsdag 7/1 → söndag 10/1
         ranges = parse_leave("2026-12-18 - 2027-01-07", 2026)
         self.assertEqual(ranges[0].start, date(2026, 12, 21))
-        self.assertEqual(ranges[0].end, date(2027, 1, 4))
+        self.assertEqual(ranges[0].end, date(2027, 1, 10))
 
     def test_iso_format_without_snap(self) -> None:
         ranges = parse_leave("2026-12-18 - 2027-01-07", 2026, snap=False)
@@ -120,6 +171,12 @@ class ParseLeaveTests(unittest.TestCase):
         ranges = parse_leave("18/12-7/1", 2026, snap=False)
         self.assertEqual(ranges[0].start, date(2026, 12, 18))
         self.assertEqual(ranges[0].end, date(2027, 1, 7))
+
+    def test_periods_are_whole_weeks(self) -> None:
+        for text in ("18/12-7/1", "6/7-20/7, 3/8-17/8", "1/3-15/3 och 1/6-15/6"):
+            for leave in parse_leave(text, 2026):
+                self.assertEqual(leave.start.weekday(), 0, text)
+                self.assertEqual(leave.end.weekday(), 6, text)
 
     def test_empty_text(self) -> None:
         self.assertEqual(parse_leave("", 2026), [])
@@ -257,9 +314,9 @@ class LeaveCalendarTests(unittest.TestCase):
         days = self.calendar.off_dates(
             "Cecilia Carlsson", date(2026, 7, 1), date(2026, 7, 31)
         )
-        self.assertEqual(len(days), 15)
+        self.assertEqual(len(days), 14)
         self.assertEqual(days[0], date(2026, 7, 6))
-        self.assertEqual(days[-1], date(2026, 7, 20))
+        self.assertEqual(days[-1], date(2026, 7, 19))
 
     def test_colon_line_is_registered(self) -> None:
         calendar = LeaveCalendar.from_lines(["Roland: 18/12-7/1"], default_year=2026)
@@ -292,11 +349,11 @@ class FormatLeaveTests(unittest.TestCase):
 
     def test_roundtrip(self) -> None:
         ranges = parse_leave("18/12-7/1", 2026)
-        self.assertEqual(format_leave(ranges), "21/12-4/1")
+        self.assertEqual(format_leave(ranges), "21/12-10/1")
 
     def test_multiple(self) -> None:
         ranges = parse_leave("6/7-20/7, 3/8-17/8", 2026)
-        self.assertEqual(format_leave(ranges), "6/7-20/7, 3/8-17/8")
+        self.assertEqual(format_leave(ranges), "6/7-19/7, 3/8-16/8")
 
 
 if __name__ == "__main__":

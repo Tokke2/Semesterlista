@@ -86,9 +86,10 @@ avsnittet ”25 nya förslag” längst ner.
 **v2.11.0 – Lediga dagar i listan + smart cache**
 
 - **Lediga dagar per anställd** (`core/leave.py`): skriv
-  `Anna Andersson ; 18/12 - 7/1` (eller `|`) i `Anställda.txt`. Datumen
-  snäpps till **närmaste måndag** (må–to bakåt, fre–sö framåt), så raden
-  blir 21/12–4/1. Fler perioder med `,` eller `och`, datumformat
+  `Roland: 18/12 - 7/1` (även `;` eller `|`) i `Anställda.txt`. Starten
+  snäpps till **närmaste måndag** (må–to bakåt, fre–sö framåt) och slutet
+  till **närmaste söndag** (to–sö framåt, må–on bakåt), så raden blir
+  21/12 – 10/1. Fler perioder med `,` eller `och`, datumformat
   `18/12`, `18/12/2026` och `2026-12-18`; saknat år → listans år och slut
   före start → nästa år.
 - **I PDF:en** markeras dagarna **grått med ×** (vinner över helgdags-,
@@ -100,8 +101,8 @@ avsnittet ”25 nya förslag” längst ner.
 - **Smart cache** (`core/cache.py`): `%TEMP%/Semesterlista` städas vid start
   (filer äldre än 1 h) och vid avslut (inställning *Avancerat → Rensa cache
   vid avslut*, med cachestorlek i dialogen).
-- **Tester:** 66 nya (`test_leave.py` 48, `test_pdf_leave.py` 11,
-  `test_list_editor.py` 3, `test_roster.py` +4) = **308 totalt**.
+- **Tester:** 75 nya (`test_leave.py` 57, `test_pdf_leave.py` 11,
+  `test_list_editor.py` 3, `test_roster.py` +4) = **317 totalt**.
 
 **v2.9.0 – Uppdatering från GitHub Releases**
 
