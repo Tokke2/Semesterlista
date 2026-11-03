@@ -39,13 +39,12 @@
     - 4.14 core/roster.py
     - 4.15 core/list_editor_dialog.py
     - 4.16 core/pdf_assets.py
-    - 4.17 core/logo_dialog.py
-    - 4.18 plugins/fordon/plugin.py
-    - 4.19 core/app_icon.py
-    - 4.20 core/logging_setup.py
-    - 4.21 core/settings_dialog.py
-    - 4.22 core/updater.py
-    - 4.23 core/logo_picker.py
+    - 4.17 plugins/fordon/plugin.py
+    - 4.18 core/app_icon.py
+    - 4.19 core/logging_setup.py
+    - 4.20 core/settings_dialog.py
+    - 4.21 core/updater.py
+    - 4.22 core/logo_picker.py
 5.  Detaljerad Funktionalitet
 6.  Temahantering (Endast 3 Teman)
 7.  Tabbar – Visa/Dölj (Dynamiskt)
@@ -119,7 +118,6 @@ Semesterlista/ ← Rotmapp
 │ ├── roster.py ← Listor: anställda/fordon/hyresgäster ← NY v2.4.0
 │ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
 │ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
-│ ├── logo_dialog.py ← Välj logotyp (SVG) i appen ← NY v2.5.0 (ersatt)
 │ ├── logo_picker.py ← Dropdown för logotypen i vyerna ← NY v2.10.0
 │ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
 │ ├── logging_setup.py ← Detaljerad loggning + felhakar ← NY v2.8.0
@@ -1279,22 +1277,7 @@ alla versioner.
 
 ---
 
-### 4.17 `core/logo_dialog.py` ✅ v2.5.0
-
-**Ansvar:** Låta användaren välja logotyp bland bilderna i `assets/`.
-
-- Lista (vänster) med alla bilder – även i undermappar, t.ex.
-  `logotyper/exempel-logotyp.svg`.
-- Förhandsgranskning (höger): `QSvgWidget` för SVG, `QLabel`/`QPixmap`
-  för PNG/JPG.
-- Knappar: **Bläddra till fil…** (bild utanför assets), **Uppdatera
-  lista**, **Ta bort** (ingen logotyp), **Använd**, **Avbryt**.
-- `choose_logo(parent, current="")` → `(ändrad, sökväg)`, där `""` =
-  ingen logotyp. Används av både Hyra- och Semester/Fordon-vyn.
-
----
-
-### 4.18 `plugins/fordon/plugin.py` ✅ v2.5.0
+### 4.17 `plugins/fordon/plugin.py` ✅ v2.5.0
 
 **Ansvar:** Egen flik för fordon/limokörning.
 
@@ -1318,7 +1301,7 @@ Inställningarna sparas i en egen lokal fil
 
 ---
 
-### 4.19 `core/app_icon.py` ✅ v2.7.0
+### 4.18 `core/app_icon.py` ✅ v2.7.0
 
 **Ansvar:** En och samma ikon överallt i appen.
 
@@ -1355,7 +1338,7 @@ Inställningarna sparas i en egen lokal fil
 
 ---
 
-### 4.20 `core/logging_setup.py` ✅ v2.8.0
+### 4.19 `core/logging_setup.py` ✅ v2.8.0
 
 **Ansvar:** Detaljerad loggning som sätts upp *före* PySide6 och plugins
 importeras, så att även importfel hamnar i fil.
@@ -1407,7 +1390,7 @@ log_startup_context(PROJECT_ROOT)        # miljöinfo
 
 ---
 
-### 4.21 `core/settings_dialog.py` ✅ v2.8.0
+### 4.20 `core/settings_dialog.py` ✅ v2.8.0
 
 **Ansvar:** Inställningsdialogen bakom **Arkiv → Inställningar** (Ctrl+,).
 
@@ -1439,7 +1422,7 @@ orsaken skrivs till loggen (se `SETTINGS_DIALOG_ERROR` i `main.pyw`).
 
 ---
 
-### 4.22 `core/updater.py` ✅ v2.9.0
+### 4.21 `core/updater.py` ✅ v2.9.0
 
 **Ansvar:** Hämta, jämföra och installera nya versioner från GitHub
 Releases – helt utan externa beroenden (bara `urllib`, `json`, `zipfile`).
@@ -1485,11 +1468,11 @@ alla `UpdateError` med ett begripligt meddelande – appen fortsätter köra.
 
 ---
 
-### 4.23 `core/logo_picker.py` ✅ v2.10.0
+### 4.22 `core/logo_picker.py` ✅ v2.10.0
 
 **Ansvar:** En liten widget som ersätter den gamla logotypdialogen
-(`core/logo_dialog.py`, kvar av bakåtkompatibilitet men inte längre
-anropad): dropdown + knappar + förhandsgranskning som skalar sig själv.
+(`core/logo_dialog.py` togs bort i v2.10.0): dropdown + knappar +
+förhandsgranskning som skalar sig själv.
 
 ```python
 from core.logo_picker import LogoPicker
