@@ -29,7 +29,7 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
   *Infoga logotyp…* för **SVG, EPS, PDF, PNG och JPG**. Förhandsgranskning,
   automatiskt anpassad storlek i PDF:en (15 % av sidbredden / 8 % av
   sidhöjden) och ett **storleksreglage 25–300 %** – proportionerna bevaras
-  alltid. EPS kräver att Ghostscript är installerat.
+  alltid. EPS kräver Ghostscript och PDF kräver PyMuPDF (frivilliga paket).
 - **Systray**: startar minimerat, vänsterklick visar/döljer, högerklick ger
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
 - **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i

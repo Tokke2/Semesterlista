@@ -2778,7 +2778,7 @@ smalare än 18 pt (stående A4), så att etiketterna inte går i varandra.
 |--------|---------------|------|
 | **SVG** | svglib → vektor i PDF:en, annars Qt-rasterisering (300 dpi) | – |
 | **EPS** | Ghostscript → PNG (600 dpi), sedan bild | **Ghostscript** |
-| **PDF** | första sidan rastreras med PyMuPDF (600 dpi) | PyMuPDF |
+| **PDF** | första sidan rastreras med PyMuPDF (600 dpi) | **PyMuPDF** (frivilligt paket, ingår inte i `requirements.txt`) |
 | **PNG/JPG** | `reportlab` `ImageReader` | – |
 
 Dropdown-listan visar **fortfarande bara SVG** i `assets/` (v2.10.0). Allt annat
@@ -2799,6 +2799,9 @@ Saknas Ghostscript kastar `convert_eps_to_png()` ett `AssetError` med
 `ghostscript_hint()`: *”EPS kräver Ghostscript … spara logotypen som SVG eller
 PDF i stället.”* Förhandsgranskningen visar texten i rött, och PDF-exporten
 loggar en varning och ritar ingen logotyp – **PDF:en blir alltid klar**.
+
+Saknas PyMuPDF kastar `convert_pdf_to_png()` ett `AssetError` med samma
+hantering: förklaring i väljaren, varning i loggen, PDF utan logotyp.
 
 Både EPS- och PDF-konverteringen **cachas** i logotypcachen (samma mapp som de
 rastrerade SVG-filerna, städas vid avslut): nyckeln är filens sökväg,

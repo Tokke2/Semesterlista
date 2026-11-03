@@ -65,6 +65,11 @@ try:  # reportlab är en vanlig beroende men kan saknas i testmiljö
     from reportlab.lib.pagesizes import A4
 
     HAVE_REPORTLAB = importlib.util.find_spec("reportlab") is not None
+    # PyMuPDF är frivilligt (krävs bara för PDF-logotyper)
+    HAVE_PYMUPDF = (
+        importlib.util.find_spec("pymupdf") is not None
+        or importlib.util.find_spec("fitz") is not None
+    )
 except Exception:  # pragma: no cover
     HAVE_REPORTLAB = False
     A4 = (595.0, 842.0)
@@ -452,7 +457,9 @@ class EpsImportTests(unittest.TestCase):
         self.assertIn("boom", str(ctx.exception))
 
 
-@unittest.skipUnless(HAVE_REPORTLAB, "reportlab saknas")
+@unittest.skipUnless(
+    HAVE_REPORTLAB and HAVE_PYMUPDF, "reportlab eller PyMuPDF saknas"
+)
 class PdfImportTests(unittest.TestCase):
     """PDF-logotyper rastreras med PyMuPDF (v2.11.0)."""
 
