@@ -214,6 +214,7 @@ try:
     from PySide6.QtGui import (
         QAction,
         QActionGroup,
+        QGuiApplication,
         QIcon,
         QFont,
         QPalette,
@@ -244,6 +245,7 @@ from core.theme_manager import ThemeManager
 from core.single_instance import SingleInstanceLock, AutostartManager
 from core import i18n, updater
 from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
+from core.window_state import clamp_geometry
 from plugins.base_plugin import BasePlugin
 
 # Inställningsdialogen är valfri: saknas filen ska appen ändå starta, men
@@ -1128,14 +1130,38 @@ class MainWindow(QMainWindow):
         self._settings_manager.set("window.height",    geom.height())
         self._settings_manager.set("window.maximized", self.isMaximized())
 
+    def _screen_rects(self) -> list:
+        """
+        Skärmarnas synliga ytor som (x, y, bredd, höjd).
+
+        Används för att kontrollera att fönstret hamnar inom skärmen även om
+        inställningarna sparades med en annan skärmuppsättning (v2.11.0).
+        """
+        rects = []
+        try:
+            for screen in QGuiApplication.screens():
+                geometry = screen.availableGeometry()
+                rects.append(
+                    (geometry.x(), geometry.y(), geometry.width(), geometry.height())
+                )
+        except Exception as exc:  # pragma: no cover – defensivt
+            logger.warning(f"Kunde inte läsa skärmarnas storlek: {exc}")
+        return rects
+
     def _restore_window_state(self) -> None:
-        """Återställ fönstrets geometri från SettingsManager."""
+        """
+        Återställ fönstrets geometri från SettingsManager.
+
+        v2.11.0: geometrin klampas mot skärmarna, så att fönstret aldrig
+        startar utanför en bortkopplad skärm ("appen syns inte"-buggen).
+        """
         x         = self._settings_manager.get("window.x",         100)
         y         = self._settings_manager.get("window.y",         100)
         w         = self._settings_manager.get("window.width",    1200)
         h         = self._settings_manager.get("window.height",    800)
         maximized = self._settings_manager.get("window.maximized", False)
 
+        x, y, w, h = clamp_geometry(x, y, w, h, self._screen_rects())
         self.setGeometry(x, y, w, h)
         if maximized:
             self.showMaximized()
@@ -1201,7 +1227,14 @@ class MainWindow(QMainWindow):
         self.window_shown.emit()
 
     def hide_application(self) -> None:
-        """Dölj fönstret till systemfältet."""
+        """
+        Dölj fönstret till systemfältet.
+
+        Geometrin sparas redan här (v2.11.0), så att storlek och placering
+        finns kvar även om appen avslutas från systemfältet utan att
+        fönstret visats igen.
+        """
+        self._save_window_state()
         self.hide()
         self._event_bus.emit("window:hidden", None)
 
