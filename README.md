@@ -31,8 +31,9 @@ i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess under
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
 - **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i
   `data/backup/` och automatisk omstart – dina listor och inställningar rörs aldrig.
-- **Lediga dagar**: skriv `Anna Andersson ; 18/12 - 7/1` i `Anställda.txt` så markeras
-  frånvaron grått med × i PDF:en (datumen snäpps till närmaste måndag)
+- **Lediga dagar**: skriv `Roland: 18/12 - 7/1` (eller `;` / `|`) i `Anställda.txt`
+  så markeras frånvaron med ett **fett kryss i gråblå cell** i PDF:en – namnet
+  står kvar rent i namnkolumnen och datumen snäpps till närmaste måndag
 - **Smart cache**: rastrerade logotyper cachas under körningen i `%TEMP%/Semesterlista`
   och **städas automatiskt när appen avslutas** (kan stängas av i
   *Inställningar → Avancerat*). Vid start rensas bara gammalt skräp, så en

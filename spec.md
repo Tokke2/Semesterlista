@@ -2597,13 +2597,17 @@ som namnet, och PDF:en markerar dagarna automatiskt.
 ```
 # Anställda.txt
 Anna Andersson ; 18/12 - 7/1
+Roland: 18/12-7/1
 Bertil Bengtsson
 Cecilia Carlsson | 6/7 - 20/7, 3/8 - 17/8
 ```
 
+Namncellen i PDF:en innehåller **bara namnet** – frånvaron syns som kryss i
+dagcellerna och aldrig som text i listan.
+
 | Del | Regel |
 |-----|-------|
-| **Avskiljare** | `;` eller `\|` mellan namn och frånvaro (valfri, valfritt mellanslag runt) |
+| **Avskiljare** | `;`, `\|` eller `:` mellan namn och frånvaro (valfritt mellanslag runt). `;`/`\|` delar alltid raden; `:` delar bara när det följer ett datum, så `Avdelning: Ekonomi` fortsätter vara ett namn |
 | **Period** | `start - slut`, flera perioder separeras med `,` **eller** ordet `och` (**även `;`** inuti frånvaron) |
 | **Datumformat** | `18/12`, `18/12/2026`, `2026-12-18` (ISO) |
 | **Saknat år** | listans år; om slutet ligger före starten menas **nästa år** (så `18/12 - 7/1` blir rätt) |
@@ -2629,7 +2633,8 @@ raden får vara högst `MAX_ENTRY_LENGTH` (80) tecken inklusive frånvaron.
 |------------------|-----|
 | `snap_to_monday(day)` | Flyttar ett datum till närmaste måndag |
 | `parse_leave(text, default_year=None, snap=True)` | Text → `list[LeaveRange]`; höjer `LeaveError` vid skräp |
-| `split_entry(line)` | `"Anna ; 18/12 - 7/1"` → `("Anna", "18/12 - 7/1")` |
+| `split_entry(line)` | `"Anna ; 18/12 - 7/1"` → `("Anna", "18/12 - 7/1")`, `"Roland: 18/12-7/1"` → `("Roland", "18/12-7/1")` |
+| `looks_like_leave(text)` | True om texten innehåller ett datum (används av `:`) |
 | `format_leave(ranges)` | Tillbaka till `21/12-4/1, 3/8-17/8` |
 | `LeaveRange` | Fryst dataclass: `contains()`, `days()`, `overlaps_month()`, `str()` = `2026-12-21 – 2027-01-04` |
 | `LeaveCalendar` | `from_lines()`, `add_line()`, `ranges_for()`, `is_off(namn, datum)`, `off_dates()`, `names_with_leave()`, `errors`, `len()` |
@@ -2647,10 +2652,11 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 - `plugins/lista/plugin.py`: `_read_list_from_file()` fyller
   `self._leave_calendar`; `_generate_pdf(..., leave=None)` tar emot en
   kalender (standard: den inlästa).
-- **PDF:** lediga dagar skrivs som **×** i en **gråblå** cell
-  (`LEAVE_COLOR = 0.35, 0.38, 0.45`, vit fetstil). Markeringen ligger
-  överst i färgprioriteringen, så en ledig lördag blir grå – inte blå.
-  Tecknet `×` (U+00D7) finns i Latin-1 och fungerar med Helvetica.
+- **PDF:** lediga dagar skrivs som ett **fet kryss** (×) i en **gråblå** cell
+  (`LEAVE_COLOR = 0.35, 0.38, 0.45`, vit `Helvetica-Bold` i
+  `LEAVE_FONT_SIZE` = celltexten + 3 punkter). Markeringen ligger överst i
+  färgprioriteringen, så en ledig lördag blir grå – inte blå. Tecknet `×`
+  (U+00D7) finns i Latin-1 och fungerar med Helvetica.
 - **Förklaringar:** PDF-legendens femte ruta (`lista.pdf.legend.leave`,
   ”Grå = Ledig”) och vyns färgförklaring (`lista.legend.leave`).
 - **Listredigeraren** visar en hjälptext överst (`roster.leave.hint`) med
@@ -2669,12 +2675,12 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 
 | Fil | Antal | Innehåll |
 |-----|-------|----------|
-| `tests/test_leave.py` | 42 | veckosnäppning alla veckodagar, årskifte, ISO/explicit år, flera perioder, `split_entry`, `is_off`, `off_dates`, felhantering |
-| `tests/test_pdf_leave.py` | 8 | cellmarkering i december/januari (fångar tabelldata), ingen markering utan frånvaro, legendens fem rutor, Latin-1, inläsning från fil |
+| `tests/test_leave.py` | 48 | veckosnäppning alla veckodagar, årskifte, ISO/explicit år, flera perioder, `split_entry` (alla tre avskiljarna), `looks_like_leave`, `is_off`, `off_dates`, felhantering |
+| `tests/test_pdf_leave.py` | 11 | cellmarkering i december/januari (fångar tabelldata), namncell utan frånvaro, kryssets storlek, ingen markering utan frånvaro, legendens fem rutor, Latin-1, inläsning från fil (även `:`-formatet) |
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
-| `tests/test_roster.py` | +3 | `read_names()` tar bort frånvaro, `read_entries()` |
+| `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **298 tester**.
+Svitens total: **308 tester**.
 
 ---
 

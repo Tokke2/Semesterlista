@@ -50,8 +50,16 @@ logger = logging.getLogger(__name__)
 
 MODULE_VERSION: str = "2.11.0"
 
-#: Tecken som skiljer namnet från frånvaron i listfilen
-ENTRY_SEPARATORS: Tuple[str, ...] = (";", "|")
+#: Avskiljare som alltid delar raden – de förekommer inte i namn.
+STRICT_SEPARATORS: Tuple[str, ...] = (";", "|")
+
+#: Avskiljare som bara delar raden när ett datum följer. ``:`` togs med i
+#: v2.11.0 eftersom många skriver ``Roland: 18/12-7/1``, men ``Avdelning:
+#: Ekonomi`` ska fortsätta vara ett namn.
+CONDITIONAL_SEPARATORS: Tuple[str, ...] = (":",)
+
+#: Alla avskiljare (i prioritetsordning)
+ENTRY_SEPARATORS: Tuple[str, ...] = STRICT_SEPARATORS + CONDITIONAL_SEPARATORS
 
 #: 18/12, 18/12/2026 eller 2026-12-18
 DATE_PATTERN = r"(?:\d{1,2}/\d{1,2}(?:/\d{4})?|\d{4}-\d{1,2}-\d{1,2})"
@@ -224,18 +232,46 @@ def _has_year(text: str) -> bool:
 # Listfilen
 # ══════════════════════════════════════════════════════════
 
+#: Söker ett datum var som helst i en sträng (för att känna igen frånvaro)
+_DATE_SEARCH = re.compile(DATE_PATTERN)
+
+
+def looks_like_leave(text: str) -> bool:
+    """
+    True om texten innehåller minst ett datum.
+
+    Används för att avgöra om det som står efter avskiljaren verkligen är
+    frånvaro – så att t.ex. ``Volvo: ABC 123`` inte tolkas som
+    ``namn = "Volvo"`` med frånvaron ``"ABC 123"``.
+    """
+    return bool(_DATE_SEARCH.search(text or ""))
+
+
 def split_entry(line: str) -> Tuple[str, str]:
     """
     Dela en rad i ``(namn, frånvaro)``.
 
-    ``"Anna Andersson ; 18/12 - 7/1"`` → ``("Anna Andersson", "18/12 - 7/1")``.
-    Saknas avskiljare blir frånvaron en tom sträng.
+    ``"Anna Andersson ; 18/12 - 7/1"`` → ``("Anna Andersson", "18/12 - 7/1")``
+    ``"Roland: 18/12-7/1"``            → ``("Roland", "18/12-7/1")``
+
+    ``;`` och ``|`` delar alltid raden (de förekommer inte i namn), medan
+    ``:`` bara delar när det som följer innehåller ett datum – så att
+    ``"Avdelning: Ekonomi"`` fortsätter vara ett namn. Saknas avskiljare blir
+    frånvaron en tom sträng.
     """
     text = (line or "").strip()
-    for separator in ENTRY_SEPARATORS:
+
+    for separator in STRICT_SEPARATORS:
         if separator in text:
             name, _, rest = text.partition(separator)
             return name.strip(), rest.strip()
+
+    for separator in CONDITIONAL_SEPARATORS:
+        if separator in text:
+            name, _, rest = text.partition(separator)
+            if looks_like_leave(rest):
+                return name.strip(), rest.strip()
+
     return text, ""
 
 

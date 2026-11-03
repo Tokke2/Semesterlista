@@ -434,6 +434,18 @@ class TestHelpers(RosterTestCase):
     def test_read_entries_saknad_fil(self):
         self.assertEqual(read_entries("Saknas.txt", base=self.tmp), [])
 
+    def test_read_entries_kolon_och_namn_med_kolon(self):
+        """Kolon delar bara när det följs av ett datum (v2.11.0)."""
+        self.write(
+            "Anställda.txt",
+            "Roland: 18/12-7/1\n"
+            "Avdelning: Ekonomi\n",
+        )
+        self.assertEqual(
+            read_entries("Anställda.txt", base=self.tmp),
+            [("Roland", "18/12-7/1"), ("Avdelning: Ekonomi", "")],
+        )
+
     def test_ensure_file_skapar(self):
         roster = ensure_file(
             "Fordon.txt", name="Fordon", base=self.tmp,

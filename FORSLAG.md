@@ -100,8 +100,8 @@ avsnittet ”25 nya förslag” längst ner.
 - **Smart cache** (`core/cache.py`): `%TEMP%/Semesterlista` städas vid start
   (filer äldre än 1 h) och vid avslut (inställning *Avancerat → Rensa cache
   vid avslut*, med cachestorlek i dialogen).
-- **Tester:** 56 nya (`test_leave.py` 42, `test_pdf_leave.py` 8,
-  `test_list_editor.py` 3, `test_roster.py` +3) = **298 totalt**.
+- **Tester:** 66 nya (`test_leave.py` 48, `test_pdf_leave.py` 11,
+  `test_list_editor.py` 3, `test_roster.py` +4) = **308 totalt**.
 
 **v2.9.0 – Uppdatering från GitHub Releases**
 

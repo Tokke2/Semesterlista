@@ -147,6 +147,8 @@ LEAVE_COLOR = colors.Color(0.35, 0.38, 0.45)
 LEAVE_MARK = "\u00d7"
 MIN_DAY_COL_WIDTH = 8
 FONT_SIZE = 7
+#: Krysset ritas fetare och större än celltexten så att det syns på avstånd
+LEAVE_FONT_SIZE = FONT_SIZE + 3
 
 # ── Sidlayout (v2.6.0) ─────────────────────────────────
 # Användaren väljer liggande (standard) eller stående A4.
@@ -1393,6 +1395,11 @@ class PDFGenerator:
                                 "FONTNAME",
                                 (day_num, row_idx), (day_num, row_idx),
                                 "Helvetica-Bold",
+                            )
+                            style.add(
+                                "FONTSIZE",
+                                (day_num, row_idx), (day_num, row_idx),
+                                LEAVE_FONT_SIZE,
                             )
 
                 # Orange veckolinjer

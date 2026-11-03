@@ -123,11 +123,11 @@ class LeaveInPdfTests(unittest.TestCase):
         """Tabeller som innehåller anställda (fler än tre rubrikrader)."""
         return [data for data in self._captured if len(data) > 3]
 
-    def _generate(self, leave=None, start_month=None) -> None:
+    def _generate(self, leave=None, start_month=None, names=None) -> None:
         for old in self.outdir.glob("*.pdf"):
             old.unlink()
         ok = self.generator._generate_pdf(
-            data_list=["Anna Andersson", "Bertil Bengtsson"],
+            data_list=names or ["Anna Andersson", "Bertil Bengtsson"],
             year=2026,
             mode="Semesterlista",
             leave=leave,
@@ -186,6 +186,22 @@ class LeaveInPdfTests(unittest.TestCase):
             for row in data[3:]:
                 self.assertNotIn(self.module.LEAVE_MARK, row)
 
+    def test_name_cell_has_no_leave_text(self) -> None:
+        """Namncellen ska bara innehålla namnet – frånvaron syns som kryss."""
+        from core.leave import LeaveCalendar
+
+        calendar = LeaveCalendar.from_lines(["Roland: 18/12-7/1"], default_year=2026)
+        self._generate(leave=calendar, names=["Roland"])
+
+        december = next(
+            data for data in self._month_tables() if "December 2026" in str(data[0][0])
+        )
+        self.assertEqual(december[3][0], "Roland")
+        self.assertEqual(december[3][21:32], [self.module.LEAVE_MARK] * 11)
+
+    def test_leave_font_is_bold_and_larger(self) -> None:
+        self.assertGreaterEqual(self.module.LEAVE_FONT_SIZE, self.module.FONT_SIZE + 2)
+
     def test_legend_has_leave_entry(self) -> None:
         from core.leave import LeaveCalendar
 
@@ -221,8 +237,10 @@ class ReadListWithLeaveTests(unittest.TestCase):
         cls.list_file = base / "Anställda.txt"
         cls.list_file.write_text(
             "Anna Andersson ; 18/12 - 7/1\n"
+            "Roland: 18/12-7/1\n"
             "Bertil Bengtsson\n"
             "Cecilia Carlsson | 6/7 - 20/7\n"
+            "Avdelning: Ekonomi\n"
             "# kommentar\n",
             encoding="utf-8",
         )
@@ -242,15 +260,26 @@ class ReadListWithLeaveTests(unittest.TestCase):
     def test_names_are_clean(self) -> None:
         names = self.generator._read_list_from_file(str(self.list_file))
         self.assertEqual(
-            names, ["Anna Andersson", "Bertil Bengtsson", "Cecilia Carlsson"]
+            names,
+            [
+                "Anna Andersson",
+                "Roland",
+                "Bertil Bengtsson",
+                "Cecilia Carlsson",
+                "Avdelning: Ekonomi",
+            ],
         )
+        # Ingen namncell får innehålla frånvaron
+        for name in names:
+            self.assertNotIn("/", name)
+        self.assertIn("Avdelning: Ekonomi", names)
 
     def test_calendar_is_filled(self) -> None:
         from datetime import date
 
         self.generator._read_list_from_file(str(self.list_file))
         calendar = self.generator._leave_calendar
-        self.assertEqual(len(calendar), 2)
+        self.assertEqual(len(calendar), 3)
         self.assertEqual(calendar.errors, [])
 
         ranges = calendar.ranges_for("Anna Andersson")
@@ -263,6 +292,15 @@ class ReadListWithLeaveTests(unittest.TestCase):
 
         self.assertTrue(calendar.is_off("Cecilia Carlsson", date(ranges[0].start.year, 7, 6)))
         self.assertFalse(calendar.is_off("Bertil Bengtsson", date(ranges[0].start.year, 7, 6)))
+
+    def test_colon_line_is_read(self) -> None:
+        """Formatet ur användarens egen lista: "Roland: 18/12-7/1"."""
+        names = self.generator._read_list_from_file(str(self.list_file))
+        self.assertIn("Roland", names)
+        ranges = self.generator._leave_calendar.ranges_for("Roland")
+        self.assertEqual(len(ranges), 1)
+        self.assertEqual((ranges[0].start.month, ranges[0].start.day), (12, 21))
+        self.assertEqual((ranges[0].end.month, ranges[0].end.day), (1, 4))
 
     def test_generate_uses_read_calendar(self) -> None:
         self.generator._read_list_from_file(str(self.list_file))

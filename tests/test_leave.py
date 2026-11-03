@@ -26,6 +26,7 @@ from core.leave import (  # noqa: E402
     LeaveError,
     LeaveRange,
     format_leave,
+    looks_like_leave,
     parse_leave,
     snap_to_monday,
     split_entry,
@@ -173,6 +174,23 @@ class SplitEntryTests(unittest.TestCase):
             ("Anna Andersson", "18/12 - 7/1"),
         )
 
+    def test_colon(self) -> None:
+        """Vanligaste skrivsättet i befintliga listor: "Roland: 18/12-7/1"."""
+        self.assertEqual(split_entry("Roland: 18/12-7/1"), ("Roland", "18/12-7/1"))
+
+    def test_colon_with_space(self) -> None:
+        self.assertEqual(
+            split_entry("Roland : 18/12 - 7/1"),
+            ("Roland", "18/12 - 7/1"),
+        )
+
+    def test_colon_without_date_is_kept(self) -> None:
+        """Utan datum efter avskiljaren är hela raden namnet."""
+        self.assertEqual(split_entry("Volvo: ABC 123"), ("Volvo: ABC 123", ""))
+        self.assertEqual(
+            split_entry("Avdelning: Ekonomi"), ("Avdelning: Ekonomi", "")
+        )
+
     def test_name_only(self) -> None:
         self.assertEqual(split_entry("Anna Andersson"), ("Anna Andersson", ""))
 
@@ -181,6 +199,18 @@ class SplitEntryTests(unittest.TestCase):
             split_entry("  Anna Andersson;18/12  "),
             ("Anna Andersson", "18/12"),
         )
+
+
+class LooksLikeLeaveTests(unittest.TestCase):
+    """Säkerhetsregeln som avgör om raden ska delas."""
+
+    def test_dates_are_recognised(self) -> None:
+        for text in ("18/12", "18/12 - 7/1", "2026-12-18", "6/7-20/7 och 3/8-17/8"):
+            self.assertTrue(looks_like_leave(text), text)
+
+    def test_non_dates_are_rejected(self) -> None:
+        for text in ("", "ABC 123", "Ekonomi", "Roland"):
+            self.assertFalse(looks_like_leave(text), text)
 
 
 class LeaveCalendarTests(unittest.TestCase):
@@ -230,6 +260,12 @@ class LeaveCalendarTests(unittest.TestCase):
         self.assertEqual(len(days), 15)
         self.assertEqual(days[0], date(2026, 7, 6))
         self.assertEqual(days[-1], date(2026, 7, 20))
+
+    def test_colon_line_is_registered(self) -> None:
+        calendar = LeaveCalendar.from_lines(["Roland: 18/12-7/1"], default_year=2026)
+        self.assertEqual(len(calendar), 1)
+        self.assertTrue(calendar.is_off("Roland", date(2026, 12, 24)))
+        self.assertFalse(calendar.is_off("Roland", date(2026, 12, 18)))
 
     def test_invalid_leave_is_reported(self) -> None:
         self.assertEqual(len(self.calendar.errors), 1)
