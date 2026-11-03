@@ -29,7 +29,8 @@ Konfiguration (data/plugins.json → "Fordon"):
           "months_per_page": 2,
           "start_month": 0,
           "auto_open_pdf": true,
-          "logo_svg": ""
+          "logo_svg": "",
+          "logo_scale": 100
         }
       }
     }

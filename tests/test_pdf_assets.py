@@ -13,10 +13,13 @@ automatiskt om reportlab inte är installerat, och SVG-rendering hoppas
 
 from __future__ import annotations
 
+import os
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -32,8 +35,17 @@ from core.pdf_assets import (  # noqa: E402
     MM,
     AssetError,
     AssetFile,
+    GHOSTSCRIPT_ENV,
+    LOGO_SCALE_MAX,
+    LOGO_SCALE_MIN,
     PdfLogo,
+    SCALE_MAX_HEIGHT_RATIO,
+    SCALE_MAX_WIDTH_RATIO,
     assets_root,
+    convert_eps_to_png,
+    convert_pdf_to_png,
+    find_ghostscript,
+    ghostscript_hint,
     ensure_assets_dir,
     find_asset,
     logo_for_settings,
@@ -358,3 +370,184 @@ class PdfLogoAutoSizeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+@unittest.skipIf(os.name == "nt", "fejkat Ghostscript kräver ett skal")
+class EpsImportTests(unittest.TestCase):
+    """EPS-logotyper konverteras med Ghostscript (v2.11.0)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.eps = self.tmp / "logo.eps"
+        self.eps.write_text(
+            "%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 200 100\nshowpage\n",
+            encoding="latin-1",
+        )
+        self.png = self.tmp / "fixture.png"
+        _write_png(self.png, 400, 200)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _fake_gs(self, body: str) -> Path:
+        """Skapa ett litet skal som beter sig som Ghostscript."""
+        script = self.tmp / "fake-gs"
+        script.write_text("#!/bin/sh\n" + body + "\n", encoding="utf-8")
+        script.chmod(0o755)
+        return script
+
+    def _copy_gs(self) -> Path:
+        return self._fake_gs(
+            'out=""\n'
+            'for a in "$@"; do\n'
+            '  case "$a" in -sOutputFile=*) out="${a#-sOutputFile=}" ;; esac\n'
+            "done\n"
+            f'cp "{self.png}" "$out"'
+        )
+
+    def test_environment_variable_wins(self) -> None:
+        script = self._copy_gs()
+        with mock.patch.dict(os.environ, {GHOSTSCRIPT_ENV: str(script)}):
+            self.assertEqual(find_ghostscript(), str(script))
+
+    def test_environment_variable_pointing_nowhere_is_ignored(self) -> None:
+        missing = self.tmp / "finns-inte"
+        with mock.patch.dict(os.environ, {GHOSTSCRIPT_ENV: str(missing)}):
+            self.assertIsNone(find_ghostscript())
+
+    def test_missing_ghostscript_gives_a_hint(self) -> None:
+        with mock.patch.object(
+            sys.modules["core.pdf_assets"], "find_ghostscript", return_value=None
+        ):
+            with self.assertRaises(AssetError) as ctx:
+                convert_eps_to_png(self.eps)
+        self.assertIn("Ghostscript", str(ctx.exception))
+        self.assertIn("Ghostscript", ghostscript_hint())
+
+    def test_eps_is_converted_to_png(self) -> None:
+        script = self._copy_gs()
+        with mock.patch.dict(os.environ, {GHOSTSCRIPT_ENV: str(script)}):
+            result = convert_eps_to_png(self.eps)
+            self.assertTrue(result.exists())
+            self.assertEqual(result.suffix, ".png")
+            self.assertEqual(result.read_bytes()[:4], b"\x89PNG")
+            # Andra anropet använder cachen (inget nytt Ghostscript-anrop)
+            again = convert_eps_to_png(self.eps)
+            self.assertEqual(again, result)
+
+    def test_eps_logo_keeps_the_original_path(self) -> None:
+        script = self._copy_gs()
+        with mock.patch.dict(os.environ, {GHOSTSCRIPT_ENV: str(script)}):
+            logo = PdfLogo.load(self.eps)
+        self.assertEqual(logo.path, self.eps, "originalfilen ska visas i listan")
+        self.assertFalse(logo.vector)
+        self.assertAlmostEqual(logo.width / logo.height, 2.0, places=2)
+
+    def test_failed_conversion_reports_the_error(self) -> None:
+        script = self._fake_gs('echo "boom" 1>&2\nexit 1')
+        with mock.patch.dict(os.environ, {GHOSTSCRIPT_ENV: str(script)}):
+            with self.assertRaises(AssetError) as ctx:
+                convert_eps_to_png(self.eps)
+        self.assertIn("logo.eps", str(ctx.exception))
+        self.assertIn("boom", str(ctx.exception))
+
+
+@unittest.skipUnless(HAVE_REPORTLAB, "reportlab saknas")
+class PdfImportTests(unittest.TestCase):
+    """PDF-logotyper rastreras med PyMuPDF (v2.11.0)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.pdf = self.tmp / "logo.pdf"
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas as rl_canvas
+
+        page = rl_canvas.Canvas(str(self.pdf), pagesize=A4)
+        page.rect(0, 0, 200, 100, stroke=0, fill=1)
+        page.showPage()
+        page.save()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_first_page_is_rasterized(self) -> None:
+        png = convert_pdf_to_png(self.pdf, dpi=72)
+        self.assertTrue(png.exists())
+        self.assertEqual(png.read_bytes()[:4], b"\x89PNG")
+        # Cachen återanvänds
+        self.assertEqual(convert_pdf_to_png(self.pdf, dpi=72), png)
+
+    def test_pdf_logo_is_loaded_as_image(self) -> None:
+        logo = PdfLogo.load(self.pdf)
+        self.assertFalse(logo.vector)
+        self.assertEqual(logo.path, self.pdf)
+        self.assertLessEqual(logo.width, 35.0 * MM + 0.01)
+        self.assertLessEqual(logo.height, 16.0 * MM + 0.01)
+
+    def test_missing_pdf_raises(self) -> None:
+        with self.assertRaises(AssetError):
+            convert_pdf_to_png(self.tmp / "saknas.pdf")
+
+
+class LogoScaleTests(unittest.TestCase):
+    """Storleksreglaget 25–300 % (v2.11.0)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.png = self.tmp / "logo.png"
+        _write_png(self.png, 400, 200)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_scale_is_stored_on_the_logo(self) -> None:
+        logo = PdfLogo.load(self.png, scale=1.5)
+        self.assertAlmostEqual(logo.scale, 1.5, places=3)
+
+    def test_scale_changes_the_loaded_size(self) -> None:
+        small = PdfLogo.load(self.png, max_width_mm=10, max_height_mm=10)
+        large = PdfLogo.load(self.png, max_width_mm=10, max_height_mm=10, scale=2.0)
+        self.assertAlmostEqual(large.width / small.width, 2.0, places=2)
+        self.assertAlmostEqual(large.height / small.height, 2.0, places=2)
+
+    def test_auto_size_follows_the_scale(self) -> None:
+        logo = PdfLogo.load(self.png, scale=0.5)
+        width, height = logo.auto_size(842.0, 595.0)
+        plain = PdfLogo.load(self.png, max_width_mm=35, max_height_mm=16)
+        full_w, full_h = plain.auto_size(842.0, 595.0)
+        self.assertAlmostEqual(width, full_w * 0.5, places=2)
+        self.assertAlmostEqual(height, full_h * 0.5, places=2)
+
+    def test_auto_size_never_leaves_the_page(self) -> None:
+        logo = PdfLogo.load(self.png, scale=5.0)
+        width, height = logo.auto_size(200.0, 100.0)
+        self.assertLess(width, 200.0)
+        self.assertLess(height, 100.0)
+
+    def test_auto_size_is_capped_so_the_legend_stays_visible(self) -> None:
+        """Även 300 % får plats ovanför färgförklaringen (v2.11.0)."""
+        logo = PdfLogo.load(self.png, scale=3.0)
+        width, height = logo.auto_size(842.0, 595.0)
+        self.assertLessEqual(height, 595.0 * SCALE_MAX_HEIGHT_RATIO + 0.01)
+        self.assertLessEqual(width, 842.0 * SCALE_MAX_WIDTH_RATIO + 0.01)
+
+    def test_logo_for_settings_reads_the_percentage(self) -> None:
+        logo = logo_for_settings({"logo_svg": str(self.png), "logo_scale": 200})
+        self.assertIsNotNone(logo)
+        self.assertAlmostEqual(logo.scale, 2.0, places=3)
+
+    def test_logo_for_settings_defaults_to_100(self) -> None:
+        for value in (None, "", "abc", 0.5):
+            settings = {"logo_svg": str(self.png)}
+            if value is not None:
+                settings["logo_scale"] = value
+            logo = logo_for_settings(settings)
+            self.assertIsNotNone(logo)
+            self.assertGreaterEqual(logo.scale, LOGO_SCALE_MIN / 100.0)
+            self.assertLessEqual(logo.scale, LOGO_SCALE_MAX / 100.0)
+
+    def test_logo_for_settings_clamps_extremes(self) -> None:
+        low = logo_for_settings({"logo_svg": str(self.png), "logo_scale": 1})
+        high = logo_for_settings({"logo_svg": str(self.png), "logo_scale": 9999})
+        self.assertAlmostEqual(low.scale, LOGO_SCALE_MIN / 100.0, places=3)
+        self.assertAlmostEqual(high.scale, LOGO_SCALE_MAX / 100.0, places=3)

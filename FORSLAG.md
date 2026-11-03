@@ -171,6 +171,9 @@ avsnittet ”25 nya förslag” längst ner.
   för lång (mindre radluft provas först), så att ingen tabell klipps av.
   Rubrik + färgförklaring upprepas på varje sida.
 - **Trånga dagkolumner** (stående A4) får mindre dagnamnsgrad.
+- **Logotypimport:** SVG, **EPS** (via Ghostscript) och **PDF** (via PyMuPDF)
+  utöver PNG/JPG, plus ett **storleksreglage 25–300 %** per flik. Logotypen
+  kan aldrig bli så stor att den hamnar över tabellen eller färgförklaringen.
 - Se `spec.md` kap. 27. N22 (PDF-innehållstester) blir delvis överflödig –
   `tests/test_pdf_layout.py` mäter redan sidantal och legend.
 

@@ -15,8 +15,9 @@ En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörning
 | **Semesterlista** | Semester- och limokörningsschema, 1–3 månader per blad, liggande eller stående A4 |
 | **Fordon** | Samma schema som Semesterlista men låst till limokörning |
 
-Alla tre flikarna kan ha **egen logotyp** (SVG) som ritas automatiskt skalenligt
-i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess undermappar.
+Alla tre flikarna kan ha **egen logotyp** (SVG, EPS eller PDF) som ritas
+automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
+`assets/` och dess undermappar, eller infogas med *Infoga logotyp…*.
 
 ## Funktioner
 
@@ -24,9 +25,11 @@ i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess under
   valbar startmånad (även över årsskifte) och 1, 2 eller 3 månader per blad.
 - **Egna listor** (`Anställda.txt`, `Fordon.txt`, `Hyresgäster.txt`) som redigeras
   direkt i appen – kommentarer, blandade teckenkodningar och dubbletter hanteras.
-- **Logotyp** per flik: dropdown med SVG:er från `assets/` + undermappar,
-  förhandsgranskning och automatiskt anpassad storlek i PDF:en
-  (15 % av sidbredden / 8 % av sidhöjden, proportionerna bevaras).
+- **Logotyp** per flik: dropdown med SVG:er från `assets/` + undermappar och
+  *Infoga logotyp…* för **SVG, EPS, PDF, PNG och JPG**. Förhandsgranskning,
+  automatiskt anpassad storlek i PDF:en (15 % av sidbredden / 8 % av
+  sidhöjden) och ett **storleksreglage 25–300 %** – proportionerna bevaras
+  alltid. EPS kräver att Ghostscript är installerat.
 - **Systray**: startar minimerat, vänsterklick visar/döljer, högerklick ger
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
 - **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i

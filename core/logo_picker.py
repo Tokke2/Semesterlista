@@ -15,7 +15,12 @@ En liten widget som låter användaren infoga en logotyp till PDF-exporten:
 
 * Dropdown-listan visar alla **SVG-logotyper** i appens mapp ``assets/``
   **och dess undermappar** (samma sökning som ``core/pdf_assets.py``).
-* **Infoga SVG…** låter användaren välja en fil utanför assets-mappen.
+* **Infoga logotyp…** låter användaren välja en fil utanför assets-mappen –
+  **SVG, EPS, PDF, PNG eller JPG**.
+* **EPS** konverteras med Ghostscript och **PDF** rastreras med PyMuPDF
+  (v2.11.0); saknas Ghostscript visas en förklaring i förhandsgranskningen.
+* **Storleksreglaget** (25–300 %) anpassar logotypens storlek i PDF:en –
+  proportionerna behålls alltid.
 * Förhandsgranskningen **anpassar storleken automatiskt** – bilden skalas
   alltid till att passa ytan och behåller sina proportioner.
 * I den genererade PDF:en anpassas logotypen automatiskt efter sidans
@@ -47,12 +52,26 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from core.i18n import t
-from core.pdf_assets import SVG_SUFFIXES, AssetFile, assets_root, scan_assets
+from core.pdf_assets import (
+    EPS_SUFFIXES,
+    LOGO_SCALE_DEFAULT,
+    LOGO_SCALE_MAX,
+    LOGO_SCALE_MIN,
+    PDF_SUFFIXES,
+    SVG_SUFFIXES,
+    AssetError,
+    AssetFile,
+    assets_root,
+    convert_eps_to_png,
+    convert_pdf_to_png,
+    scan_assets,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +93,8 @@ class LogoPicker(QWidget):
     """
 
     changed = Signal(str)
+    #: Ny storlek i procent (v2.11.0)
+    scale_changed = Signal(int)
 
     def __init__(
         self,
@@ -81,6 +102,7 @@ class LogoPicker(QWidget):
         root: Optional[Union[str, Path]] = None,
         parent: Optional[QWidget] = None,
         show_preview: bool = True,
+        scale: int = LOGO_SCALE_DEFAULT,
     ):
         super().__init__(parent)
 
@@ -89,6 +111,7 @@ class LogoPicker(QWidget):
         self._assets: List[AssetFile] = []
         self._pixmap: Optional[QPixmap] = None
         self._show_preview = show_preview
+        self._scale = self._clamp_scale(scale)
 
         self._build_ui()
         self.refresh(emit=False)
@@ -134,6 +157,26 @@ class LogoPicker(QWidget):
         self.preview.setToolTip(t("logo.auto_size"))
         self.preview.setVisible(self._show_preview)
         layout.addWidget(self.preview)
+
+        # Storleksreglage (v2.11.0) – proportionerna låses, bara skalan ändras
+        size_row = QHBoxLayout()
+        size_row.setSpacing(6)
+        self.size_label = QLabel(t("logo.size_label"))
+        size_row.addWidget(self.size_label)
+
+        self.size_spin = QSpinBox()
+        self.size_spin.setRange(LOGO_SCALE_MIN, LOGO_SCALE_MAX)
+        self.size_spin.setSingleStep(5)
+        self.size_spin.setSuffix(" %")
+        self.size_spin.setValue(self._scale)
+        self.size_spin.setToolTip(t("logo.size_tooltip"))
+        self.size_spin.valueChanged.connect(self._on_scale_changed)
+        size_row.addWidget(self.size_spin)
+
+        self.size_hint = QLabel(t("logo.size_hint"))
+        self.size_hint.setStyleSheet("color: #666; font-size: 10px;")
+        size_row.addWidget(self.size_hint, 1)
+        layout.addLayout(size_row)
 
     # ──────────────────────────────────────────────────────
     # Listan
@@ -226,6 +269,60 @@ class LogoPicker(QWidget):
         """Ta bort logotypen."""
         self.set_current("", emit=True)
 
+    # ──────────────────────────────────────────────────────
+    # Storlek (v2.11.0)
+    # ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _clamp_scale(scale: int) -> int:
+        """Håll reglaget inom tillåtna gränser."""
+        try:
+            value = int(scale)
+        except (TypeError, ValueError):
+            value = LOGO_SCALE_DEFAULT
+        return max(LOGO_SCALE_MIN, min(value, LOGO_SCALE_MAX))
+
+    def scale(self) -> int:
+        """Storleken i procent (100 = automatisk storlek)."""
+        return self._scale
+
+    def set_scale(self, scale: int, emit: bool = False) -> None:
+        """
+        Ställ in storleken i procent.
+
+        Args:
+            scale: 25–300 (100 = automatisk storlek).
+            emit:  Skicka ``scale_changed``.
+        """
+        value = self._clamp_scale(scale)
+        if value != self.size_spin.value():
+            self.size_spin.blockSignals(True)
+            self.size_spin.setValue(value)
+            self.size_spin.blockSignals(False)
+        changed = value != self._scale
+        self._scale = value
+        self._apply_preview()
+        if emit and changed:
+            self.scale_changed.emit(value)
+
+    def _on_scale_changed(self, value: int) -> None:
+        self._scale = self._clamp_scale(value)
+        self._apply_preview()
+        self.scale_changed.emit(self._scale)
+
+    # ──────────────────────────────────────────────────────
+    # Infoga
+    # ──────────────────────────────────────────────────────
+
+    def file_filter(self) -> str:
+        """Filtersträngen som *Infoga logotyp…* använder."""
+        return (
+            f"{t('logo.filter_all')} (*.svg *.eps *.pdf *.png *.jpg *.jpeg);;"
+            f"SVG (*.svg);;EPS (*.eps);;PDF (*.pdf);;"
+            f"{t('logo.filter_images')} (*.png *.jpg *.jpeg);;"
+            f"{t('logo.filter_any')} (*)"
+        )
+
     def _index_of(self, path: str) -> int:
         if not path:
             return 0 if self.combo.count() else -1
@@ -257,7 +354,7 @@ class LogoPicker(QWidget):
         self.changed.emit(path)
 
     def _insert_file(self) -> None:
-        """Infoga en SVG/PNG som ligger utanför assets-mappen."""
+        """Infoga SVG/EPS/PDF/PNG/JPG som ligger utanför assets-mappen."""
         start = str(self._root)
         current = self._current
         if current and Path(current).parent.exists():
@@ -267,7 +364,7 @@ class LogoPicker(QWidget):
             self,
             t("logo.dialog_title"),
             start,
-            "SVG (*.svg);;Bilder (*.svg *.png *.jpg *.jpeg);;Alla filer (*)",
+            self.file_filter(),
         )
         if not filename:
             return
@@ -299,11 +396,16 @@ class LogoPicker(QWidget):
         self.preview.setStyleSheet(self._preview_style())
 
         try:
-            if target.suffix.lower() == ".svg":
-                pixmap = _render_svg(target, self._preview_box())
-            else:
-                pixmap = QPixmap(str(target))
+            pixmap = self._pixmap_for(target)
             self._pixmap = None if pixmap.isNull() else pixmap
+        except AssetError as exc:
+            logger.warning(f"Kunde inte läsa logotypen: {exc}")
+            self._pixmap = None
+            self.preview.setPixmap(QPixmap())
+            self.preview.setStyleSheet("color: #c0392b; font-size: 10px;")
+            self.preview.setWordWrap(True)
+            self.preview.setText(str(exc))
+            return
         except Exception as exc:  # pragma: no cover – defensivt
             logger.warning(f"Kunde inte läsa logotypen: {exc}")
             self._pixmap = None
@@ -315,6 +417,23 @@ class LogoPicker(QWidget):
 
         self.preview.setText("")
         self._apply_preview()
+
+    def _pixmap_for(self, target: Path) -> QPixmap:
+        """
+        Läs en logotyp som QPixmap, oavsett format (v2.11.0).
+
+        EPS konverteras med Ghostscript och PDF rastreras med PyMuPDF –
+        samma väg som PDF-exporten använder, så förhandsgranskningen visar
+        det användaren faktiskt får.
+        """
+        suffix = target.suffix.lower()
+        if suffix in SVG_SUFFIXES:
+            return _render_svg(target, self._preview_box())
+        if suffix in EPS_SUFFIXES:
+            return QPixmap(str(convert_eps_to_png(target)))
+        if suffix in PDF_SUFFIXES:
+            return QPixmap(str(convert_pdf_to_png(target)))
+        return QPixmap(str(target))
 
     def _preview_style(self) -> str:
         """Ram runt förhandsgranskningen (transparent när den är avstängd)."""
@@ -329,12 +448,26 @@ class LogoPicker(QWidget):
         return QSize(width, height)
 
     def _apply_preview(self) -> None:
-        """Skala bilden så att den passar ytan (behåller proportioner)."""
+        """
+        Skala bilden så att den passar ytan (behåller proportioner).
+
+        Storleksreglaget syns direkt: 50 % ger en halv så stor logotyp i
+        rutan, 200 % fyller rutan helt (v2.11.0).
+        """
         if self._pixmap is None:
             return
 
+        box = self._preview_box()
+        # 100 % = hela rutan (den automatiska storleken), 50 % = halva rutan,
+        # över 100 % kan aldrig bli större än rutan
+        factor = min(self._scale / 100.0, 1.0)
+        target = QSize(
+            max(1, int(round(box.width() * factor))),
+            max(1, int(round(box.height() * factor))),
+        )
+
         scaled = self._pixmap.scaled(
-            self._preview_box(),
+            target,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )

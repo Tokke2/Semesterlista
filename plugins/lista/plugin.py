@@ -1886,8 +1886,13 @@ class SemesterlistaView(QWidget):
 
         from core.logo_picker import LogoPicker
 
-        self.logo_picker = LogoPicker(current=self._logo_path(), parent=self)
+        self.logo_picker = LogoPicker(
+            current=self._logo_path(),
+            parent=self,
+            scale=self._logo_scale(),
+        )
         self.logo_picker.changed.connect(self._on_logo_changed)
+        self.logo_picker.scale_changed.connect(self._on_logo_scale_changed)
         form_layout.addWidget(self.logo_picker, 7, 1)
         self._on_mode_change(self.mode_combo.currentText())
         self._update_list_count()
@@ -1979,16 +1984,29 @@ class SemesterlistaView(QWidget):
         """Sökvägen till vald logotyp ('' om ingen är vald)."""
         return str(self.plugin.settings.get("logo_svg") or "")
 
+    def _logo_scale(self) -> int:
+        """Logotypens storlek i procent (100 = automatisk, v2.11.0)."""
+        try:
+            return int(self.plugin.settings.get("logo_scale", 100) or 100)
+        except (TypeError, ValueError):
+            return 100
+
     def _on_logo_changed(self, path: str) -> None:
         """
         Spara logotypen direkt när den väljs i dropdown-listan (v2.10.0).
 
-        Logotypen skalas automatiskt i PDF:en – ingen storleksinställning
-        behövs.
+        SVG, EPS och PDF fungerar; storleken anpassas automatiskt men kan
+        också ställas med reglaget (v2.11.0).
         """
         self.plugin.settings["logo_svg"] = str(path or "")
         self.plugin._save_settings()
         logger.info(f"Logotyp för PDF: {path or 'ingen'}")
+
+    def _on_logo_scale_changed(self, scale: int) -> None:
+        """Spara storleksreglaget (v2.11.0)."""
+        self.plugin.settings["logo_scale"] = int(scale)
+        self.plugin._save_settings()
+        logger.info(f"Logotypens storlek: {scale} %")
 
     def _browse_file(self) -> None:
         """Öppna filväljardialog."""
@@ -2183,6 +2201,7 @@ class Plugin(BasePlugin):
             "orientation": DEFAULT_ORIENTATION,
             "start_month": 0,
             "logo_svg": "",
+            "logo_scale": 100,
         }
 
         if self.FIXED_MODE:

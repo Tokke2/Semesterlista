@@ -20,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -32,6 +33,8 @@ try:
     HAVE_QT = True
 except Exception:  # pragma: no cover – miljö utan PySide6
     HAVE_QT = False
+
+from core.pdf_assets import LOGO_SCALE_MAX, LOGO_SCALE_MIN  # noqa: E402
 
 SVG_200x100 = (
     '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -261,6 +264,85 @@ class LogoPickerTests(unittest.TestCase):
         self.assertEqual(picker.current_path(), str(broken))
         self.assertTrue(picker._pixmap is None)
         self.assertIn(broken.name, picker.preview.text())
+        picker.deleteLater()
+
+    # ── import och storlek (v2.11.0) ──────────────────────
+
+    def test_file_filter_offers_svg_eps_and_pdf(self) -> None:
+        picker = self._picker()
+        text = picker.file_filter()
+        for pattern in ("*.svg", "*.eps", "*.pdf", "*.png", "*.jpg"):
+            self.assertIn(pattern, text)
+        picker.deleteLater()
+
+    def test_insert_button_accepts_more_than_svg(self) -> None:
+        picker = self._picker()
+        self.assertIn("logotyp", picker.insert_button.text().lower())
+        picker.deleteLater()
+
+    def test_size_default_is_100_percent(self) -> None:
+        picker = self._picker()
+        self.assertEqual(picker.scale(), 100)
+        self.assertEqual(picker.size_spin.value(), 100)
+        self.assertEqual(picker.size_spin.suffix().strip(), "%")
+        self.assertEqual(picker.size_spin.minimum(), LOGO_SCALE_MIN)
+        self.assertEqual(picker.size_spin.maximum(), LOGO_SCALE_MAX)
+        picker.deleteLater()
+
+    def test_size_is_clamped_and_emitted(self) -> None:
+        picker = self._picker()
+        seen = []
+        picker.scale_changed.connect(seen.append)
+
+        picker.set_scale(150, emit=True)
+        self.assertEqual(picker.scale(), 150)
+        self.assertEqual(seen, [150])
+
+        picker.set_scale(150, emit=True)          # oförändrat ger ingen signal
+        self.assertEqual(seen, [150])
+
+        picker.set_scale(1, emit=True)            # för litet → minsta
+        self.assertEqual(picker.scale(), LOGO_SCALE_MIN)
+        picker.set_scale(9999, emit=True)         # för stort → största
+        self.assertEqual(picker.scale(), LOGO_SCALE_MAX)
+        picker.deleteLater()
+
+    def test_size_can_be_given_in_the_constructor(self) -> None:
+        picker = self._picker(scale=80)
+        self.assertEqual(picker.scale(), 80)
+        self.assertEqual(picker.size_spin.value(), 80)
+        picker.deleteLater()
+
+    def test_preview_shrinks_with_the_size(self) -> None:
+        picker = self._picker()
+        picker.set_current(str(self.svg), emit=False)
+        self.app.processEvents()
+        wide = picker.preview.pixmap().width()
+
+        picker.set_scale(50)
+        self.app.processEvents()
+        small = picker.preview.pixmap().width()
+
+        self.assertGreater(wide, 0)
+        self.assertLess(small, wide)
+        picker.deleteLater()
+
+    def test_eps_without_ghostscript_shows_a_hint(self) -> None:
+        eps = self.root / "logotyper" / "gammal.eps"
+        eps.write_text(
+            "%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 10 10\nshowpage\n",
+            encoding="latin-1",
+        )
+
+        picker = self._picker()
+        import core.pdf_assets as pdf_assets
+
+        with mock.patch.object(pdf_assets, "find_ghostscript", return_value=None):
+            picker.set_current(str(eps), emit=False)
+            self.app.processEvents()
+
+        self.assertIsNone(picker._pixmap)
+        self.assertIn("Ghostscript", picker.preview.text())
         picker.deleteLater()
 
 

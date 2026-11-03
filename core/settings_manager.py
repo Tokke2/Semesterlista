@@ -115,6 +115,8 @@ class SettingsManager:
                 "last_file": "Hyresgäster.txt",
                 # Logotyp i PDF:en (v2.5.0) – relativ till appens assets-mapp
                 "logo_svg": "",
+                # Storlek i procent (v2.11.0) – 100 = automatisk
+                "logo_scale": 100,
             },
         },
         "Semesterlista & Limokörning": {
@@ -129,6 +131,7 @@ class SettingsManager:
                 "orientation": "Liggande",
                 "start_month": 0,
                 "logo_svg": "",
+                "logo_scale": 100,  # procent, 100 = automatisk storlek (v2.11.0)
                 # start_month: 0 = Standard (jan–dec valt år)
                 # 1–12 = explicit startmånad
                 # Manuellt val kan gå över årsskifte:
@@ -148,6 +151,7 @@ class SettingsManager:
                 "orientation": "Liggande",
                 "start_month": 0,
                 "logo_svg": "",
+                "logo_scale": 100,
             },
         },
     }

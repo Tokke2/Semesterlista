@@ -2706,7 +2706,7 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
 | `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **326 tester**.
+Svitens total: **350 tester**.
 
 
 ---
@@ -2766,6 +2766,78 @@ smalare än 18 pt (stående A4), så att etiketterna inte går i varandra.
 |-----|-------|----------|
 | `tests/test_pdf_layout.py` | 23 | sidantal för 6/16 anställda, `_fit_layout` (kort, lång, mycket lång lista), radhöjdens beroende av rader och radluft, legendens fullständiga etiketter och bredd |
 | `tests/test_pdf_leave.py` | 11 | legendens fem rutor (även att etiketterna är hela texter) |
+
+
+---
+
+## 28. Logotyp: SVG, EPS och PDF + storleksreglage (v2.11.0)
+
+### 28.1 Format som kan infogas
+
+| Format | Hur det läses | Krav |
+|--------|---------------|------|
+| **SVG** | svglib → vektor i PDF:en, annars Qt-rasterisering (300 dpi) | – |
+| **EPS** | Ghostscript → PNG (600 dpi), sedan bild | **Ghostscript** |
+| **PDF** | första sidan rastreras med PyMuPDF (600 dpi) | PyMuPDF |
+| **PNG/JPG** | `reportlab` `ImageReader` | – |
+
+Dropdown-listan visar **fortfarande bara SVG** i `assets/` (v2.10.0). Allt annat
+infogas med **Infoga logotyp…** och hamnar då i listan med texten
+*(utanför assets)*, så att valet syns och kan tas bort.
+
+### 28.2 Ghostscript och felhantering
+
+`find_ghostscript()` letar i den här ordningen:
+
+1. miljövariabeln `SEMESTERLISTA_GHOSTSCRIPT` (bra för företag som har
+   Ghostscript på en egen sökväg),
+2. `gswin64c`, `gswin32c` och `gs` i `PATH`,
+3. vanliga installationsmappar (`C:\Program Files\gs\gs*\bin\gswin64c.exe`,
+   `/usr/local/bin/gs`, `/opt/homebrew/bin/gs`, `/usr/bin/gs`).
+
+Saknas Ghostscript kastar `convert_eps_to_png()` ett `AssetError` med
+`ghostscript_hint()`: *”EPS kräver Ghostscript … spara logotypen som SVG eller
+PDF i stället.”* Förhandsgranskningen visar texten i rött, och PDF-exporten
+loggar en varning och ritar ingen logotyp – **PDF:en blir alltid klar**.
+
+Både EPS- och PDF-konverteringen **cachas** i logotypcachen (samma mapp som de
+rastrerade SVG-filerna, städas vid avslut): nyckeln är filens sökväg,
+ändringstid, typ och upplösning.
+
+### 28.3 Storleksreglage (25–300 %)
+
+| Del | Beteende |
+|-----|----------|
+| Inställning | `logo_scale` (procent) per flik, standard **100** |
+| `PdfLogo.load(..., scale=)` | Skalar max-storleken innan bilden laddas |
+| `PdfLogo.auto_size(..., scale=)` | Skalar rutan på sidan; proportionerna låses |
+| `logo_for_settings()` | Läser `logo_scale`, klampar till 25–300 % |
+| Reglaget | `QSpinBox` 25–300 %, steg 5, signalen `scale_changed(int)` |
+
+**Tak:** logotypen får aldrig bli högre än 8 % av sidan eller bredare än 25 %
+(`SCALE_MAX_HEIGHT_RATIO` / `SCALE_MAX_WIDTH_RATIO`). Då kan den aldrig hamna
+över tabellen eller färgförklaringen, hur reglaget än ställs. Förhandsgranskningen
+visar reglaget direkt: 50 % ritar logotypen i halva rutan, 100 % fyller rutan.
+
+### 28.4 Filer som ändrats
+
+| Fil | Ändring |
+|-----|---------|
+| `core/pdf_assets.py` | `EPS_SUFFIXES`, `PDF_SUFFIXES`, `IMPORT_SUFFIXES`, `find_ghostscript()`, `convert_eps_to_png()`, `convert_pdf_to_png()`, `ghostscript_hint()`, `PdfLogo._load_converted()`, `scale` i `load()`/`auto_size()`, `logo_for_settings(scale_key=…)` |
+| `core/logo_picker.py` | `scale_changed`, `scale()`/`set_scale()`, `QSpinBox`-rad, `file_filter()`, `_pixmap_for()` (EPS/PDF i förhandsgranskningen) |
+| `core/i18n.py` | `logo.size_label`, `logo.size_hint`, `logo.size_tooltip`, `logo.filter_*`; knappen heter nu **Infoga logotyp…** (sv/en) |
+| `core/settings_manager.py` | `logo_scale: 100` i alla tre flikarna |
+| `plugins/lista`, `plugins/hyra` | Reglaget sparas direkt (`_on_logo_scale_changed`), värdet skickas till väljaren |
+| `plugins/fordon` | `logo_scale` i standardinställningarna |
+
+### 28.5 Tester
+
+| Fil | Antal | Innehåll |
+|-----|-------|----------|
+| `tests/test_pdf_assets.py` | +13 | Ghostscript i `PATH`/miljövariabel, saknad Ghostscript (förklaring), EPS → PNG med cache, felutskrift vid misslyckad konvertering, EPS bevarar originalets sökväg, PDF rastreras + cache, skalans inverkan på storlek och `auto_size`, taken, `logo_for_settings` (procent, standard, klamning) |
+| `tests/test_logo_picker.py` | +7 | importfiltret (SVG/EPS/PDF/PNG/JPG), knapptexten, reglagets standard och gränser, `scale_changed`, storlek i konstruktorn, förhandsgranskningen krymper, EPS utan Ghostscript visar förklaringen |
+
+Svitens total: **350 tester**.
 
 ---
 

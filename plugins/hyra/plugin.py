@@ -434,8 +434,10 @@ class HyraMainView(QWidget):
             current=self.plugin.settings.get("logo_svg") or "",
             parent=self,
             show_preview=False,
+            scale=int(self.plugin.settings.get("logo_scale", 100) or 100),
         )
         self.logo_picker.changed.connect(self._on_logo_changed)
+        self.logo_picker.scale_changed.connect(self._on_logo_scale_changed)
         logo_label = QLabel(i18n.t("logo.label"))
         logo_label.setFont(QFont("Helvetica", 9))
         layout.addWidget(logo_label)
@@ -460,6 +462,12 @@ class HyraMainView(QWidget):
     def _logo_path(self) -> str:
         """Sökvägen till vald logotyp ('' om ingen är vald)."""
         return str(self.plugin.settings.get("logo_svg") or "")
+
+    def _on_logo_scale_changed(self, scale: int) -> None:
+        """Spara logotypens storlek (v2.11.0)."""
+        self.plugin.settings["logo_scale"] = int(scale)
+        self.plugin._save_settings()
+        logger.info(f"Logotypens storlek: {scale} %")
 
     def _on_logo_changed(self, path: str) -> None:
         """Spara vald logotyp direkt (v2.10.0) – storleken sköts automatiskt."""

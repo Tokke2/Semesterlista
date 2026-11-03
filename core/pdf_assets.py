@@ -47,6 +47,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
@@ -67,6 +70,28 @@ ASSET_DIR_NAME: str = "assets"
 SVG_SUFFIXES: Tuple[str, ...] = (".svg",)
 RASTER_SUFFIXES: Tuple[str, ...] = (".png", ".jpg", ".jpeg")
 IMAGE_SUFFIXES: Tuple[str, ...] = SVG_SUFFIXES + RASTER_SUFFIXES
+
+#: EPS (v2.11.0) – konverteras till PNG med Ghostscript
+EPS_SUFFIXES: Tuple[str, ...] = (".eps",)
+
+#: PDF (v2.11.0) – första sidan rastreras med PyMuPDF
+PDF_SUFFIXES: Tuple[str, ...] = (".pdf",)
+
+#: Allt som går att infoga som logotyp (dropdown-listan visar bara SVG)
+IMPORT_SUFFIXES: Tuple[str, ...] = (
+    IMAGE_SUFFIXES + EPS_SUFFIXES + PDF_SUFFIXES
+)
+
+#: Miljövariabel som pekar ut Ghostscript (behövs för EPS)
+GHOSTSCRIPT_ENV: str = "SEMESTERLISTA_GHOSTSCRIPT"
+
+#: Upplösning när EPS/PDF rastreras
+CONVERT_DPI: int = 600
+
+#: Gränser för storleksreglaget (procent av den automatiska storleken)
+LOGO_SCALE_MIN: int = 25
+LOGO_SCALE_MAX: int = 300
+LOGO_SCALE_DEFAULT: int = 100
 
 #: Undermappar som aldrig ska dyka upp i logotypväljaren (v2.7.0).
 #: "ikon" innehåller appens egen ikon – den är ingen logotyp.
@@ -93,6 +118,12 @@ AUTO_MAX_HEIGHT_MM: float = 25.0
 #: Minsta ruta som logotypen får ritas i (punkter) – gäller även små sidor
 AUTO_MIN_WIDTH_PT: float = 36.0
 AUTO_MIN_HEIGHT_PT: float = 12.0
+
+#: Tak när användaren förstorar logotypen (v2.11.0). Höjden får aldrig bli
+#: större än den automatiska (8 % av sidan) – då skulle logotypen hamna över
+#: färgförklaringen. Bredden får växa till 25 % av sidan.
+SCALE_MAX_WIDTH_RATIO: float = 0.25
+SCALE_MAX_HEIGHT_RATIO: float = 0.08
 
 #: Standardmarginal från sidkanten (mm)
 DEFAULT_MARGIN_MM: float = 8.0
@@ -268,6 +299,194 @@ def find_asset(
 
 
 # ══════════════════════════════════════════════════════════
+# KONVERTERING AV EPS OCH PDF (v2.11.0)
+# ══════════════════════════════════════════════════════════
+
+def find_ghostscript() -> Optional[str]:
+    """
+    Hitta Ghostscript (behövs för EPS).
+
+    Ordningen är: miljövariabeln ``SEMESTERLISTA_GHOSTSCRIPT``, sedan
+    ``gswin64c``/``gswin32c``/``gs`` i PATH och sist vanliga
+    installationsmappar.
+
+    Returns:
+        Sökväg till programmet, eller None om det saknas.
+    """
+    override = os.environ.get(GHOSTSCRIPT_ENV, "").strip()
+    if override:
+        if Path(override).exists() or shutil.which(override):
+            return override
+        logger.warning(f"{GHOSTSCRIPT_ENV} pekar på en fil som inte finns: {override}")
+        return None
+
+    for name in ("gswin64c", "gswin32c", "gs"):
+        found = shutil.which(name)
+        if found:
+            return found
+
+    candidates: List[Path] = []
+    if os.name == "nt":
+        for base in (
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+        ):
+            if base:
+                candidates.extend(
+                    sorted(Path(base).glob("gs/gs*/bin/gswin64c.exe"), reverse=True)
+                )
+    else:
+        candidates.extend(
+            Path(path)
+            for path in ("/usr/local/bin/gs", "/opt/homebrew/bin/gs", "/usr/bin/gs")
+        )
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def ghostscript_hint() -> str:
+    """Kort förklaring som visas när EPS saknar Ghostscript."""
+    return (
+        "EPS kräver Ghostscript, som inte hittades på datorn. Installera "
+        "Ghostscript (gratis) och starta om appen – eller spara logotypen "
+        "som SVG eller PDF i stället."
+    )
+
+
+def _logo_cache_path(path: Path, kind: str, dpi: int, suffix: str) -> Path:
+    """Sökväg i logotypcachen (samma mapp som de rastrerade SVG-filerna)."""
+    from core.cache import logo_cache_dir
+
+    digest = hashlib.sha1(
+        f"{path.resolve()}|{path.stat().st_mtime_ns}|{kind}|{dpi}".encode()
+    ).hexdigest()[:12]
+    return logo_cache_dir() / f"{path.stem}-{kind}-{digest}{suffix}"
+
+
+def convert_eps_to_png(path: Union[str, Path], dpi: int = CONVERT_DPI) -> Path:
+    """
+    Konvertera en EPS-fil till PNG med Ghostscript.
+
+    Args:
+        path: EPS-filen.
+        dpi:  Upplösning (600 räcker gott för en logotyp).
+
+    Returns:
+        Sökväg till den cachade PNG-filen.
+
+    Raises:
+        AssetError: om filen saknas, Ghostscript saknas eller körningen
+                    misslyckas.
+    """
+    target = resolve_path(path)
+    if not target.exists():
+        raise AssetError(f"Filen finns inte: {target}")
+    if not target.is_file():
+        raise AssetError(f"Inte en fil: {target}")
+
+    cached = _logo_cache_path(target, "eps", int(dpi), ".png")
+    if cached.exists():
+        return cached
+
+    gs = find_ghostscript()
+    if not gs:
+        raise AssetError(ghostscript_hint())
+
+    command = [
+        gs,
+        "-dSAFER",
+        "-dBATCH",
+        "-dNOPAUSE",
+        "-dEPSCrop",
+        "-dGraphicsAlphaBits=4",
+        "-dTextAlphaBits=4",
+        "-sDEVICE=pngalpha",
+        f"-r{int(dpi)}",
+        f"-sOutputFile={cached}",
+        str(target),
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise AssetError(f"Kunde inte köra Ghostscript: {exc}") from exc
+
+    if result.returncode != 0 or not cached.exists():
+        message = (result.stderr or result.stdout or "").strip().splitlines()
+        detail = message[-1] if message else f"felkod {result.returncode}"
+        raise AssetError(f"Ghostscript kunde inte läsa {target.name}: {detail}")
+
+    logger.info(f"EPS konverterad till PNG: {target.name}")
+    return cached
+
+
+def convert_pdf_to_png(path: Union[str, Path], dpi: int = CONVERT_DPI) -> Path:
+    """
+    Rastrera första sidan av en PDF till PNG med PyMuPDF.
+
+    Args:
+        path: PDF-filen.
+        dpi:  Upplösning.
+
+    Returns:
+        Sökväg till den cachade PNG-filen.
+
+    Raises:
+        AssetError: om filen saknas, PyMuPDF saknas eller sidan inte kan
+                    rastreras.
+    """
+    target = resolve_path(path)
+    if not target.exists():
+        raise AssetError(f"Filen finns inte: {target}")
+
+    cached = _logo_cache_path(target, "pdf", int(dpi), ".png")
+    if cached.exists():
+        return cached
+
+    try:
+        import pymupdf  # type: ignore[import-not-found]
+    except Exception:
+        try:
+            import fitz as pymupdf  # type: ignore[import-not-found,no-redef]
+        except Exception as exc:  # pragma: no cover – PyMuPDF saknas
+            raise AssetError(
+                "PDF-logotyper kräver PyMuPDF (pip install pymupdf)."
+            ) from exc
+
+    try:
+        document = pymupdf.open(str(target))
+    except Exception as exc:
+        raise AssetError(f"Kunde inte läsa PDF:en {target.name}: {exc}") from exc
+
+    try:
+        if document.page_count < 1:  # pragma: no cover – tom PDF
+            raise AssetError(f"PDF:en {target.name} har inga sidor")
+        page = document[0]
+        pixmap = page.get_pixmap(dpi=int(dpi), alpha=True)
+        if not pixmap.width or not pixmap.height:
+            raise AssetError(f"PDF:en {target.name} gav en tom bild")
+        pixmap.save(str(cached))
+    except AssetError:
+        raise
+    except Exception as exc:
+        raise AssetError(f"Kunde inte rastrera {target.name}: {exc}") from exc
+    finally:
+        document.close()
+
+    logger.info(f"PDF konverterad till PNG: {target.name}")
+    return cached
+
+
+# ══════════════════════════════════════════════════════════
 # LOGOTYP
 # ══════════════════════════════════════════════════════════
 
@@ -278,6 +497,9 @@ class PdfLogo:
     Skapas med PdfLogo.load("assets/logotyper/foretag.svg").
     """
 
+    #: Standardvärde för storleksreglaget (1.0 = automatisk storlek)
+    scale: float = 1.0
+
     def __init__(
         self,
         path: Path,
@@ -287,6 +509,7 @@ class PdfLogo:
         image_path: Optional[Path] = None,
         natural_size: Optional[Tuple[float, float]] = None,
         vector: bool = False,
+        scale: float = 1.0,
     ):
         self.path = Path(path)
         self.width = float(width)          # punkter (1/72 tum)
@@ -295,6 +518,8 @@ class PdfLogo:
         self._image_path = image_path      # rasteriserad PNG
         self._natural_size = natural_size or (self.width, self.height)
         self.vector = vector
+        # Användarens storleksreglage (1.0 = automatisk storlek, v2.11.0)
+        self.scale = max(0.1, min(float(scale or 1.0), 5.0))
 
     # ──────────────────────────────────────────────────────
     # Laddning
@@ -306,28 +531,68 @@ class PdfLogo:
         path: Union[str, Path],
         max_width_mm: float = DEFAULT_MAX_WIDTH_MM,
         max_height_mm: float = DEFAULT_MAX_HEIGHT_MM,
+        scale: float = 1.0,
     ) -> "PdfLogo":
         """
-        Ladda en SVG/PNG/JPG och skala den till max-storleken.
+        Ladda en SVG/EPS/PDF/PNG/JPG och skala den till max-storleken.
 
         Args:
             path:          Sökväg (relativ tolkas mot appens rotmapp).
             max_width_mm:  Största bredd i mm.
             max_height_mm: Största höjd i mm.
+            scale:         Storleksreglage (1.0 = automatisk storlek).
 
         Raises:
-            AssetError: om filen saknas eller inte kan läsas.
+            AssetError: om filen saknas, EPS saknar Ghostscript eller
+                        filen inte kan läsas.
         """
         target = resolve_path(path)
         if not target.exists():
             raise AssetError(f"Filen finns inte: {target}")
 
-        max_w = float(max_width_mm) * MM
-        max_h = float(max_height_mm) * MM
+        factor = max(0.1, min(float(scale or 1.0), 5.0))
+        max_w = float(max_width_mm) * MM * factor
+        max_h = float(max_height_mm) * MM * factor
 
-        if target.suffix.lower() in SVG_SUFFIXES:
-            return cls._load_svg(target, max_w, max_h)
-        return cls._load_raster(target, max_w, max_h)
+        suffix = target.suffix.lower()
+        if suffix in SVG_SUFFIXES:
+            logo = cls._load_svg(target, max_w, max_h)
+        elif suffix in EPS_SUFFIXES:
+            logo = cls._load_converted(target, max_w, max_h, convert_eps_to_png, "EPS")
+        elif suffix in PDF_SUFFIXES:
+            logo = cls._load_converted(target, max_w, max_h, convert_pdf_to_png, "PDF")
+        else:
+            logo = cls._load_raster(target, max_w, max_h)
+
+        logo.scale = factor
+        return logo
+
+    @classmethod
+    def _load_converted(
+        cls,
+        path: Path,
+        max_w: float,
+        max_h: float,
+        converter: Callable[[Path], Path],
+        kind: str,
+    ) -> "PdfLogo":
+        """
+        Ladda EPS/PDF genom att först rastrera den till PNG (v2.11.0).
+
+        Args:
+            path:      Originalfilen (sparas som ``logo.path``).
+            converter: Funktion som ger en PNG-sökväg.
+            kind:      "EPS" eller "PDF" (för loggning).
+
+        Raises:
+            AssetError: om konverteringen misslyckas.
+        """
+        png = converter(path)
+        logo = cls._load_raster(png, max_w, max_h)
+        # Behåll originalfilens sökväg – det är den användaren valde
+        logo.path = path
+        logger.debug(f"Logotyp laddad från {kind}: {path.name}")
+        return logo
 
     @classmethod
     def _load_svg(cls, path: Path, max_w: float, max_h: float) -> "PdfLogo":
@@ -460,6 +725,7 @@ class PdfLogo:
         height_ratio: float = AUTO_HEIGHT_RATIO,
         max_width_mm: float = AUTO_MAX_WIDTH_MM,
         max_height_mm: float = AUTO_MAX_HEIGHT_MM,
+        scale: Optional[float] = None,
     ) -> Tuple[float, float]:
         """
         Beräkna logotypens storlek för en sida (v2.10.0).
@@ -468,14 +734,24 @@ class PdfLogo:
         höjd (med ett tak i mm) och skalas **både upp och ned** så att den
         fyller rutan utan att förvrängas. Proportionerna behålls alltid.
 
+        v2.11.0: ``scale`` (eller logotypens eget ``scale``) förstorar eller
+        förminskar rutan, så att användaren kan anpassa storleken. Rutan
+        begränsas fortfarande av sidan.
+
         Args:
             page_width / page_height: Sidans storlek i punkter.
             width_ratio / height_ratio: Andel av sidan som logotypen får ta.
             max_width_mm / max_height_mm: Tak i millimeter.
+            scale: Egen skala (None = logotypens inställning).
 
         Returns:
             (bredd, höjd) i punkter.
         """
+        if scale is None:
+            factor = float(getattr(self, "scale", 1.0) or 1.0)
+        else:
+            factor = float(scale)
+        factor = max(0.1, min(factor, 5.0))
         page_w = max(float(page_width), 1.0)
         page_h = max(float(page_height), 1.0)
 
@@ -484,10 +760,22 @@ class PdfLogo:
         box_w = max(
             min(page_w * float(width_ratio), float(max_width_mm) * MM),
             AUTO_MIN_WIDTH_PT,
-        )
+        ) * factor
         box_h = max(
             min(page_h * float(height_ratio), float(max_height_mm) * MM),
             AUTO_MIN_HEIGHT_PT,
+        ) * factor
+
+        # Aldrig utanför sidan, oavsett reglage – och aldrig över tabellen
+        box_w = min(
+            box_w,
+            max(page_w - 2 * DEFAULT_MARGIN_MM * MM, AUTO_MIN_WIDTH_PT),
+            page_w * SCALE_MAX_WIDTH_RATIO,
+        )
+        box_h = min(
+            box_h,
+            max(page_h - 2 * DEFAULT_MARGIN_MM * MM, AUTO_MIN_HEIGHT_PT),
+            page_h * SCALE_MAX_HEIGHT_RATIO,
         )
 
         natural_w = float(self.width) if self.width else 1.0
@@ -685,6 +973,7 @@ def logo_for_settings(
     key: str = "logo_svg",
     max_width_mm: float = DEFAULT_MAX_WIDTH_MM,
     max_height_mm: float = DEFAULT_MAX_HEIGHT_MM,
+    scale_key: str = "logo_scale",
 ) -> Optional[PdfLogo]:
     """
     Hämta logotypen som angetts i inställningarna.
@@ -707,4 +996,15 @@ def logo_for_settings(
     if not value:
         return None
 
-    return PdfLogo.load(value, max_width_mm=max_width_mm, max_height_mm=max_height_mm)
+    try:
+        percent = int(float(settings.get(scale_key) or LOGO_SCALE_DEFAULT))
+    except (TypeError, ValueError):
+        percent = LOGO_SCALE_DEFAULT
+    percent = max(LOGO_SCALE_MIN, min(percent, LOGO_SCALE_MAX))
+
+    return PdfLogo.load(
+        value,
+        max_width_mm=max_width_mm,
+        max_height_mm=max_height_mm,
+        scale=percent / 100.0,
+    )
