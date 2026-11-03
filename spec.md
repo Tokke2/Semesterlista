@@ -2455,7 +2455,25 @@ de första raderna ur release-anteckningarna.
 5. **Installera** – säkerhetskopia → filerna skrivs via `.new`-temp + `os.replace`.
 6. **Starta om** – fråga; *Ja* startar om appen med `QProcess.startDetached`.
 
-### 23.3 Automatisk kontroll vid start
+### 23.3 Release-rutin (krav)
+
+Varje kodändring ska publiceras som en ny release, annars når den inte
+användarna – uppdateraren tittar bara på **senaste releasen**.
+
+| Steg | Kommando / åtgärd |
+|------|-------------------|
+| 1 | `python -m unittest discover -s tests` – grönt |
+| 2 | `python tools/bump_version.py <ny version>` (19 ställen, bl.a. `config.json`) |
+| 3 | `python tools/bump_version.py --check` – ”Alla ställen är synkade.” |
+| 4 | commit + push till branchen |
+| 5 | `git tag v0.0.x -m "Semesterlista <version>"` och `git push origin v0.0.x` |
+| 6 | `gh release create v0.0.x --title … --notes-file …` |
+
+Taggens `config.json` är det som jämförs med appens `APP_VERSION`, så
+versionen måste vara höjd **före** taggen. Release-anteckningarna syns i
+uppdateringsrutan och via *Öppna release-sidan*.
+
+### 23.4 Automatisk kontroll vid start
 
 Om **Avancerat → Sök efter uppdatering vid start** är ikryssad
 (`advanced.check_updates`, standard på) söker `StartupUpdateChecker` i
@@ -2463,7 +2481,7 @@ bakgrunden efter `app:started`. Hittas en nyare version visas en avisering i
 systemfältet – inget installeras automatiskt. Utan nät loggas felet och
 appen startar som vanligt.
 
-### 23.4 Felsökning
+### 23.5 Felsökning
 
 | Symptom | Orsak | Åtgärd |
 |---------|-------|--------|
@@ -2475,7 +2493,7 @@ appen startar som vanligt.
 
 Allt loggas till `data/app.log` (se kap. 22).
 
-### 23.5 Tester
+### 23.6 Tester
 
 `tests/test_updater.py` (24 tester, helt offline): versionstolkning,
 jämförelse, sökning med mockat API, fallback till taggen, nätverksfel,

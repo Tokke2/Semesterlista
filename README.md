@@ -69,6 +69,25 @@ python tools/bump_version.py 2.12.0         # höj versionen på alla ställen
 python tools/make_icons.py                  # rita om ikonerna i assets/ikon
 ```
 
+### Releaser (obligatoriskt vid varje kodändring)
+
+Appens uppdateringsknapp läser **GitHub → Releases → latest**, så varje
+kodändring ska sluta med en ny release – annars ser användarna den inte.
+
+```bash
+python -m unittest discover -s tests            # 1. alla tester gröna
+python tools/bump_version.py 2.11.1             # 2. höj versionen (alla ställen)
+python tools/bump_version.py --check            # 3. kontrollera synken
+git commit -am "..." && git push                # 4. pusha koden
+git tag v0.0.4 -m "Semesterlista 2.11.1"        # 5. tagga (v0.0.x ökar)
+git push origin v0.0.4
+gh release create v0.0.4 --title "v0.0.4 – Semesterlista 2.11.1" --notes-file anteckningar.md
+```
+
+Taggen avgör vilken `config.json` uppdateraren läser, så **versionen i
+`config.json` måste vara höjd** innan taggen skapas. Release-anteckningarna
+visas i appens uppdateringsruta och i *Öppna release-sidan*.
+
 ### Struktur
 
 ```
