@@ -31,6 +31,8 @@ i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess under
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
 - **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i
   `data/backup/` och automatisk omstart – dina listor och inställningar rörs aldrig.
+- **Lediga dagar**: skriv `Anna Andersson ; 18/12 - 7/1` i `Anställda.txt` så markeras
+  frånvaron grått med × i PDF:en (datumen snäpps till närmaste måndag)
 - **Smart cache**: rastrerade logotyper cachas under körningen i `%TEMP%/Semesterlista`
   och **städas automatiskt när appen avslutas** (kan stängas av i
   *Inställningar → Avancerat*). Vid start rensas bara gammalt skräp, så en
@@ -70,7 +72,7 @@ python tools/make_icons.py                  # rita om ikonerna i assets/ikon
 
 ```
 main.pyw              startfönster, meny, systemfält
-core/                 i18n, inställningar, PDF-tillgångar, uppdatering, loggning, cache …
+core/                 i18n, inställningar, PDF-tillgångar, uppdatering, loggning, cache, frånvaro …
 plugins/hyra          hyresfakturering
 plugins/lista         semesterlista + limokörning (Fordon ärver denna)
 plugins/fordon        låst läge för limokörning

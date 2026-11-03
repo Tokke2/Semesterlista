@@ -3,8 +3,8 @@
 <!--
 ═══════════════════════════════════════════════════════════════════════════════
 ║  SPECIFIKATION – Plugin-baserad Desktop App med Modern UI & Systray        ║
-║  Version: 2.9.0                                                             ║
-║  Datum: 2026-06-05                                                          ║
+║  Version: 2.11.0                                                            ║
+║  Datum: 2026-11-03                                                          ║
 ║  Python: 3.12+                                                              ║
 ║  UI-ramverk: PySide6 (Qt for Python)                                        ║
 ║  Copyright: Rickard Längkvist 2025 – dynamiskt år                          ║
@@ -66,6 +66,7 @@
 21. Flikar & Logotyp i PDF (v2.5.0)
 24. Logotyp-Dropdown & Automatisk Storlek (v2.10.0)
 25. Smart Cache (v2.11.0)
+26. Lediga dagar i listfilen (v2.11.0)
 
 ---
 
@@ -2582,4 +2583,99 @@ kryssrutan och att valet sparas.
 
 ---
 
-<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.10.0 | Datum: 2026-11-02 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+## 26. LEDIGA DAGAR I LISTFILEN (v2.11.0)
+
+### 26.1 Varför
+
+Semesterlistan visar när alla är på plats – men inte när någon är **borta**.
+Semester, föräldraledighet och tjänstledighet fick tidigare markeras för hand
+efter utskriften. Nu skrivs frånvaron direkt i `Anställda.txt`, på samma rad
+som namnet, och PDF:en markerar dagarna automatiskt.
+
+### 26.2 Så skrivs det
+
+```
+# Anställda.txt
+Anna Andersson ; 18/12 - 7/1
+Bertil Bengtsson
+Cecilia Carlsson | 6/7 - 20/7, 3/8 - 17/8
+```
+
+| Del | Regel |
+|-----|-------|
+| **Avskiljare** | `;` eller `\|` mellan namn och frånvaro (valfri, valfritt mellanslag runt) |
+| **Period** | `start - slut`, flera perioder separeras med `,` **eller** ordet `och` (**även `;`** inuti frånvaron) |
+| **Datumformat** | `18/12`, `18/12/2026`, `2026-12-18` (ISO) |
+| **Saknat år** | listans år; om slutet ligger före starten menas **nästa år** (så `18/12 - 7/1` blir rätt) |
+| **Enstaka datum** | `18/12` markerar bara den dagen – ingen veckosnäppning |
+
+**Veckosnäppning till närmaste måndag** (så att listan följer veckor):
+
+| Datum | Blir |
+|-------|------|
+| Måndag–torsdag | måndagen **före** (torsdag ligger 3 dagar efter måndagen) |
+| Fredag–söndag | måndagen **efter** |
+
+Exempel: `18/12 - 7/1` (fredag → måndag, torsdag → måndag) blir
+**21/12 2026 – 4/1 2027**. Närmaste måndag räknas alltid fram – även för
+`18/12/2026` och `2026-12-18`.
+
+En rad som **börjar** med `;` är fortfarande en kommentar (se kap 20), och
+raden får vara högst `MAX_ENTRY_LENGTH` (80) tecken inklusive frånvaron.
+
+### 26.3 `core/leave.py`
+
+| Funktion / klass | Gör |
+|------------------|-----|
+| `snap_to_monday(day)` | Flyttar ett datum till närmaste måndag |
+| `parse_leave(text, default_year=None, snap=True)` | Text → `list[LeaveRange]`; höjer `LeaveError` vid skräp |
+| `split_entry(line)` | `"Anna ; 18/12 - 7/1"` → `("Anna", "18/12 - 7/1")` |
+| `format_leave(ranges)` | Tillbaka till `21/12-4/1, 3/8-17/8` |
+| `LeaveRange` | Fryst dataclass: `contains()`, `days()`, `overlaps_month()`, `str()` = `2026-12-21 – 2027-01-04` |
+| `LeaveCalendar` | `from_lines()`, `add_line()`, `ranges_for()`, `is_off(namn, datum)`, `off_dates()`, `names_with_leave()`, `errors`, `len()` |
+
+Namnmatchningen är skiftlägesokänslig och normaliserar blanksteg, så
+`ANNA  ANDERSSON` hittar samma person som `Anna Andersson`. Rader som inte
+går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
+`errors`.
+
+### 26.4 Kopplingen till listan och PDF:en
+
+- `core/roster.py`: ny **`read_entries()`** ger `(namn, frånvaro)` per rad.
+  `read_names()` returnerar fortsatt bara namnen – frånvaron tas bort, så
+  alla andra flikar (Fordon, Hyra) påverkas inte.
+- `plugins/lista/plugin.py`: `_read_list_from_file()` fyller
+  `self._leave_calendar`; `_generate_pdf(..., leave=None)` tar emot en
+  kalender (standard: den inlästa).
+- **PDF:** lediga dagar skrivs som **×** i en **gråblå** cell
+  (`LEAVE_COLOR = 0.35, 0.38, 0.45`, vit fetstil). Markeringen ligger
+  överst i färgprioriteringen, så en ledig lördag blir grå – inte blå.
+  Tecknet `×` (U+00D7) finns i Latin-1 och fungerar med Helvetica.
+- **Förklaringar:** PDF-legendens femte ruta (`lista.pdf.legend.leave`,
+  ”Grå = Ledig”) och vyns färgförklaring (`lista.legend.leave`).
+- **Listredigeraren** visar en hjälptext överst (`roster.leave.hint`) med
+  exemplet `Anna Andersson ; 18/12 - 7/1`. Redigeraren sparar raden orörd,
+  så frånvaron försvinner inte när listan ändras.
+
+### 26.5 Färgprioritet i tabellen
+
+1. Röd – helgdag eller söndag
+2. Grön – halvdag
+3. Blå – lördag
+4. **Grå med × – ledig (vinner över 1–3 för den personens rad)**
+5. Orange linje – ny vecka
+
+### 26.6 Tester
+
+| Fil | Antal | Innehåll |
+|-----|-------|----------|
+| `tests/test_leave.py` | 42 | veckosnäppning alla veckodagar, årskifte, ISO/explicit år, flera perioder, `split_entry`, `is_off`, `off_dates`, felhantering |
+| `tests/test_pdf_leave.py` | 8 | cellmarkering i december/januari (fångar tabelldata), ingen markering utan frånvaro, legendens fem rutor, Latin-1, inläsning från fil |
+| `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
+| `tests/test_roster.py` | +3 | `read_names()` tar bort frånvaro, `read_entries()` |
+
+Svitens total: **298 tester**.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.11.0 | Datum: 2026-11-03 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

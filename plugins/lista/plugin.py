@@ -119,7 +119,8 @@ from reportlab.lib.units import mm
 
 from core import i18n
 from core.pdf_assets import AssetError, PdfLogo, logo_for_settings, make_logo_canvas
-from core.roster import RosterError, read_names, resolve_path
+from core.roster import RosterError, read_entries, read_names, resolve_path
+from core.leave import LeaveCalendar
 
 from plugins.base_plugin import BasePlugin
 
@@ -139,6 +140,11 @@ logger = logging.getLogger(__name__)
 TABLE_WIDTH_MM = 270.0
 TABLE_WIDTH_PT = TABLE_WIDTH_MM * mm
 NAME_COL_WIDTH = 70
+#: Färg för lediga dagar i PDF:en (v2.11.0) – mörkt gråblå, skiljer sig
+#: tydligt från röd/grön/blå/orange och fungerar i svartvit utskrift.
+LEAVE_COLOR = colors.Color(0.35, 0.38, 0.45)
+#: Tecken i lediga celler (finns i Latin-1, fungerar med Helvetica)
+LEAVE_MARK = "\u00d7"
 MIN_DAY_COL_WIDTH = 8
 FONT_SIZE = 7
 
@@ -755,6 +761,8 @@ class PDFGenerator:
 
     def __init__(self, plugin: "Plugin"):
         self.plugin: "Plugin" = plugin
+        #: Lediga dagar per anställd, inlästa från listfilen (v2.11.0)
+        self._leave_calendar: LeaveCalendar = LeaveCalendar()
 
     def generate(
         self,
@@ -810,6 +818,7 @@ class PDFGenerator:
                 months_per_page=months_per_page,
                 start_month=start_month,
                 orientation=orientation,
+                leave=self._leave_calendar,
             )
         except Exception as e:
             logger.error(f"Fel vid PDF-generering: {e}")
@@ -872,9 +881,14 @@ class PDFGenerator:
 
         Kommentarer (# eller ;), tomma rader, dubbletter och blandade
         teckenkodningar hanteras automatiskt av core/roster.py.
+
+        v2.11.0: även lediga dagar läses. De skrivs efter namnet i listan
+        (``Anna Andersson ; 18/12 - 7/1``) och sparas i
+        ``self._leave_calendar`` så att PDF:en kan markera dem.
         """
+        self._leave_calendar = LeaveCalendar()
         try:
-            return read_names(resolve_path(file_path))
+            entries = read_entries(resolve_path(file_path))
         except RosterError as exc:
             logger.error(f"Fel vid läsning av fil: {exc}")
             QMessageBox.critical(
@@ -883,6 +897,19 @@ class PDFGenerator:
                 i18n.t("lista.error.read", error=exc),
             )
             return []
+
+        for name, leave_text in entries:
+            if leave_text:
+                self._leave_calendar.add_line(f"{name} ; {leave_text}")
+
+        if self._leave_calendar.errors:
+            logger.warning(f"Frånvaro som inte kunde tolkas: {self._leave_calendar.errors}")
+
+        logger.info(
+            f"Läste {len(entries)} poster, "
+            f"{len(self._leave_calendar)} med lediga dagar"
+        )
+        return [name for name, _ in entries]
 
     def _create_legend_with_colors(
         self,
@@ -894,16 +921,19 @@ class PDFGenerator:
         light_green = colors.Color(0.56, 0.93, 0.56)
         orange = colors.Color(1, 0.65, 0)
 
+        leave_color = LEAVE_COLOR
+
         legend_data = [[
             "", i18n.t("lista.pdf.legend.red"),
             "", i18n.t("lista.pdf.legend.blue"),
             "", i18n.t("lista.pdf.legend.green"),
             "", i18n.t("lista.pdf.legend.orange"),
+            "", i18n.t("lista.pdf.legend.leave"),
         ]]
 
         legend_table = Table(
             legend_data,
-            colWidths=[15, 120, 15, 70, 15, 200, 15, 75],
+            colWidths=[15, 115, 15, 70, 15, 150, 15, 75, 15, 70],
         )
         legend_table.setStyle(TableStyle([
             ("FONTSIZE", (0, 0), (-1, -1), 7),
@@ -913,10 +943,12 @@ class PDFGenerator:
             ("BACKGROUND", (2, 0), (2, 0), light_blue),
             ("BACKGROUND", (4, 0), (4, 0), light_green),
             ("BACKGROUND", (6, 0), (6, 0), orange),
+            ("BACKGROUND", (8, 0), (8, 0), leave_color),
             ("BOX", (0, 0), (0, 0), 0.5, colors.black),
             ("BOX", (2, 0), (2, 0), 0.5, colors.black),
             ("BOX", (4, 0), (4, 0), 0.5, colors.black),
             ("BOX", (6, 0), (6, 0), 0.5, colors.black),
+            ("BOX", (8, 0), (8, 0), 0.5, colors.black),
         ]))
         self._apply_table_scaling(legend_table, table_width_pt)
         return legend_table
@@ -1086,9 +1118,14 @@ class PDFGenerator:
         months_per_page: int = DEFAULT_MONTHS_PER_PAGE,
         start_month: Optional[int] = None,
         orientation: str = DEFAULT_ORIENTATION,
+        leave: Optional[LeaveCalendar] = None,
     ) -> bool:
         """
         Generera PDF med färgkodade kalendertabeller.
+
+        leave (v2.11.0):
+            Lediga dagar per anställd. None → använd den kalender som
+            lästes in från listfilen (``self._leave_calendar``).
 
         Layout (v2.6.0):
             orientation="Liggande" → A4 liggande, 270 mm tabell (standard)
@@ -1109,6 +1146,7 @@ class PDFGenerator:
                 → dec 2026 – nov 2027
                 → första sida kan innehålla dec 2026 / jan 2027
         """
+        leave_calendar = leave if leave is not None else self._leave_calendar
         documents_path = get_documents_folder()
         month_sequence = self._build_month_sequence(year, start_month)
         pages = self._chunk_months(month_sequence, months_per_page)
@@ -1232,7 +1270,15 @@ class PDFGenerator:
                 table_data = [header_row1, header_row2, header_row3]
 
                 for item in data_list:
-                    table_data.append([item] + ["" for _ in range(days_in_month)])
+                    row = [item]
+                    for day_num in range(1, days_in_month + 1):
+                        if leave_calendar.is_off(
+                            item, date(month_year, month_num, day_num)
+                        ):
+                            row.append(LEAVE_MARK)
+                        else:
+                            row.append("")
+                    table_data.append(row)
 
                 col_widths = [name_w] + [day_w] * days_in_month
                 table = Table(table_data, colWidths=col_widths)
@@ -1324,6 +1370,30 @@ class PDFGenerator:
                             (col_idx, 1), (col_idx, 2),
                             colors.blue,
                         )
+
+                # 5. Grå med ×: personlig frånvaro (vinner över veckofärgerna)
+                if leave_calendar:
+                    for row_idx, item in enumerate(data_list, start=3):
+                        if not leave_calendar.ranges_for(item):
+                            continue
+                        for day_num in range(1, days_in_month + 1):
+                            if table_data[row_idx][day_num] != LEAVE_MARK:
+                                continue
+                            style.add(
+                                "BACKGROUND",
+                                (day_num, row_idx), (day_num, row_idx),
+                                LEAVE_COLOR,
+                            )
+                            style.add(
+                                "TEXTCOLOR",
+                                (day_num, row_idx), (day_num, row_idx),
+                                colors.white,
+                            )
+                            style.add(
+                                "FONTNAME",
+                                (day_num, row_idx), (day_num, row_idx),
+                                "Helvetica-Bold",
+                            )
 
                 # Orange veckolinjer
                 current_week: Optional[int] = None
@@ -1667,6 +1737,7 @@ class SemesterlistaView(QWidget):
             ("#ADD8E6", i18n.t("lista.legend.blue")),
             ("#90EE90", i18n.t("lista.legend.green")),
             ("#FFA500", i18n.t("lista.legend.orange")),
+            ("#595F73", i18n.t("lista.legend.leave")),
         ]:
             row = QHBoxLayout()
             box = QLabel("    ")

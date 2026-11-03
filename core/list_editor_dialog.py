@@ -106,6 +106,12 @@ class SectionEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
+        # Hjälptext: så skrivs lediga dagar (v2.11.0)
+        self.leave_hint = QLabel(i18n.t("roster.leave.hint"))
+        self.leave_hint.setWordWrap(True)
+        self.leave_hint.setStyleSheet("color: #666; font-size: 11px;")
+        layout.addWidget(self.leave_hint)
+
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(
             QAbstractItemView.SelectionMode.ExtendedSelection

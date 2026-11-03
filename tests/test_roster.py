@@ -29,6 +29,7 @@ from core.roster import (  # noqa: E402
     is_comment,
     is_separator,
     normalize_entry,
+    read_entries,
     read_names,
     resolve_path,
     sort_key,
@@ -405,6 +406,33 @@ class TestHelpers(RosterTestCase):
 
     def test_read_names_saknad_fil(self):
         self.assertEqual(read_names("Saknas.txt", base=self.tmp), [])
+
+    def test_read_names_tar_bort_lediga_dagar(self):
+        """Lediga dagar efter namnet ska inte hamna i namnlistan (v2.11.0)."""
+        self.write(
+            "Anställda.txt",
+            "Anna Andersson ; 18/12 - 7/1\n"
+            "Bertil Bengtsson\n"
+            "Cecilia Carlsson | 6/7 - 20/7\n",
+        )
+        self.assertEqual(
+            read_names("Anställda.txt", base=self.tmp),
+            ["Anna Andersson", "Bertil Bengtsson", "Cecilia Carlsson"],
+        )
+
+    def test_read_entries_ger_namn_och_franvaro(self):
+        self.write(
+            "Anställda.txt",
+            "Anna Andersson ; 18/12 - 7/1\n"
+            "Bertil Bengtsson\n",
+        )
+        self.assertEqual(
+            read_entries("Anställda.txt", base=self.tmp),
+            [("Anna Andersson", "18/12 - 7/1"), ("Bertil Bengtsson", "")],
+        )
+
+    def test_read_entries_saknad_fil(self):
+        self.assertEqual(read_entries("Saknas.txt", base=self.tmp), [])
 
     def test_ensure_file_skapar(self):
         roster = ensure_file(

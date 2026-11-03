@@ -630,16 +630,43 @@ class RosterFile:
 # GENVÄGAR FÖR PLUGINS
 # ══════════════════════════════════════════════════════════
 
+def read_entries(
+    path: Union[str, Path],
+    base: Optional[Path] = None,
+) -> List[Tuple[str, str]]:
+    """
+    Läs listan som ``(namn, frånvaro)`` per rad (v2.11.0).
+
+    Frånvaron skrivs efter namnet, avskilt med ``;`` eller ``|``::
+
+        Anna Andersson ; 18/12 - 7/1
+
+    Returnerar ``[("Anna Andersson", "18/12 - 7/1"), ...]``. Saknas
+    frånvaro blir andra värdet en tom sträng.
+
+    Raises:
+        RosterError: om filen inte kan läsas.
+    """
+    from core.leave import split_entry
+
+    return [split_entry(entry) for entry in RosterFile.load(path, base=base).entries]
+
+
 def read_names(path: Union[str, Path], base: Optional[Path] = None) -> List[str]:
     """
     Läs en namnlista (huvudsektionen) från en txt-fil.
+
+    Eventuell frånvaro efter ``;``/``|`` tas bort – använd ``read_entries()``
+    om du också behöver lediga dagar (v2.11.0).
 
     Används av PDF-generatorn i Semesterlista & Limokörning.
 
     Raises:
         RosterError: om filen inte kan läsas.
     """
-    return RosterFile.load(path, base=base).entries
+    from core.leave import split_entry
+
+    return [split_entry(entry)[0] for entry in RosterFile.load(path, base=base).entries]
 
 
 def ensure_file(
