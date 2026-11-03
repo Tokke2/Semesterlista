@@ -324,12 +324,25 @@ class SettingsDialog(QDialog):
         self.log_to_file_check = QCheckBox(i18n.t("settings.log_to_file"))
         self.check_updates_check = QCheckBox(i18n.t("settings.check_updates"))
 
+        # Smart cache (v2.11.0): städa rastrerade logotyper vid avslut
+        self.clear_cache_check = QCheckBox(i18n.t("settings.clear_cache_on_exit"))
+        self.clear_cache_check.setToolTip(
+            i18n.t("settings.clear_cache_on_exit.tooltip")
+        )
+
         for check in (
             self.debug_check,
             self.log_to_file_check,
             self.check_updates_check,
+            self.clear_cache_check,
         ):
             inner.addWidget(check)
+
+        self.cache_size_label = QLabel(
+            i18n.t("settings.cache_size", size=self._cache_size_text())
+        )
+        self.cache_size_label.setStyleSheet("color: #777; font-size: 11px;")
+        inner.addWidget(self.cache_size_label)
 
         log_info = log_summary()
         log_path = log_info.get("log_file") or str(get_log_file() or "—")
@@ -358,6 +371,25 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._create_update_group())
         layout.addStretch()
         return page
+
+    @staticmethod
+    def _cache_size_text() -> str:
+        """
+        Storlek på appens cache som läsbar text ("18 kB" / "1,4 MB").
+
+        Visas under *Rensa cache vid avslut* så att man ser hur mycket som
+        faktiskt städas (v2.11.0).
+        """
+        try:
+            from core.cache import get_cache
+
+            size = get_cache().size()
+        except Exception:  # pragma: no cover – defensivt
+            size = 0
+
+        if size >= 1024 * 1024:
+            return f"{size / (1024 * 1024):.1f} MB".replace(".", ",")
+        return f"{size / 1024:.0f} kB"
 
     def _create_update_group(self) -> QGroupBox:
         """Uppdatering från GitHub Releases (v2.9.0)."""
@@ -657,6 +689,9 @@ class SettingsDialog(QDialog):
         self.debug_check.setChecked(bool(get("advanced.debug_mode", False)))
         self.log_to_file_check.setChecked(bool(get("advanced.log_to_file", True)))
         self.check_updates_check.setChecked(bool(get("advanced.check_updates", True)))
+        self.clear_cache_check.setChecked(
+            bool(get("advanced.clear_cache_on_exit", True))
+        )
 
     def apply_settings(self) -> None:
         """
@@ -711,6 +746,9 @@ class SettingsDialog(QDialog):
         manager.set("advanced.debug_mode", self.debug_check.isChecked())
         manager.set("advanced.log_to_file", self.log_to_file_check.isChecked())
         manager.set("advanced.check_updates", self.check_updates_check.isChecked())
+        manager.set(
+            "advanced.clear_cache_on_exit", self.clear_cache_check.isChecked()
+        )
 
         logger.info(
             "Inställningar sparade: språk=%s, tema=%s, region=%s, "

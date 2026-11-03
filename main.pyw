@@ -229,6 +229,7 @@ from core.single_instance import SingleInstanceLock
 from core import i18n, updater
 from core.app_icon import apply_app_icon, app_icon, set_windows_app_user_model_id
 from core.window_state import clamp_geometry
+from core.cache import get_cache
 from plugins.base_plugin import BasePlugin
 
 # Inställningsdialogen är valfri: saknas filen ska appen ändå starta, men
@@ -1232,6 +1233,15 @@ class MainWindow(QMainWindow):
         Sparar tillstånd, stänger plugins, frigör resurser.
         """
         self._save_window_state()
+
+        # Smart cache: rensa det som renderats under körningen (v2.11.0)
+        if self._settings_manager.get("advanced.clear_cache_on_exit", True):
+            try:
+                result = get_cache().purge()
+                logger.info(i18n.t("log.cache_cleared", summary=result.summary()))
+            except Exception as exc:  # pragma: no cover – får inte stoppa avslutet
+                logger.warning(f"Kunde inte rensa cachen: {exc}")
+
         self._event_bus.emit("app:shutting_down", None)
         self._plugin_manager.shutdown_all()
         self._settings_manager.set(
@@ -1371,6 +1381,9 @@ class SystrayManager:
                              Om {app} v{version}…
                              Avsluta
     Tooltip              → f"{app_name} v{APP_VERSION}"
+
+    v2.11.0: Smart cache – rastrerade logotyper städas vid avslut (se
+             core/cache.py, styrs av advanced.clear_cache_on_exit).
 
     v2.3.0: Alla texter hämtas via core/i18n.py och kan byggas om
             direkt vid språkbyte (retranslate()).
@@ -1634,6 +1647,20 @@ def main() -> None:
     i18n.init(settings_manager)
     logger.info(f"  Språk: {i18n.current_language()}")
     step("4b", "i18n initierat", f"språk={i18n.current_language()}")
+
+    # 4c. Smart cache – rensa gammalt skräp, resten städas vid avslut (v2.11.0)
+    try:
+        cache = get_cache()
+        stale = cache.clean_stale()
+        if settings_manager.get("advanced.clear_cache_on_exit", True):
+            cache.register_exit_cleanup()
+        step(
+            "4c",
+            "cache kontrollerad",
+            f"{stale.summary()} | kvar={cache.size() / 1024:.0f} kB",
+        )
+    except Exception as exc:  # pragma: no cover – cachen får aldrig stoppa start
+        logger.warning(f"Kunde inte kontrollera cachen: {exc}")
 
     # 5. EventBus
     event_bus = EventBus()

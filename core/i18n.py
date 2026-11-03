@@ -287,6 +287,15 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.debug_mode":             "Felsökningsläge",
         "settings.log_to_file":            "Logga till fil",
         "settings.check_updates":          "Sök efter uppdatering vid start",
+        "settings.clear_cache_on_exit":    "Rensa cache vid avslut",
+        "settings.clear_cache_on_exit.tooltip": (
+            "Logotyper som renderats till bildfiler ligger i temp-mappen under "
+            "körningen. Med den här inställningen tas de bort när appen avslutas "
+            "– inget blir kvar och skräpar, men nästa start renderar logotyperna "
+            "igen (några tiondels sekunder per logotyp)."
+        ),
+        "settings.cache_size":             "Cache: {size}",
+        "log.cache_cleared":               "Cache rensad: {summary}",
         "settings.group.data":             "Data",
         "settings.data_path":              "Inställningarna sparas i:",
         "settings.plugin_restart_hint":    "Ändring av plugins kräver omstart.",
@@ -709,6 +718,15 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "settings.debug_mode":             "Debug mode",
         "settings.log_to_file":            "Log to file",
         "settings.check_updates":          "Check for updates at startup",
+        "settings.clear_cache_on_exit":    "Clear cache on exit",
+        "settings.clear_cache_on_exit.tooltip": (
+            "Logos rendered to image files are kept in the temp folder while "
+            "the app runs. With this setting they are removed when the app "
+            "closes – nothing is left behind, but the next start renders the "
+            "logos again (a few tenths of a second per logo)."
+        ),
+        "settings.cache_size":             "Cache: {size}",
+        "log.cache_cleared":               "Cache cleared: {summary}",
         "settings.group.data":             "Data",
         "settings.data_path":              "Settings are stored in:",
         "settings.plugin_restart_hint":    "Changing plugins requires a restart.",

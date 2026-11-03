@@ -96,6 +96,8 @@ class SettingsManager:
             "log_to_file": False,
             "log_path": "data/app.log",
             "check_updates": True,
+            # Smart cache: rensa rastrerade logotyper när appen avslutas (v2.11.0)
+            "clear_cache_on_exit": True,
         },
     }
 

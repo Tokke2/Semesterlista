@@ -65,6 +65,7 @@
 23. Uppdatering från GitHub (v2.9.0)
 21. Flikar & Logotyp i PDF (v2.5.0)
 24. Logotyp-Dropdown & Automatisk Storlek (v2.10.0)
+25. Smart Cache (v2.11.0)
 
 ---
 
@@ -119,6 +120,9 @@ Semesterlista/ ← Rotmapp
 │ ├── list_editor_dialog.py ← Redigera listorna i appen ← NY v2.4.0
 │ ├── pdf_assets.py ← Logotyper från assets/ till PDF ← NY v2.5.0
 │ ├── logo_picker.py ← Dropdown för logotypen i vyerna ← NY v2.10.0
+│ ├── cache.py ← Smart cache som städas vid avslut ← NY v2.11.0
+│ ├── version.py ← Versionen på ett ställe ← NY v2.11.0
+│ ├── window_state.py ← Fönstret hålls inom skärmen ← NY v2.11.0
 │ ├── app_icon.py ← Appikonen (fönster/tray/aktivitetsfält) ← NY v2.7.0
 │ ├── logging_setup.py ← Detaljerad loggning + felhakar ← NY v2.8.0
 │ ├── settings_dialog.py ← Inställningar (4 flikar) ← NY v2.8.0
@@ -2540,6 +2544,41 @@ stående A4, extremt breda/höga logotyper, tak och minsta ruta, samt
 *Inställningar…*/*Sök efter uppdatering…*/*Om …* kopplade till rätt
 metoder, *Visa*/*Dölj* som speglar fönstrets läge (även standardvalet) och
 att texterna följer språkbytet.
+
+---
+
+## 25. SMART CACHE (v2.11.0)
+
+### 25.1 Varför
+
+SVG-logotyper rastreras till PNG (300 dpi) första gången de används, så att
+samma logotyp bara behöver renderas en gång per körning. Filerna hamnade
+tidigare i `%TEMP%/Semesterlista/logotyper/` och **städades aldrig** – på en
+dator där appen används dagligen växer mappen i det tysta.
+
+### 25.2 Hur den fungerar
+
+`core/cache.py` äger appens temp-mapp och städar den **smart**:
+
+| När | Vad som händer |
+|-----|----------------|
+| **Vid start** | `clean_stale()` tar bort cachefiler äldre än 1 timme. Färska filer behålls, så en snabb omstart inte tvingar fram nya renderingar. |
+| **Vid avslut** | `purge()` tar bort hela appens cache (logotyper + kvarlämnade `semesterlista_uppdatering_*`-mappar från kraschade uppdateringar) och loggar `Cache rensad: 12 filer, 0 mappar, 0.4 MB frigjort`. |
+| **Alltid** | Endast `%TEMP%/Semesterlista` och `semesterlista_*`-rester rörs. Låsta filer (t.ex. öppna i en PDF-läsare) hoppas över och loggas som debug. |
+
+Inställningen **Avancerat → Rensa cache vid avslut** (`advanced.clear_cache_on_exit`,
+standard **på**) styr städningen vid avslut. Under rutan visas aktuell
+cachestorlek ("Cache: 13 kB"). Slås den av ligger filerna kvar till nästa
+start, då `clean_stale()` tar dem när de är äldre än en timme.
+
+### 25.3 Tester
+
+`tests/test_cache.py` (16 tester): sökvägarna, `purge()` (inkl. filer i bruk,
+torrkörning, låsta filer och att andra programs temp-filer aldrig rörs),
+`clean_stale()` (färska filer behålls, gamla tas bort, egen tröskel),
+storleksberäkning och att `atexit`-krokens städning är idempotent och aldrig
+kastar fel. Dessutom två tester i `tests/test_settings_dialog.py` för
+kryssrutan och att valet sparas.
 
 ---
 

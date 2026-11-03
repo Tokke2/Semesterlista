@@ -317,6 +317,21 @@ class SettingsDialogTests(unittest.TestCase):
             local_version=local,
         )
 
+    def test_cache_checkbox_exists_and_defaults_on(self) -> None:
+        """Smart cache: rutan är ikryssad som standard (v2.11.0)."""
+        dialog = self.make_dialog()
+        self.assertTrue(dialog.clear_cache_check.isChecked())
+        self.assertIn("cache", dialog.cache_size_label.text().lower())
+
+    def test_cache_checkbox_is_saved(self) -> None:
+        dialog = self.make_dialog()
+        dialog.clear_cache_check.setChecked(False)
+        dialog.apply_settings()
+        self.assertFalse(self.manager.get("advanced.clear_cache_on_exit"))
+
+        dialog2 = self.make_dialog()
+        self.assertFalse(dialog2.clear_cache_check.isChecked())
+
     def test_update_group_exists(self) -> None:
         dialog = self.make_dialog(app_version="2.8.1")
         self.assertTrue(dialog.update_check_button.isEnabled())

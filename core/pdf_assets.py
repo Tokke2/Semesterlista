@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
@@ -599,8 +598,10 @@ def _rasterize_svg(path: Path, max_w: float, max_h: float) -> Tuple[Path, float,
         digest = hashlib.sha1(
             f"{path.resolve()}|{path.stat().st_mtime_ns}|{width_px}x{height_px}".encode()
         ).hexdigest()[:12]
-        cache_dir = Path(tempfile.gettempdir()) / "Semesterlista" / "logotyper"
-        cache_dir.mkdir(parents=True, exist_ok=True)
+        # Cachen ligger i appens egen temp-mapp och städas vid avslut (v2.11.0)
+        from core.cache import logo_cache_dir
+
+        cache_dir = logo_cache_dir()
         image_path = cache_dir / f"{path.stem}-{digest}.png"
 
         if not image_path.exists():

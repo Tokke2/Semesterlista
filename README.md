@@ -31,6 +31,10 @@ i PDF:ens hörn – väljs i en dropdown med bilderna i `assets/` och dess under
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
 - **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i
   `data/backup/` och automatisk omstart – dina listor och inställningar rörs aldrig.
+- **Smart cache**: rastrerade logotyper cachas under körningen i `%TEMP%/Semesterlista`
+  och **städas automatiskt när appen avslutas** (kan stängas av i
+  *Inställningar → Avancerat*). Vid start rensas bara gammalt skräp, så en
+  omstart inte tvingar fram nya renderingar.
 - **Loggning** till `data/app.log` (roterande, 2 MB × 5) och `data/crash.log`.
 - **Teman**: ljust, mörkt eller följ systemet. Svenska och engelska.
 
@@ -66,7 +70,7 @@ python tools/make_icons.py                  # rita om ikonerna i assets/ikon
 
 ```
 main.pyw              startfönster, meny, systemfält
-core/                 i18n, inställningar, PDF-tillgångar, uppdatering, loggning …
+core/                 i18n, inställningar, PDF-tillgångar, uppdatering, loggning, cache …
 plugins/hyra          hyresfakturering
 plugins/lista         semesterlista + limokörning (Fordon ärver denna)
 plugins/fordon        låst läge för limokörning

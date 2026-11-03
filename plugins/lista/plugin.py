@@ -698,7 +698,7 @@ class TestRunner:
         title = QLabel(
             i18n.t(
                 "lista.tests.heading",
-                version=VERSION,
+                version=PLUGIN_INFO["version"],
                 language=i18n.current_language().upper(),
             )
         )
