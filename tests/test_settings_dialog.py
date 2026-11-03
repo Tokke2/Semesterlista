@@ -22,6 +22,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from core.version import current_version  # noqa: E402
+
+#: Appens version enligt config.json – modulerna som följer appen ska matcha
+APP_VERSION = current_version(PROJECT_ROOT)
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
@@ -144,7 +149,7 @@ class SettingsDialogTests(unittest.TestCase):
     # ── Bygge ────────────────────────────────────────────
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.10.0")
+        self.assertEqual(MODULE_VERSION, APP_VERSION)
 
     def test_has_four_tabs(self) -> None:
         dialog = self.make_dialog()

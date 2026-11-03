@@ -56,7 +56,7 @@ from core.pdf_assets import SVG_SUFFIXES, AssetFile, assets_root, scan_assets
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.10.0"
+MODULE_VERSION: str = "2.11.0"
 
 #: Höjd på förhandsgranskningen (px) – bredden följer fönstret
 PREVIEW_HEIGHT: int = 56

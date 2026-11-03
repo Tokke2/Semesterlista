@@ -29,6 +29,11 @@ from unittest import mock
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from core.version import current_version  # noqa: E402
+
+#: Appens version enligt config.json – modulerna som följer appen ska matcha
+APP_VERSION = current_version(PROJECT_ROOT)
+
 from core import logging_setup  # noqa: E402
 from core.logging_setup import (  # noqa: E402
     BACKUP_COUNT,
@@ -67,7 +72,7 @@ class PathTests(LoggingTestCase):
     """Sökvägar – ingen loggning behöver startas."""
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.10.0")
+        self.assertEqual(MODULE_VERSION, APP_VERSION)
 
     def test_default_path(self) -> None:
         path = log_file_path(self.base)

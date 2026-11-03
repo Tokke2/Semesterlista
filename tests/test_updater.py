@@ -24,6 +24,11 @@ from unittest import mock
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from core.version import current_version  # noqa: E402
+
+#: Appens version enligt config.json – modulerna som följer appen ska matcha
+APP_VERSION = current_version(PROJECT_ROOT)
+
 from core import updater  # noqa: E402
 from core.updater import (  # noqa: E402
     MODULE_VERSION,
@@ -76,7 +81,7 @@ class VersionTests(unittest.TestCase):
     """Versionstolkning och jämförelse."""
 
     def test_module_version(self) -> None:
-        self.assertEqual(MODULE_VERSION, "2.10.0")
+        self.assertEqual(MODULE_VERSION, APP_VERSION)
 
     def test_parse_version(self) -> None:
         cases = {
