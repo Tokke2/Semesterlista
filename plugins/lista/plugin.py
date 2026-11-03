@@ -180,38 +180,14 @@ PLUGIN_INFO = {
 # ══════════════════════════════════════════════════════════
 # MÅNADSNAMN – används i dropdown och PDF-titlar
 # ══════════════════════════════════════════════════════════
-MONTHS_SV: Dict[int, str] = {
-    1: "Januari",
-    2: "Februari",
-    3: "Mars",
-    4: "April",
-    5: "Maj",
-    6: "Juni",
-    7: "Juli",
-    8: "Augusti",
-    9: "September",
-    10: "Oktober",
-    11: "November",
-    12: "December",
-}
+def month_options() -> List[str]:
+    """
+    Månadsval till dropdownen – översatta (v2.11.0).
 
-# Index 0 = standardläge
-# Index 1–12 = explicit startmånad
-MONTH_OPTIONS: List[str] = [
-    "Standard (Januari)",
-    "Januari",
-    "Februari",
-    "Mars",
-    "April",
-    "Maj",
-    "Juni",
-    "Juli",
-    "Augusti",
-    "September",
-    "Oktober",
-    "November",
-    "December",
-]
+    Index 0 = standardläge, index 1–12 = månad. Hämtas från ``core/i18n.py``
+    så att listan följer valt språk.
+    """
+    return i18n.month_options(i18n.t("lista.start_month.standard"))
 
 
 # ══════════════════════════════════════════════════════════
@@ -464,7 +440,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent: QWidget, plugin: "Plugin"):
         super().__init__(parent)
         self.plugin: "Plugin" = plugin
-        self.setWindowTitle("Inställningar – Semesterlista")
+        self.setWindowTitle(i18n.t("lista.window_title"))
         self.setFixedSize(460, 360)
 
         # Samma appikon som huvudfönstret (v2.7.0)
@@ -484,14 +460,14 @@ class SettingsDialog(QDialog):
         main_layout.setSpacing(12)
 
         auto_row = QHBoxLayout()
-        auto_row.addWidget(QLabel("Öppna PDF automatiskt:"))
+        auto_row.addWidget(QLabel(i18n.t("lista.settings.auto_open")))
         auto_row.addStretch()
         self.auto_open_check = QCheckBox()
         auto_row.addWidget(self.auto_open_check)
         main_layout.addLayout(auto_row)
 
         mode_row = QHBoxLayout()
-        mode_row.addWidget(QLabel("Standardläge:"))
+        mode_row.addWidget(QLabel(i18n.t("lista.settings.default_mode")))
         mode_row.addStretch()
         self.mode_combo = QComboBox()
         self.mode_combo.addItems(["Semesterlista", "Limokörning"])
@@ -500,7 +476,7 @@ class SettingsDialog(QDialog):
         main_layout.addLayout(mode_row)
 
         months_row = QHBoxLayout()
-        months_row.addWidget(QLabel("Månader per blad:"))
+        months_row.addWidget(QLabel(i18n.t("lista.settings.months_per_page")))
         months_row.addStretch()
         self.months_per_page_combo = QComboBox()
         self.months_per_page_combo.addItems(
@@ -515,7 +491,7 @@ class SettingsDialog(QDialog):
 
         # Sidlayout (v2.6.0)
         orientation_row = QHBoxLayout()
-        orientation_row.addWidget(QLabel("Sidlayout:"))
+        orientation_row.addWidget(QLabel(i18n.t("lista.orientation")))
         orientation_row.addStretch()
         self.orientation_combo = QComboBox()
         for value in ORIENTATIONS:
@@ -529,7 +505,7 @@ class SettingsDialog(QDialog):
         main_layout.addLayout(orientation_row)
 
         start_row = QHBoxLayout()
-        start_label = QLabel("Standardstartmånad:")
+        start_label = QLabel(i18n.t("lista.settings.start_month"))
         start_label.setToolTip(
             "Standard (Januari) = jan–dec valt år.\n"
             "Väljer du en månad manuellt genereras 12 månader från den månaden\n"
@@ -538,7 +514,7 @@ class SettingsDialog(QDialog):
         start_row.addWidget(start_label)
         start_row.addStretch()
         self.start_month_combo = QComboBox()
-        self.start_month_combo.addItems(MONTH_OPTIONS)
+        self.start_month_combo.addItems(month_options())
         self.start_month_combo.setMinimumWidth(220)
         self.start_month_combo.setToolTip(
             "Standard (Januari) = jan–dec valt år.\n"
@@ -711,7 +687,7 @@ class TestRunner:
 
     def _show_results(self, results: List[tuple[str, str]]) -> None:
         dialog = QDialog(self.parent)
-        dialog.setWindowTitle("Testresultat")
+        dialog.setWindowTitle(i18n.t("lista.tests.title"))
         dialog.setMinimumSize(560, 420)
         dialog.setModal(True)
 
@@ -719,7 +695,13 @@ class TestRunner:
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(4)
 
-        title = QLabel("Testresultat – Semesterlista & Limokörning v2.2.0")
+        title = QLabel(
+            i18n.t(
+                "lista.tests.heading",
+                version=VERSION,
+                language=i18n.current_language().upper(),
+            )
+        )
         title.setFont(QFont("Helvetica", 12, QFont.Weight.Bold))
         layout.addWidget(title)
         layout.addSpacing(12)
@@ -740,7 +722,7 @@ class TestRunner:
 
         layout.addStretch()
 
-        close_btn = QPushButton("Stäng")
+        close_btn = QPushButton(i18n.t("common.close"))
         close_btn.clicked.connect(dialog.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -913,10 +895,10 @@ class PDFGenerator:
         orange = colors.Color(1, 0.65, 0)
 
         legend_data = [[
-            "", "Röd = Helgdag eller söndag",
-            "", "Blå = Lördag",
-            "", "Grön = Halvdag (midsommarafton, julafton m.fl.)",
-            "", "Orange = Ny vecka",
+            "", i18n.t("lista.pdf.legend.red"),
+            "", i18n.t("lista.pdf.legend.blue"),
+            "", i18n.t("lista.pdf.legend.green"),
+            "", i18n.t("lista.pdf.legend.orange"),
         ]]
 
         legend_table = Table(
@@ -1041,9 +1023,9 @@ class PDFGenerator:
             return str(start_year)
 
         if start_year == end_year:
-            return f"{MONTHS_SV[start_month]}–{MONTHS_SV[end_month]} {start_year}"
+            return f"{i18n.month_name(start_month)}–{i18n.month_name(end_month)} {start_year}"
 
-        return f"{MONTHS_SV[start_month]} {start_year} – {MONTHS_SV[end_month]} {end_year}"
+        return f"{i18n.month_name(start_month)} {start_year} – {i18n.month_name(end_month)} {end_year}"
 
     @staticmethod
     def _format_page_title(
@@ -1057,15 +1039,15 @@ class PDFGenerator:
         end_year, end_month = page_months[-1]
 
         if len(page_months) == 1:
-            return f"{title_prefix} {MONTHS_SV[start_month]} {start_year}"
+            return f"{title_prefix} {i18n.month_name(start_month)} {start_year}"
 
         if start_year == end_year:
-            return f"{title_prefix} {MONTHS_SV[start_month]}–{MONTHS_SV[end_month]} {start_year}"
+            return f"{title_prefix} {i18n.month_name(start_month)}–{i18n.month_name(end_month)} {start_year}"
 
         return (
             f"{title_prefix} "
-            f"{MONTHS_SV[start_month]} {start_year} – "
-            f"{MONTHS_SV[end_month]} {end_year}"
+            f"{i18n.month_name(start_month)} {start_year} – "
+            f"{i18n.month_name(end_month)} {end_year}"
         )
 
     @staticmethod
@@ -1244,7 +1226,7 @@ class PDFGenerator:
                     for day_num in range(1, days_in_month + 1)
                 ]
 
-                header_row1 = [f"{MONTHS_SV[month_num]} {month_year}"] + week_numbers
+                header_row1 = [f"{i18n.month_name(month_num)} {month_year}"] + week_numbers
                 header_row2 = [header] + list(map(str, range(1, days_in_month + 1)))
                 header_row3 = [""] + day_texts
                 table_data = [header_row1, header_row2, header_row3]
@@ -1372,7 +1354,7 @@ class PDFGenerator:
         start_text = (
             "Standard (Januari)"
             if start_month is None
-            else f"{MONTHS_SV[start_month]} {year}"
+            else f"{i18n.month_name(start_month)} {year}"
         )
 
         # Storlek och tidsåtgång (v2.8.0)
@@ -1502,12 +1484,12 @@ class SemesterlistaView(QWidget):
         Rad 7: Antal poster
         Rad 8: Logotyp
         """
-        group = QGroupBox("Inställningar")
+        group = QGroupBox(i18n.t("lista.group.settings"))
         form_layout = QGridLayout(group)
         form_layout.setContentsMargins(15, 20, 15, 15)
         form_layout.setSpacing(10)
 
-        self.mode_label = QLabel("Läge:")
+        self.mode_label = QLabel(i18n.t("lista.mode"))
         self.mode_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(self.mode_label, 0, 0)
 
@@ -1527,7 +1509,7 @@ class SemesterlistaView(QWidget):
             self.mode_label.setVisible(False)
             self.mode_combo.setVisible(False)
 
-        year_label = QLabel("År:")
+        year_label = QLabel(i18n.t("lista.year"))
         year_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(year_label, 1, 0)
 
@@ -1537,7 +1519,7 @@ class SemesterlistaView(QWidget):
         self.year_spin.setMinimumWidth(120)
         form_layout.addWidget(self.year_spin, 1, 1)
 
-        start_label = QLabel("Startmånad:")
+        start_label = QLabel(i18n.t("lista.start_month"))
         start_label.setFont(QFont("Helvetica", 10))
         start_label.setToolTip(
             "Om inget väljs används standard:\n"
@@ -1548,7 +1530,7 @@ class SemesterlistaView(QWidget):
         form_layout.addWidget(start_label, 2, 0)
 
         self.start_month_combo = QComboBox()
-        self.start_month_combo.addItems(MONTH_OPTIONS)
+        self.start_month_combo.addItems(month_options())
         self.start_month_combo.setToolTip(
             "Standard (Januari) = jan–dec valt år.\n"
             "Manuellt val = 12 sammanhängande månader från vald månad,\n"
@@ -1562,7 +1544,7 @@ class SemesterlistaView(QWidget):
         self.start_month_combo.currentIndexChanged.connect(self._on_start_month_change)
         form_layout.addWidget(self.start_month_combo, 2, 1)
 
-        months_label = QLabel("Månader/blad:")
+        months_label = QLabel(i18n.t("lista.months_per_page"))
         months_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(months_label, 3, 0)
 
@@ -1588,7 +1570,7 @@ class SemesterlistaView(QWidget):
         form_layout.addWidget(self.months_per_page_combo, 3, 1)
 
         # Sidlayout: liggande eller stående A4 (v2.6.0)
-        layout_label = QLabel("Sidlayout:")
+        layout_label = QLabel(i18n.t("lista.orientation"))
         layout_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(layout_label, 4, 0)
 
@@ -1606,7 +1588,7 @@ class SemesterlistaView(QWidget):
             self.orientation_combo.setCurrentIndex(orientation_idx)
         form_layout.addWidget(self.orientation_combo, 4, 1)
 
-        self.file_label = QLabel("Fil med anställda:")
+        self.file_label = QLabel(i18n.t("lista.file.employees"))
         self.file_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(self.file_label, 5, 0)
 
@@ -1655,17 +1637,17 @@ class SemesterlistaView(QWidget):
         layout = QHBoxLayout()
         layout.setSpacing(10)
 
-        generate_btn = QPushButton("🖨️ Generera PDF")
+        generate_btn = QPushButton(i18n.t("lista.button.generate"))
         generate_btn.setMinimumHeight(36)
         generate_btn.clicked.connect(self._generate_pdf)
         layout.addWidget(generate_btn)
 
-        test_btn = QPushButton("🧪 Kör tester")
+        test_btn = QPushButton(i18n.t("lista.button.tests"))
         test_btn.setMinimumHeight(36)
         test_btn.clicked.connect(self._run_tests)
         layout.addWidget(test_btn)
 
-        folder_btn = QPushButton("📁 Öppna Dokument")
+        folder_btn = QPushButton(i18n.t("lista.button.open_documents"))
         folder_btn.setMinimumHeight(36)
         folder_btn.clicked.connect(self._open_documents)
         layout.addWidget(folder_btn)
@@ -1675,31 +1657,16 @@ class SemesterlistaView(QWidget):
 
     def _create_legend_group(self) -> QGroupBox:
         """Skapa färgförklaringsruta."""
-        group = QGroupBox("Färgförklaring i PDF")
+        group = QGroupBox(i18n.t("lista.group.legend"))
         legend_layout = QVBoxLayout(group)
         legend_layout.setContentsMargins(15, 20, 15, 15)
         legend_layout.setSpacing(6)
 
         for color_hex, text in [
-            (
-                "#F08080",
-                "Röd = Helgdagar och söndagar "
-                "(Nyår, Påsk, Midsommardagen, Jul, etc.)",
-            ),
-            (
-                "#ADD8E6",
-                "Blå = Lördagar",
-            ),
-            (
-                "#90EE90",
-                "Grön = Halvdagar "
-                "(Midsommarafton, Julafton, Nyårsafton, "
-                "Skärtorsdag, Valborg, dag före Alla helgons dag)",
-            ),
-            (
-                "#FFA500",
-                "Orange linje = Ny vecka",
-            ),
+            ("#F08080", i18n.t("lista.legend.red")),
+            ("#ADD8E6", i18n.t("lista.legend.blue")),
+            ("#90EE90", i18n.t("lista.legend.green")),
+            ("#FFA500", i18n.t("lista.legend.orange")),
         ]:
             row = QHBoxLayout()
             box = QLabel("    ")

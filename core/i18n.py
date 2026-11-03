@@ -360,6 +360,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         ),
 
         # ── Sidlayout (v2.6.0) ────────────────────────────
+        "lista.orientation":               "Sidlayout:",
         "lista.orientation.landscape":     "Liggande (A4)",
         "lista.orientation.portrait":      "Stående (A4)",
 
@@ -781,6 +782,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         ),
 
         # ── Page layout (v2.6.0) ──────────────────────────
+        "lista.orientation":               "Page layout:",
         "lista.orientation.landscape":     "Landscape (A4)",
         "lista.orientation.portrait":      "Portrait (A4)",
 
@@ -1280,6 +1282,10 @@ def month_names(short: bool = False, lower: bool = False) -> List[str]:
     """Genväg: alla månadsnamn på aktuellt språk."""
     return get_translator().month_names(short=short, lower=lower)
 
+
+def month_options(standard_label: Optional[str] = None) -> List[str]:
+    """Lista för startmånads-dropdown (index 0 = standard, 1–12 = månad)."""
+    return get_translator().month_options(standard_label)
 
 def weekday_short_names() -> List[str]:
     """Genväg: korta veckodagsnamn på aktuellt språk."""

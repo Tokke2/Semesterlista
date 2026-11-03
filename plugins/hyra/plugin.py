@@ -400,12 +400,12 @@ class HyraMainView(QWidget):
         """Skapa toppanel med titel och år-väljare."""
         layout = QHBoxLayout()
 
-        title = QLabel("🏠 Hyresfakturering")
+        title = QLabel(i18n.t("hyra.title"))
         title.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
         layout.addWidget(title)
         layout.addStretch()
 
-        year_label = QLabel("År:")
+        year_label = QLabel(i18n.t("hyra.year"))
         year_label.setFont(QFont("Helvetica", 10))
         layout.addWidget(year_label)
 
@@ -446,9 +446,9 @@ class HyraMainView(QWidget):
         edit_btn.setToolTip(i18n.t("hyra.manage_tenants.tooltip"))
         layout.addWidget(edit_btn)
 
-        reload_btn = QPushButton("🔄 Ladda om")
+        reload_btn = QPushButton(i18n.t("hyra.button.reload"))
         reload_btn.clicked.connect(self._reload)
-        reload_btn.setToolTip("Ladda om hyresgäster från fil")
+        reload_btn.setToolTip(i18n.t("hyra.tooltip.reload"))
         layout.addWidget(reload_btn)
 
         return layout
@@ -469,7 +469,7 @@ class HyraMainView(QWidget):
 
     def _create_quarter_info_panel(self) -> QGroupBox:
         """Skapa färgkodad info-panel för kvartalsfakturor."""
-        group = QGroupBox("📅 Kvartalsfakturor – Skicka senast")
+        group = QGroupBox(i18n.t("hyra.quarter.panel"))
         group_layout = QGridLayout(group)
         group_layout.setContentsMargins(10, 20, 10, 10)
         group_layout.setSpacing(4)
@@ -585,7 +585,7 @@ class HyraMainView(QWidget):
                 lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
                 group_layout.addWidget(lbl)
         else:
-            empty = QLabel("Inga hyresgäster\n\nRedigera Hyresgäster.txt")
+            empty = QLabel(i18n.t("hyra.tenants.empty", file=DEFAULT_TENANT_FILE))
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             empty.setStyleSheet("color: #888; padding: 20px;")
             group_layout.addWidget(empty)
@@ -603,10 +603,10 @@ class HyraMainView(QWidget):
         layout = QHBoxLayout()
         layout.setSpacing(8)
 
-        pdf_btn = QPushButton("🖨️ Generera PDF")
+        pdf_btn = QPushButton(i18n.t("hyra.button.generate"))
         pdf_btn.setMinimumHeight(36)
         pdf_btn.clicked.connect(self.plugin._generate_pdf)
-        pdf_btn.setToolTip("Generera hyreslista som PDF")
+        pdf_btn.setToolTip(i18n.t("hyra.tooltip.generate"))
         layout.addWidget(pdf_btn)
 
         edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
