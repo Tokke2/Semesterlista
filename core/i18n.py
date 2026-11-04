@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.11.0"
+MODULE_VERSION: str = "2.12.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -378,6 +378,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # ── Sidlayout (v2.6.0) ────────────────────────────
         "lista.orientation":               "Sidlayout:",
+        "lista.company_name": "Företagsnamn i PDF",
+        "lista.orientation.auto": "Automatiskt: 1 månad = stående A4, 2–3 = liggande A4",
         "lista.orientation.landscape":     "Liggande (A4)",
         "lista.orientation.portrait":      "Stående (A4)",
 
@@ -825,6 +827,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # ── Page layout (v2.6.0) ──────────────────────────
         "lista.orientation":               "Page layout:",
+        "lista.company_name": "Company name in PDF",
+        "lista.orientation.auto": "Automatic: 1 month = portrait A4, 2–3 = landscape A4",
         "lista.orientation.landscape":     "Landscape (A4)",
         "lista.orientation.portrait":      "Portrait (A4)",
 

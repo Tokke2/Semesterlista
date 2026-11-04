@@ -39,7 +39,7 @@ from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.11.0"
+MODULE_VERSION: str = "2.12.0"
 
 #: Filnamn (utan ändelse) för ikonen i assets/ikon/
 APP_ICON_STEM: str = "appikon"

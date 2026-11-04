@@ -2875,4 +2875,33 @@ Svitens total: **370 tester**.
 
 ---
 
+## 29. Region, uppdelning och sammanhållna A4-blad (v2.12.0)
+
+Detta kapitel ersätter tidigare manuella layoutval och automatisk minskning
+av antalet månader per blad i kapitel 27.
+
+- Semesterlista och Fordon använder `core.holidays` och den globala
+  `holiday_region` via `SettingsManager`: Sverige (`sv`) eller USA (`us`).
+  Amerikanska federala helger markeras på observed-datum; inga amerikanska
+  halvdagar läggs till. Okänd region faller tillbaka på Sverige.
+- 1 månad per blad ger stående A4, 2–3 månader ger liggande A4. Gamla sparade
+  orienteringsval styr inte längre exporten. UI visar orienteringen automatiskt.
+- Valda månader per blad behålls även för långa listor. Radluft minskas först;
+  därefter skalas sidans hela innehåll proportionerligt med `KeepInFrame`.
+  Inga månadsblock delas. Mycket långa listor får mindre text, inte fler blad.
+  Tolv månader ger exakt 12, 6 eller 4 blad. Startmånad och årsskifte bevaras.
+- Scheman har företagsnamn överst, utskriftsdatum och ”Sida X av Y” nederst.
+  Företagsnamnet sparas per flik som `company_name` via flikens inställningar.
+  Tomt namn utelämnas; långa namn begränsas till vänstra halvan av sidhuvudet.
+  Befintlig logotypcanvas behålls. Hyra-exportens layout ändras inte.
+- `plugins/lista/plugin.py` behåller Plugin och kompatibla exporter.
+  `pdf.py` ansvarar för PDF, `view.py` för vy/dialog/självtest,
+  `list_io.py` för listinläsning/frånvaro, `common.py` för delade funktioner.
+  Fordon ärver fortfarande samma Plugin-klass.
+- 383 tester: kalenderfall (påsk, midsommar, halvdagar, USA observed inklusive
+  årsskifte), global region i PDF-generatorn, Fordonsarv och faktiska PDF:er.
+  Exportkontroller omfattar båda schemalägen, 1/2/3 månader, 6/80 namn,
+  årsskifte, alla namn/månader, sidfot och text innanför sidkanterna.
+  CI installerar PyMuPDF för att köra innehållskontrollerna.
+
 <!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.11.0 | Datum: 2026-11-03 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->

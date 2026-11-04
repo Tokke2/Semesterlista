@@ -25,7 +25,7 @@ jobs:
       - name: Installera beroenden
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyflakes
+          python -m pip install -r requirements.txt pyflakes pymupdf
 
       - name: Kontrollera att versionen är synkad
         run: python tools/bump_version.py --check

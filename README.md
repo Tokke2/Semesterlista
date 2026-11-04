@@ -12,7 +12,7 @@ En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörning
 | Flik | Innehåll |
 |------|----------|
 | **Hyra** | Månads- och kvartalshyresgäster, kvartalsöversikt, PDF med tomma kryssrutor |
-| **Semesterlista** | Semester- och limokörningsschema, 1–3 månader per blad, liggande eller stående A4 |
+| **Semesterlista** | Semester- och limokörningsschema, 1–3 månader per blad, automatisk A4-orientering |
 | **Fordon** | Samma schema som Semesterlista men låst till limokörning |
 
 Alla tre flikarna kan ha **egen logotyp** (SVG, EPS eller PDF) som ritas
@@ -23,6 +23,12 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 
 - **PDF-export** med färgkodning (helgdagar, lördagar, halvdagar, veckonummer),
   valbar startmånad (även över årsskifte) och 1, 2 eller 3 månader per blad.
+  **1 månad = stående A4; 2–3 = liggande A4.** Valda månader hålls på samma
+  blad och skalas ned vid behov; mycket långa listor får mindre text.
+- **Helgdagsregion** i appens inställningar styr Sverige/USA i semester- och
+  fordonsscheman (USA använder federala observed-datum, inga halvdagar).
+- **Sidhuvud/sidfot i scheman:** företagsnamn (anges i flikens inställningar),
+  utskriftsdatum och ”Sida X av Y”.
 - **Egna listor** (`Anställda.txt`, `Fordon.txt`, `Hyresgäster.txt`) som redigeras
   direkt i appen – kommentarer, blandade teckenkodningar och dubbletter hanteras.
 - **Logotyp** per flik: dropdown med SVG:er från `assets/` + undermappar och

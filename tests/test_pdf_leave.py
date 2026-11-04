@@ -59,6 +59,8 @@ class LeaveInPdfTests(unittest.TestCase):
             raise unittest.SkipTest(f"Qt kunde inte startas: {exc}")
 
         cls.module = _load_plugin_module()
+        from plugins.lista import pdf
+        cls.pdf_module = pdf
         from core.event_bus import EventBus
         from core.settings_manager import SettingsManager
 
@@ -77,8 +79,8 @@ class LeaveInPdfTests(unittest.TestCase):
             "critical": cls.module.QMessageBox.critical,
             "warning": cls.module.QMessageBox.warning,
             "open": cls.module.webbrowser.open,
-            "docs": cls.module.get_documents_folder,
-            "table": cls.module.Table,
+            "docs": cls.pdf_module.get_documents_folder,
+            "table": cls.pdf_module.Table,
         }
         cls.messages = []
         cls.module.QMessageBox.information = staticmethod(
@@ -91,7 +93,7 @@ class LeaveInPdfTests(unittest.TestCase):
             lambda *args, **kwargs: cls.messages.append(("warning", args))
         )
         cls.module.webbrowser.open = lambda *args, **kwargs: True
-        cls.module.get_documents_folder = lambda: str(cls.outdir)
+        cls.pdf_module.get_documents_folder = lambda: str(cls.outdir)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -99,8 +101,8 @@ class LeaveInPdfTests(unittest.TestCase):
         cls.module.QMessageBox.critical = cls._orig["critical"]
         cls.module.QMessageBox.warning = cls._orig["warning"]
         cls.module.webbrowser.open = cls._orig["open"]
-        cls.module.get_documents_folder = cls._orig["docs"]
-        cls.module.Table = cls._orig["table"]
+        cls.pdf_module.get_documents_folder = cls._orig["docs"]
+        cls.pdf_module.Table = cls._orig["table"]
         cls._tmp.cleanup()
 
     def setUp(self) -> None:
@@ -114,10 +116,10 @@ class LeaveInPdfTests(unittest.TestCase):
                 super().__init__(data, *args, **kwargs)
 
         self._captured = captured
-        self.module.Table = CapturingTable
+        self.pdf_module.Table = CapturingTable
 
     def tearDown(self) -> None:
-        self.module.Table = self._orig["table"]
+        self.pdf_module.Table = self._orig["table"]
 
     def _month_tables(self):
         """Tabeller som innehåller anställda (fler än tre rubrikrader)."""
@@ -237,6 +239,8 @@ class ReadListWithLeaveTests(unittest.TestCase):
             raise unittest.SkipTest(f"Qt kunde inte startas: {exc}")
 
         cls.module = _load_plugin_module()
+        from plugins.lista import pdf
+        cls.pdf_module = pdf
         from core.event_bus import EventBus
         from core.settings_manager import SettingsManager
 

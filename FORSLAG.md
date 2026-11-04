@@ -1,3 +1,15 @@
+## Genomfört 2026-11-04 – v2.12.0
+
+- **A1 klart:** global Sverige/USA-region styr kalenderfärgerna i scheman.
+- **A3 klart:** 10 tester för helgdagsmodulen.
+- **B1 klart:** lista-pluginet uppdelat i plugin/common/pdf/view/list_io.
+- **C1 klart för Semesterlista/Fordon:** företagsnamn, datum, Sida X av Y.
+- **PDF-layout:** 1 månad stående, 2–3 liggande A4; månader hålls ihop och skalas.
+- Versionen höjs till 2.12.0 så uppdateraren upptäcker releasen (även A2).
+- Totalt 383 tester, inklusive faktiska PDF-innehållskontroller.
+
+Nedan bevaras den tidigare genomgången som historik.
+
 # Förslag – 25 st (2026-11-02, v2.5.0)
 
 Status per 2026-11-03 (v2.11.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** = inte gjort.

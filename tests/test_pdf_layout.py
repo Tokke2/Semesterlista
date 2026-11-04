@@ -95,6 +95,8 @@ class PdfLayoutTestBase(unittest.TestCase):
             raise unittest.SkipTest(f"Qt kunde inte startas: {exc}")
 
         cls.module = _load_plugin_module()
+        from plugins.lista import pdf
+        cls.pdf_module = pdf
         from core.event_bus import EventBus
         from core.settings_manager import SettingsManager
 
@@ -116,7 +118,7 @@ class PdfLayoutTestBase(unittest.TestCase):
             "critical": cls.module.QMessageBox.critical,
             "warning": cls.module.QMessageBox.warning,
             "open": cls.module.webbrowser.open,
-            "docs": cls.module.get_documents_folder,
+            "docs": cls.pdf_module.get_documents_folder,
         }
         cls.messages = []
         cls.module.QMessageBox.information = staticmethod(
@@ -129,7 +131,7 @@ class PdfLayoutTestBase(unittest.TestCase):
             lambda *args, **kwargs: cls.messages.append(("warning", args[2] if len(args) > 2 else ""))
         )
         cls.module.webbrowser.open = lambda *args, **kwargs: True
-        cls.module.get_documents_folder = lambda: str(cls.outdir)
+        cls.pdf_module.get_documents_folder = lambda: str(cls.outdir)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -137,7 +139,7 @@ class PdfLayoutTestBase(unittest.TestCase):
         cls.module.QMessageBox.critical = cls._orig["critical"]
         cls.module.QMessageBox.warning = cls._orig["warning"]
         cls.module.webbrowser.open = cls._orig["open"]
-        cls.module.get_documents_folder = cls._orig["docs"]
+        cls.pdf_module.get_documents_folder = cls._orig["docs"]
         cls._tmp.cleanup()
 
     def _generate(self, names=None, **kwargs) -> Path:
@@ -201,10 +203,10 @@ class OrientationTests(PdfLayoutTestBase):
         self.assertEqual(pages, 4)  # 12 månader / 3 per blad
 
     def test_portrait_pdf_is_taller_than_wide(self) -> None:
-        pdf = self._generate(months_per_page=3, orientation="Stående")
+        pdf = self._generate(months_per_page=1, orientation="Liggande")
         (width, height), pages = _media_box(pdf)
         self.assertGreater(height, width)
-        self.assertEqual(pages, 4)
+        self.assertEqual(pages, 12)
 
     def test_unknown_orientation_falls_back_to_landscape(self) -> None:
         pdf = self._generate(months_per_page=2, orientation="Diagonal")
@@ -307,7 +309,7 @@ class AdaptiveLayoutTests(PdfLayoutTestBase):
         self.assertGreaterEqual(padding, 1)
         self.assertGreaterEqual(gap, 4)
 
-    def test_long_list_reduces_months_per_page(self) -> None:
+    def test_long_list_preserves_months_per_page(self) -> None:
         count, _padding, _gap = self.generator._fit_layout(
             months_per_page=3,
             rows=17,
@@ -317,9 +319,9 @@ class AdaptiveLayoutTests(PdfLayoutTestBase):
             table_width_pt=self.module.TABLE_WIDTH_PT,
             available_height=527.0,
         )
-        self.assertEqual(count, 2)
+        self.assertEqual(count, 3)
 
-    def test_very_long_list_uses_one_month(self) -> None:
+    def test_very_long_list_preserves_months_per_page(self) -> None:
         count, _padding, _gap = self.generator._fit_layout(
             months_per_page=3,
             rows=40,
@@ -329,7 +331,7 @@ class AdaptiveLayoutTests(PdfLayoutTestBase):
             table_width_pt=self.module.TABLE_WIDTH_PT,
             available_height=527.0,
         )
-        self.assertEqual(count, 1)
+        self.assertEqual(count, 3)
 
     def test_month_height_grows_with_rows(self) -> None:
         small = self.generator._estimate_month_height(
@@ -350,11 +352,11 @@ class AdaptiveLayoutTests(PdfLayoutTestBase):
         self.assertGreater(loose, tight)
 
     def test_long_list_does_not_clip_the_tables(self) -> None:
-        """Även 16 anställda ska ge kompletta sidor (6, inte 12)."""
+        """Även 16 anställda ska ge kompletta sidor (4, tre månader per blad)."""
         names = [f"Person {i}" for i in range(16)]
         pdf = self._generate(names=names, start_month=10, months_per_page=3)
         _, pages = _media_box(pdf)
-        self.assertEqual(pages, 6)
+        self.assertEqual(pages, 4)
 
     def test_legend_labels_are_complete(self) -> None:
         from core import i18n
