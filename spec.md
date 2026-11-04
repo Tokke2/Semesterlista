@@ -146,7 +146,7 @@ Semesterlista/ ← Rotmapp
 ├── data/ ← JSON-datafiler
 │ ├── settings.json ← Huvudinställningar
 │ ├── plugins.json ← Plugin-inställningar
-│ ├── app.log ← Loggfil (roterar, versionshanteras ej) ← NY v2.8.0
+│ ├── loggar/   ← Loggar (v2.12.0): app.log, fel.log, arkiv/
 │ └── crash.log ← Hårda krascher via faulthandler ← NY v2.8.0
 │
 ├── Anställda.txt ← Indata: anställda (skapas vid behov)
@@ -200,7 +200,7 @@ Alla tekniska val och beroenden listade.
 | PDF-generering   | reportlab                                | Semesterlistor, limokörning, hyra        |
 | Helgdagar        | get_swedish_holidays() (intern)          | Svenska helgdagar, egen implementation   |
 | Trådsäkerhet     | threading.Lock                           | EventBus + SettingsManager               |
-| Loggning         | logging + RotatingFileHandler            | data/app.log, 2 MB × 5, INFO/DEBUG       |
+| Loggning         | logging + RotatingFileHandler            | data/loggar/app.log, 2 MB × 5, INFO/DEBUG |
 | Kraschlogg       | faulthandler                             | data/crash.log (hårda fel)               |
 | Uppdatering      | urllib + zipfile (stdlib)                | GitHub Releases API, zipball             |
 | Python-version   | 3.12+                                    |                                          |
@@ -1349,7 +1349,7 @@ Inställningarna sparas i en egen lokal fil
 importeras, så att även importfel hamnar i fil.
 
 ```python
-LOG_FILE = setup_logging(PROJECT_ROOT)   # → data/app.log
+LOG_FILE = setup_logging(PROJECT_ROOT)   # → data/loggar/app.log
 install_excepthook(on_crash)             # valfri callback → felruta
 install_faulthandler()                   # → data/crash.log
 install_qt_message_handler()             # efter QApplication
@@ -1359,7 +1359,7 @@ log_startup_context(PROJECT_ROOT)        # miljöinfo
 | Funktion | Beskrivning |
 |----------|-------------|
 | `setup_logging(base_dir, level, to_file, to_console, file_name)` | Sätter rot-loggern, roterande fil + konsol (hoppas över i pythonw) |
-| `log_file_path(base_dir, file_name)` | `data/app.log` (eller eget namn) |
+| `log_file_path(base_dir, file_name)` | `data/loggar/app.log` (eller eget namn) |
 | `get_log_file()` / `is_configured()` | Aktiv loggfil / om setup körts |
 | `startup_context()` / `log_startup_context()` | Python, Qt, OS, cwd, pid, argv m.m. |
 | `install_excepthook(on_crash)` | Huvudtråd + `threading.excepthook`; `KeyboardInterrupt` släpps igenom |
@@ -1379,7 +1379,7 @@ log_startup_context(PROJECT_ROOT)        # miljöinfo
 
 | Inställning | Standard |
 |-------------|----------|
-| Fil | `data/app.log` (reserv: `%TEMP%/Semesterlista/app.log`, sedan `~/.semesterlista/`) |
+| Fil | `data/loggar/app.log` (reserv: `%TEMP%/Semesterlista/app.log`, sedan `~/.semesterlista/`) |
 | Rotering | 2 MB × 5 filer (`app.log.1` … `app.log.5`) |
 | Nivå | `INFO`; `DEBUG` om `SEMESTERLISTA_DEBUG` är satt |
 | Format | `[tid] NIVÅ-8 modul:rad – meddelande` |
@@ -2356,7 +2356,7 @@ logotyp på varje sida via `canvasmaker` samt felhantering (`AssetError`).
 | Plugin misslyckad | ERROR | `✗ fordon  kunde inte laddas` |
 | PDF skapad | INFO | `… 12 månader, 6 sidor, 84 kB, 210 ms` |
 | Inställningar sparade | INFO | `språk=sv, tema=light, plugins={…}` |
-| Ohanterat fel | CRITICAL | traceback + `Loggfil: …/data/app.log` |
+| Ohanterat fel | CRITICAL | traceback + `Loggfil: …/data/loggar/app.log` (även i `fel.log`) |
 | Qt-varningar | WARNING | `qt: QWidget::setLayout: …` |
 
 ### 22.2 Felsökningsläge
@@ -2368,28 +2368,45 @@ python main.pyw
 ```
 
 …eller **Arkiv → Inställningar → Avancerat → Felsökningsläge** (sparas som
-`advanced.debug_mode`). `data/app.log` får då även DEBUG-rader; appens
+`advanced.debug_mode`). `data/loggar/app.log` får då även DEBUG-rader; appens
 loggmoduler (`main`, `core`, `plugins`) loggar alltid INFO.
 
 ### 22.3 Vanliga fel
 
 | Symptom | Trolig orsak | Åtgärd |
 |---------|--------------|--------|
-| Appen startar inte alls (pythonw) | Importfel – ingen konsol att se felet i | Läs `data/app.log`, kör `python main.pyw` i terminal |
+| Appen startar inte alls (pythonw) | Importfel – ingen konsol att se felet i | Läs `data/loggar/app.log`, kör `python main.pyw` i terminal |
 | `ModuleNotFoundError: core.settings_dialog` | Filen saknas/är inte synkad | `git pull`; menyvalet är inaktiverat men appen startar |
-| Ingen `data/app.log` | `data/` är inte skrivbar | Loggen hamnar i `%TEMP%/Semesterlista/app.log` |
+| Ingen `data/loggar/app.log` | `data/` är inte skrivbar | Loggen hamnar i `%TEMP%/Semesterlista/app.log` |
 | Krasch utan traceback | Fel i Qt/C++ | Läs `data/crash.log` (faulthandler) |
 | Loggen är tom | `advanced.log_to_file` av | Slå på i Avancerat-fliken |
 
-### 22.4 Filer som skapas (versionshanteras inte)
+### 22.4 Loggarna har en egen mapp (v2.12.0)
 
 ```
-data/app.log       aktuell logg
-data/app.log.1–5   roterade filer (2 MB styck)
-data/crash.log     hårda krascher
+data/loggar/
+├── app.log          aktuell dag (roterar vid 2 MB, 5 filer: app.log.1–5)
+├── fel.log          alla ERROR/CRITICAL – arkiveras aldrig
+└── arkiv/
+    ├── app-2026-11-02.log
+    └── app-2026-11-03.log
 ```
 
-`data/*.log` och `data/*.log.*` står i `.gitignore`.
+| Regel | Beteende |
+|-------|----------|
+| **Egen undermapp** | Allt hamnar i `data/loggar/` i stället för direkt i `data/` |
+| **Dagarkivering** | Vid start (och vid midnatt om appen är igång) flyttas en `app.log` vars **ändringsdatum** är en tidigare dag till `arkiv/app-<dag>.log`. En ny, tom `app.log` skapas. Flera omstarter samma dag lägger till i samma arkivfil |
+| **Egen fellogg** | Endast **ERROR** och **CRITICAL** hamnar i `fel.log`. Filen arkiveras aldrig – felen ligger kvar tills de är åtgärdade |
+| **Rensa felloggen** | Inställningar → Avancerat → *Rensa felloggen* (bekräftelse krävs). Filen töms men finns kvar |
+| **Reservplats** | Går `data/` inte att skriva i hamnar loggen i `%TEMP%/Semesterlista/loggar/` (arkivering och fellogg följer med) |
+
+Koden: `archive_previous_days()`, `archive_target()`, `DailyArchiveFileHandler`,
+`_RotatingDailyFileHandler` (storleksrotering + dagarkivering), `_setup_error_log()`,
+`error_log_path()`, `tail_error_log()`, `error_log_lines()`, `clear_error_log()`.
+
+`data/loggar/**` står i `.gitignore` och rörs aldrig av uppdateraren
+(`.log`-filer hoppas över, hela `data/` bevaras).
+
 
 ### 22.5 Årbytet i Hyra-fliken (fixat i v2.8.1)
 
@@ -2505,7 +2522,7 @@ appen startar som vanligt.
 | ”Releasen (x) är inte nyare” | Samma eller äldre version | Inget att göra |
 | Ingen avisering vid start | `advanced.check_updates` av eller inget nät | Slå på i Inställningar |
 
-Allt loggas till `data/app.log` (se kap. 22).
+Allt loggas till `data/loggar/app.log` (se kap. 22).
 
 ### 23.6 Tester
 
@@ -2720,7 +2737,7 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
 | `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **352 tester**.
+Svitens total: **370 tester**.
 
 
 ---
@@ -2854,7 +2871,7 @@ visar reglaget direkt: 50 % ritar logotypen i halva rutan, 100 % fyller rutan.
 | `tests/test_pdf_assets.py` | +13 | Ghostscript i `PATH`/miljövariabel, saknad Ghostscript (förklaring), EPS → PNG med cache, felutskrift vid misslyckad konvertering, EPS bevarar originalets sökväg, PDF rastreras + cache, skalans inverkan på storlek och `auto_size`, taken, `logo_for_settings` (procent, standard, klamning) |
 | `tests/test_logo_picker.py` | +7 | importfiltret (SVG/EPS/PDF/PNG/JPG), knapptexten, reglagets standard och gränser, `scale_changed`, storlek i konstruktorn, förhandsgranskningen krymper, EPS utan Ghostscript visar förklaringen |
 
-Svitens total: **352 tester**.
+Svitens total: **370 tester**.
 
 ---
 

@@ -22,7 +22,9 @@ import logging
 import os
 import sys
 import tempfile
+import time
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest import mock
 
@@ -36,10 +38,21 @@ APP_VERSION = current_version(PROJECT_ROOT)
 
 from core import logging_setup  # noqa: E402
 from core.logging_setup import (  # noqa: E402
+    ARCHIVE_SUBDIR,
     BACKUP_COUNT,
+    LOG_SUBDIR,
     MAX_BYTES,
     MODULE_VERSION,
+    archive_dir_path,
+    archive_previous_days,
+    archive_target,
+    clear_error_log,
+    error_log_lines,
+    error_log_path,
+    get_error_log_file,
     get_log_file,
+    log_dir_path,
+    tail_error_log,
     install_excepthook,
     install_faulthandler,
     is_configured,
@@ -76,11 +89,28 @@ class PathTests(LoggingTestCase):
 
     def test_default_path(self) -> None:
         path = log_file_path(self.base)
-        self.assertEqual(path, self.base / "data" / "app.log")
+        self.assertEqual(path, self.base / "data" / "loggar" / "app.log")
+
+    def test_logs_live_in_their_own_subfolder(self) -> None:
+        """Loggarna har en egen undermapp: data/loggar (v2.12.0)."""
+        self.assertEqual(log_dir_path(self.base), self.base / "data" / "loggar")
+        self.assertEqual(
+            error_log_path(self.base), self.base / "data" / "loggar" / "fel.log"
+        )
+        self.assertEqual(
+            archive_dir_path(self.base), self.base / "data" / "loggar" / "arkiv"
+        )
+
+    def test_archive_name_has_the_date(self) -> None:
+        target = archive_target(self.base / "data" / "loggar" / "app.log",
+                                date(2026, 11, 2))
+        self.assertEqual(
+            target, self.base / "data" / "loggar" / "arkiv" / "app-2026-11-02.log"
+        )
 
     def test_custom_file_name(self) -> None:
         path = log_file_path(self.base, "test.log")
-        self.assertEqual(path, self.base / "data" / "test.log")
+        self.assertEqual(path, self.base / "data" / "loggar" / "test.log")
 
     def test_rotation_settings(self) -> None:
         self.assertEqual(MAX_BYTES, 2 * 1024 * 1024)
@@ -283,3 +313,171 @@ class CrashHookTests(LoggingTestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class LogFolderTests(LoggingTestCase):
+    """Loggarna ligger i en egen undermapp (v2.12.0)."""
+
+    def test_folder_constants(self) -> None:
+        self.assertEqual(LOG_SUBDIR, "loggar")
+        self.assertEqual(ARCHIVE_SUBDIR, "arkiv")
+
+    def test_setup_creates_the_folder(self) -> None:
+        path = setup_logging(self.base, to_console=False)
+        self.assertTrue(Path(path).parent.is_dir())
+        self.assertEqual(Path(path).parent.name, "loggar")
+        self.assertFalse((self.base / "data" / "app.log").exists(),
+                         "loggen ska inte ligga direkt i data/")
+
+
+class ArchiveTests(LoggingTestCase):
+    """Gårdagens logg arkiveras, dagens lämnas ifred (v2.12.0)."""
+
+    def _write_log(self, path: Path, text: str, days_ago: int) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        stamp = time.time() - days_ago * 86400
+        os.utime(path, (stamp, stamp))
+
+    def test_previous_day_is_archived_at_startup(self) -> None:
+        log_file = log_file_path(self.base)
+        self._write_log(log_file, "[gammal rad]\n", days_ago=1)
+
+        path = setup_logging(self.base, to_console=False)
+
+        archived = list(archive_dir_path(self.base).glob("app-*.log"))
+        self.assertEqual(len(archived), 1, "gårdagens logg arkiverades inte")
+        self.assertIn("[gammal rad]", archived[0].read_text(encoding="utf-8"))
+        self.assertNotIn("[gammal rad]", Path(path).read_text(encoding="utf-8"))
+        # Arkivnamnet bär dagen loggen skrevs
+        expected = date.fromtimestamp(time.time() - 86400).isoformat()
+        self.assertEqual(archived[0].name, f"app-{expected}.log")
+
+    def test_today_is_not_archived(self) -> None:
+        log_file = log_file_path(self.base)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        log_file.write_text("[dagens rad]\n", encoding="utf-8")
+
+        path = setup_logging(self.base, to_console=False)
+
+        self.assertFalse(archive_dir_path(self.base).exists())
+        self.assertIn("[dagens rad]", Path(path).read_text(encoding="utf-8"))
+
+    def test_midnight_rotation_archives_the_old_content(self) -> None:
+        """Är appen igång över midnatt arkiveras raderna vid nästa loggning."""
+        path = Path(setup_logging(self.base, to_console=False))
+        logging.getLogger("main").info("rad före midnatt")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+
+        handler = next(
+            h for h in logging.getLogger().handlers
+            if isinstance(h, logging_setup._RotatingDailyFileHandler)
+        )
+        # Låtsas att det redan har blivit nästa dag
+        handler._day = date(2020, 1, 1)
+        old = time.time() - 86400
+        os.utime(path, (old, old))
+
+        logging.getLogger("main").info("rad efter midnatt")
+        handler.flush()
+
+        archived = list(archive_dir_path(self.base).glob("app-*.log"))
+        self.assertEqual(len(archived), 1)
+        archived_text = archived[0].read_text(encoding="utf-8")
+        self.assertIn("rad före midnatt", archived_text)
+        self.assertNotIn("rad efter midnatt", archived_text)
+        self.assertIn("rad efter midnatt", path.read_text(encoding="utf-8"))
+        self.assertNotIn("rad före midnatt", path.read_text(encoding="utf-8"))
+
+    def test_missing_file_is_ignored(self) -> None:
+        self.assertIsNone(archive_previous_days(self.base / "finns-inte.log"))
+
+    def test_archive_appends_same_day(self) -> None:
+        target = self.base / "data" / "loggar" / "app.log"
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        for text in ("första\n", "andra\n"):
+            target.write_text(text, encoding="utf-8")
+            stamp = time.time() - 86400
+            os.utime(target, (stamp, stamp))
+            archive_previous_days(target)
+
+        archived = list((self.base / "data" / "loggar" / "arkiv").glob("app-*.log"))
+        self.assertEqual(len(archived), 1)
+        content = archived[0].read_text(encoding="utf-8")
+        self.assertIn("första", content)
+        self.assertIn("andra", content)
+
+
+class ErrorLogTests(LoggingTestCase):
+    """Fel hamnar i en egen fil som aldrig arkiveras (v2.12.0)."""
+
+    def test_error_log_is_created_next_to_app_log(self) -> None:
+        setup_logging(self.base, to_console=False)
+        self.assertEqual(
+            Path(get_error_log_file()),
+            self.base / "data" / "loggar" / "fel.log",
+        )
+        self.assertTrue(Path(get_error_log_file()).exists())
+
+    def test_only_errors_are_written_there(self) -> None:
+        setup_logging(self.base, to_console=False)
+        logging.getLogger("test.fel").info("bara info")
+        logging.getLogger("test.fel").warning("bara varning")
+        logging.getLogger("test.fel").error("riktigt fel")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+
+        content = Path(get_error_log_file()).read_text(encoding="utf-8")
+        self.assertIn("riktigt fel", content)
+        self.assertNotIn("bara info", content)
+        self.assertNotIn("bara varning", content)
+
+    def test_errors_are_not_archived(self) -> None:
+        setup_logging(self.base, to_console=False)
+        logging.getLogger("test.fel").error("gammalt fel")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+
+        error_log = Path(get_error_log_file())
+        old = time.time() - 3 * 86400
+        os.utime(error_log, (old, old))
+        reset_logging()
+        setup_logging(self.base, to_console=False)
+
+        self.assertTrue(error_log.exists(), "felloggen ska inte flyttas")
+        self.assertIn("gammalt fel", error_log.read_text(encoding="utf-8"))
+
+    def test_clear_error_log(self) -> None:
+        setup_logging(self.base, to_console=False)
+        logging.getLogger("test.fel").error("åtgärdat fel")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+        self.assertGreater(error_log_lines(), 1)
+
+        self.assertTrue(clear_error_log())
+        self.assertEqual(error_log_lines(), 1)
+        content = Path(get_error_log_file()).read_text(encoding="utf-8")
+        self.assertNotIn("åtgärdat fel", content)
+        self.assertIn("rensad", content)
+
+    def test_clear_before_setup_returns_false(self) -> None:
+        self.assertFalse(clear_error_log())
+
+    def test_tail_error_log(self) -> None:
+        setup_logging(self.base, to_console=False)
+        logging.getLogger("test.fel").error("sista felet")
+        for handler in logging.getLogger().handlers:
+            handler.flush()
+
+        lines = tail_error_log(5)
+        self.assertTrue(any("sista felet" in line for line in lines))
+
+    def test_summary_has_error_log(self) -> None:
+        setup_logging(self.base, to_console=False)
+        info = log_summary()
+        self.assertEqual(info["error_log"], str(self.base / "data" / "loggar" / "fel.log"))
+        self.assertEqual(info["archive_dir"], str(self.base / "data" / "loggar" / "arkiv"))
+        self.assertEqual(info["log_dir"], str(self.base / "data" / "loggar"))
+        self.assertIn("error_lines", info)

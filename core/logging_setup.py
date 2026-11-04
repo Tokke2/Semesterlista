@@ -9,13 +9,22 @@ ohanterade undantag, Qt-meddelanden och hårda krascher (faulthandler).
 
     from core.logging_setup import setup_logging, log_startup_context
 
-    log_file = setup_logging()          # data/app.log (fallback: temp)
+    log_file = setup_logging()          # data/loggar/app.log (fallback: temp)
     log_startup_context()               # python, platform, sökvägar, …
     logging.getLogger(__name__).info("…")
 
-Loggfilen roterar automatiskt (2 MB × 5 filer) och innehåller modul,
-radnummer och exakt tid – tillräckligt för att felsöka en användares
-installation utan att be om skärmdumpar.
+Loggarna ligger i en egen undermapp: **data/loggar/** (v2.12.0).
+
+    data/loggar/app.log              aktuell dag, roterar vid 2 MB (5 filer)
+    data/loggar/fel.log              alla ERROR/CRITICAL – arkiveras aldrig
+    data/loggar/arkiv/app-2026-11-02.log   tidigare dagar
+
+* Vid start **arkiveras** en loggfil som hör till en tidigare dag till
+  ``arkiv/app-<dag>.log`` och en ny ``app.log`` skapas. Samma sak händer om
+  appen är igång över midnatt (``DailyArchiveFileHandler``).
+* **Fel loggas separat** i ``fel.log`` (ERROR och CRITICAL). Den filen rörs
+  inte av dagarkiveringen – felen ligger kvar tills de är åtgärdade, och kan
+  rensas manuellt i Inställningar (*Rensa felloggen*).
 
 Varför så tidigt? All loggning sätts upp *innan* PySide6 och plugins
 importeras, så även saknade moduler (t.ex. en bortglömd fil) hamnar i
@@ -34,15 +43,18 @@ import sys
 import tempfile
 import threading
 import traceback
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 MODULE_VERSION: str = "2.11.0"
 
-#: Standardfil (relativt appens rotmapp)
+#: Standardmapp (relativt appens rotmapp) – loggarna har en egen undermapp
 DEFAULT_LOG_DIR: str = "data"
+LOG_SUBDIR: str = "loggar"
+ARCHIVE_SUBDIR: str = "arkiv"
 DEFAULT_LOG_FILE: str = "app.log"
+DEFAULT_ERROR_LOG_FILE: str = "fel.log"
 
 #: Rotering: 2 MB per fil, 5 gamla filer
 MAX_BYTES: int = 2 * 1024 * 1024
@@ -57,6 +69,7 @@ DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 _VERBOSE_LOGGERS = ("main", "core", "plugins")
 
 _log_file: Optional[Path] = None
+_error_log_file: Optional[Path] = None
 _configured: bool = False
 _crash_hook: Optional[Callable[[str], None]] = None
 _last_crash: Optional[str] = None
@@ -67,6 +80,18 @@ _previous_excepthook: Optional[Callable[..., Any]] = None
 # ══════════════════════════════════════════════════════════
 # Sökväg
 # ══════════════════════════════════════════════════════════
+
+def _root(base_dir: Optional[Path] = None) -> Path:
+    """Appens rotmapp (standard: den här filens förälder/..)."""
+    if base_dir is not None:
+        return Path(base_dir)
+    return Path(__file__).resolve().parent.parent
+
+
+def log_dir_path(base_dir: Optional[Path] = None) -> Path:
+    """Mappen där alla loggar ligger: ``<rot>/data/loggar``."""
+    return _root(base_dir) / DEFAULT_LOG_DIR / LOG_SUBDIR
+
 
 def log_file_path(
     base_dir: Optional[Path] = None,
@@ -80,15 +105,131 @@ def log_file_path(
         file_name: Filnamn (standard: "app.log").
 
     Returns:
-        Absolut sökväg till <rot>/data/app.log.
+        Absolut sökväg till <rot>/data/loggar/app.log.
     """
-    root = Path(base_dir) if base_dir is not None else Path(__file__).resolve().parent.parent
-    return root / DEFAULT_LOG_DIR / (file_name or DEFAULT_LOG_FILE)
+    return log_dir_path(base_dir) / (file_name or DEFAULT_LOG_FILE)
+
+
+def error_log_path(base_dir: Optional[Path] = None) -> Path:
+    """Sökväg till felloggen: ``<rot>/data/loggar/fel.log``."""
+    return log_dir_path(base_dir) / DEFAULT_ERROR_LOG_FILE
+
+
+def archive_dir_path(base_dir: Optional[Path] = None) -> Path:
+    """Mappen för arkiverade loggar: ``<rot>/data/loggar/arkiv``."""
+    return log_dir_path(base_dir) / ARCHIVE_SUBDIR
+
+
+def archive_target(log_file: Path, day: date) -> Path:
+    """Filnamn för en arkiverad logg: ``arkiv/app-2026-11-02.log``."""
+    log_file = Path(log_file)
+    return log_file.parent / ARCHIVE_SUBDIR / f"{log_file.stem}-{day.isoformat()}.log"
 
 
 def get_log_file() -> Optional[Path]:
     """Loggfilen som används (None innan setup_logging körts)."""
     return _log_file
+
+
+def get_error_log_file() -> Optional[Path]:
+    """Felloggen som används (None innan setup_logging körts)."""
+    return _error_log_file
+
+
+# ══════════════════════════════════════════════════════════
+# Dagarkivering
+# ══════════════════════════════════════════════════════════
+
+def archive_previous_days(
+    log_file: Union[str, Path],
+    today: Optional[date] = None,
+) -> Optional[Path]:
+    """
+    Arkivera en loggfil som hör till en tidigare dag (v2.12.0).
+
+    Filen flyttas (innehållet kopieras och originalfilen tas bort) till
+    ``arkiv/<namn>-<dag>.log`` där dagen är filens **ändringsdatum**. Finns
+    arkivfilen redan läggs innehållet till i den, så att flera omstarter
+    samma dag hamnar i samma arkiv.
+
+    Args:
+        log_file: Loggfilen (t.ex. ``data/loggar/app.log``).
+        today:    Dagens datum (standard: i dag) – används av testerna.
+
+    Returns:
+        Sökvägen till arkivfilen, eller None om inget arkiverades.
+    """
+    path = Path(log_file)
+    if not path.is_file():
+        return None
+
+    try:
+        stamp = datetime.fromtimestamp(path.stat().st_mtime).date()
+    except OSError:  # pragma: no cover – filen försvann
+        return None
+
+    if stamp >= (today or date.today()):
+        return None
+
+    target = archive_target(path, stamp)
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "r", encoding="utf-8", errors="replace") as source:
+            content = source.read()
+        with open(target, "a", encoding="utf-8") as archive:
+            archive.write(content)
+        path.unlink()
+    except OSError as exc:  # pragma: no cover – låst fil
+        logging.getLogger("core.logging_setup").warning(
+            f"Kunde inte arkivera {path.name}: {exc}"
+        )
+        return None
+
+    logging.getLogger("core.logging_setup").info(
+        f"Loggen för {stamp.isoformat()} arkiverad: {target.name}"
+    )
+    return target
+
+
+class DailyArchiveFileHandler(logging.FileHandler):
+    """
+    Loggfil som arkiveras när datumet byts (v2.12.0).
+
+    Är appen igång över midnatt flyttas gårdagens innehåll till
+    ``arkiv/app-<dag>.log`` vid nästa loggrad och en ny ``app.log`` skapas.
+    """
+
+    def __init__(
+        self,
+        filename: Union[str, Path],
+        mode: str = "a",
+        encoding: Optional[str] = "utf-8",
+        delay: bool = False,
+    ) -> None:
+        super().__init__(filename, mode=mode, encoding=encoding, delay=delay)
+        self._day: date = date.today()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        today = date.today()
+        if today != self._day:
+            self._rotate(today)
+        super().emit(record)
+
+    def _rotate(self, today: date) -> None:
+        """Stäng filen, arkivera den gamla och öppna en ny."""
+        self.acquire()
+        try:
+            target = Path(self.baseFilename)
+            if self.stream is not None:
+                self.stream.flush()
+                self.stream.close()
+                self.stream = None
+            archive_previous_days(target, today)
+            self._day = today
+        except Exception:  # pragma: no cover – loggning får aldrig krascha
+            self._day = today
+        finally:
+            self.release()
 
 
 # ══════════════════════════════════════════════════════════
@@ -109,13 +250,80 @@ def _can_write(path: Path) -> bool:
 def _fallback_path() -> Path:
     """Reservplats om appens data/-mapp inte går att skriva i."""
     candidates = [
-        Path(tempfile.gettempdir()) / "Semesterlista" / "app.log",
-        Path.home() / ".semesterlista" / "app.log",
+        Path(tempfile.gettempdir()) / "Semesterlista" / LOG_SUBDIR / "app.log",
+        Path.home() / ".semesterlista" / LOG_SUBDIR / "app.log",
     ]
     for candidate in candidates:
         if _can_write(candidate):
             return candidate
     return Path(tempfile.gettempdir()) / "semesterlista-app.log"
+
+
+class _RotatingDailyFileHandler(logging.handlers.RotatingFileHandler):
+    """
+    Roterande loggfil (2 MB × 5) som dessutom arkiveras vid datumbyte.
+
+    Kombinerar storleksroteringen från ``RotatingFileHandler`` med
+    ``DailyArchiveFileHandler``: när datumet byts flyttas innehållet till
+    ``arkiv/app-<dag>.log`` (v2.12.0).
+    """
+
+    def __init__(self, filename: Union[str, Path], **kwargs: Any) -> None:
+        super().__init__(filename, **kwargs)
+        self._day: date = date.today()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        today = date.today()
+        if today != self._day:
+            self._rotate_day(today)
+        super().emit(record)
+
+    def _rotate_day(self, today: date) -> None:
+        """Stäng filen, arkivera gårdagens innehåll och öppna en ny."""
+        self.acquire()
+        try:
+            target = Path(self.baseFilename)
+            if self.stream is not None:
+                self.stream.flush()
+                self.stream.close()
+                self.stream = None
+            archive_previous_days(target, today)
+        except Exception:  # pragma: no cover – loggning får aldrig krascha
+            pass
+        finally:
+            self._day = today
+            self.release()
+
+
+def _setup_error_log(log_file: Path, formatter: logging.Formatter) -> None:
+    """
+    Sätt upp den egna felloggen (``fel.log``) bredvid app.log (v2.12.0).
+
+    Dit går **endast** ERROR och CRITICAL. Filen arkiveras aldrig – felen
+    ligger kvar tills de är åtgärdade och kan rensas i Inställningar.
+    """
+    global _error_log_file
+
+    target = log_file.parent / DEFAULT_ERROR_LOG_FILE
+    if not _can_write(target):
+        return
+
+    try:
+        is_new = target.stat().st_size == 0
+        handler = logging.FileHandler(target, mode="a", encoding="utf-8")
+        handler.setLevel(logging.ERROR)
+        handler.setFormatter(formatter)
+        logging.getLogger().addHandler(handler)
+        _error_log_file = target
+
+        if is_new:
+            handler.stream.write(
+                "# Fellogg – ERROR och CRITICAL. Ligger kvar tills felen är "
+                "åtgärdade (rensas i Inställningar).\n"
+            )
+            handler.stream.flush()
+    except Exception as exc:  # pragma: no cover – t.ex. låst fil
+        print(f"Kunde inte öppna felloggen {target}: {exc}", file=sys.stderr)
 
 
 def setup_logging(
@@ -159,8 +367,11 @@ def setup_logging(
         if not _can_write(target):
             target = _fallback_path()
 
+        # Dagen innan i dag arkiveras innan den nya loggen öppnas (v2.12.0)
+        archive_previous_days(target)
+
         try:
-            handler = logging.handlers.RotatingFileHandler(
+            handler = _RotatingDailyFileHandler(
                 target,
                 maxBytes=MAX_BYTES,
                 backupCount=BACKUP_COUNT,
@@ -172,6 +383,8 @@ def setup_logging(
             _log_file = target
         except Exception as exc:  # pragma: no cover – t.ex. låst fil
             print(f"Kunde inte öppna loggfilen {target}: {exc}", file=sys.stderr)
+
+        _setup_error_log(target, formatter)
 
     # pythonw.exe saknar konsol – sys.stderr är None
     if to_console and sys.stderr is not None:
@@ -410,6 +623,66 @@ def tail_log(lines: int = 40) -> List[str]:
     return [line.rstrip("\n") for line in content[-max(1, lines):]]
 
 
+def tail_error_log(lines: int = 40) -> List[str]:
+    """
+    Läs de sista raderna ur felloggen (v2.12.0).
+
+    Args:
+        lines: Antal rader (standard 40).
+
+    Returns:
+        Lista med rader (tom om felloggen inte finns).
+    """
+    if _error_log_file is None or not Path(_error_log_file).exists():
+        return []
+
+    try:
+        with open(_error_log_file, "r", encoding="utf-8", errors="replace") as handle:
+            content = handle.readlines()
+    except Exception:  # pragma: no cover – defensivt
+        return []
+
+    return [line.rstrip("\n") for line in content[-max(1, lines):]]
+
+
+def error_log_lines() -> int:
+    """Antal rader i felloggen (0 om den inte finns)."""
+    if _error_log_file is None or not Path(_error_log_file).exists():
+        return 0
+    try:
+        with open(_error_log_file, "r", encoding="utf-8", errors="replace") as handle:
+            return sum(1 for _ in handle)
+    except Exception:  # pragma: no cover – defensivt
+        return 0
+
+
+def clear_error_log() -> bool:
+    """
+    Rensa felloggen – används när felen är åtgärdade (v2.12.0).
+
+    Filen töms men finns kvar, så loggningen fortsätter i samma fil.
+
+    Returns:
+        True om felloggen kunde rensas.
+    """
+    if _error_log_file is None:
+        return False
+
+    target = Path(_error_log_file)
+    if not target.exists():
+        return False
+
+    try:
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write(
+                f"# Felloggen rensad {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
+        logging.getLogger("core.logging_setup").info("Felloggen rensad")
+        return True
+    except OSError:  # pragma: no cover – låst fil
+        return False
+
+
 def log_summary() -> Dict[str, Any]:
     """
     Sammanfattning för felsökning (t.ex. i Om-dialogen).
@@ -420,6 +693,12 @@ def log_summary() -> Dict[str, Any]:
     root = logging.getLogger()
     return {
         "log_file": str(_log_file) if _log_file else None,
+        "log_dir": str(Path(_log_file).parent) if _log_file else None,
+        "error_log": str(_error_log_file) if _error_log_file else None,
+        "error_lines": error_log_lines(),
+        "archive_dir": (
+            str(Path(_log_file).parent / ARCHIVE_SUBDIR) if _log_file else None
+        ),
         "level": logging.getLevelName(root.level),
         "handlers": len(root.handlers),
         "configured": _configured,
@@ -435,7 +714,7 @@ def reset_logging() -> None:
     Tar bort våra handlers, stänger faulthandler och sätter tillbaka den
     excepthook som gällde innan ``install_excepthook()`` anropades.
     """
-    global _configured, _log_file, _last_crash
+    global _configured, _log_file, _error_log_file, _last_crash
     global _fault_file, _crash_hook, _previous_excepthook
 
     if _fault_file is not None:
@@ -466,6 +745,7 @@ def reset_logging() -> None:
 
     _configured = False
     _log_file = None
+    _error_log_file = None
     _last_crash = None
     logging.captureWarnings(False)
 
@@ -473,9 +753,22 @@ def reset_logging() -> None:
 __all__ = [
     "DEFAULT_LOG_FILE",
     "DEFAULT_LOG_DIR",
+    "DEFAULT_ERROR_LOG_FILE",
+    "LOG_SUBDIR",
+    "ARCHIVE_SUBDIR",
     "MAX_BYTES",
     "BACKUP_COUNT",
+    "DailyArchiveFileHandler",
+    "archive_dir_path",
+    "archive_previous_days",
+    "archive_target",
+    "clear_error_log",
+    "error_log_lines",
+    "error_log_path",
+    "get_error_log_file",
     "get_log_file",
+    "log_dir_path",
+    "tail_error_log",
     "install_excepthook",
     "install_faulthandler",
     "install_qt_message_handler",

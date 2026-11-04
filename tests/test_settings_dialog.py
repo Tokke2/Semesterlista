@@ -332,6 +332,32 @@ class SettingsDialogTests(unittest.TestCase):
         dialog2 = self.make_dialog()
         self.assertFalse(dialog2.clear_cache_check.isChecked())
 
+    def test_error_log_widgets_exist(self) -> None:
+        """Felloggen har egna rader i Avancerat (v2.12.0)."""
+        dialog = self.make_dialog()
+        self.assertIn("fellogg", dialog.error_log_label.text().lower())
+        self.assertTrue(dialog.open_error_log_button.text())
+        self.assertTrue(dialog.clear_error_log_button.text())
+        # Utan fellogg (ingen loggning igång) är knapparna avstängda
+        self.assertFalse(dialog.open_error_log_button.isEnabled())
+
+    def test_error_log_buttons_are_translated(self) -> None:
+        from core import i18n
+
+        old = i18n.current_language()
+        try:
+            i18n.set_language("en")
+            dialog = self.make_dialog()
+            self.assertEqual(
+                dialog.open_error_log_button.text(), i18n.t("settings.open_error_log")
+            )
+            self.assertEqual(
+                dialog.clear_error_log_button.text(), i18n.t("settings.clear_error_log")
+            )
+            dialog.deleteLater()
+        finally:
+            i18n.set_language(old)
+
     def test_update_group_exists(self) -> None:
         dialog = self.make_dialog(app_version="2.8.1")
         self.assertTrue(dialog.update_check_button.isEnabled())

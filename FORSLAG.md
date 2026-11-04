@@ -171,6 +171,9 @@ avsnittet ”25 nya förslag” längst ner.
   för lång (mindre radluft provas först), så att ingen tabell klipps av.
   Rubrik + färgförklaring upprepas på varje sida.
 - **Trånga dagkolumner** (stående A4) får mindre dagnamnsgrad.
+- **Loggarna i egen mapp:** `data/loggar/app.log`, `data/loggar/fel.log`
+  (bara ERROR/CRITICAL, arkiveras aldrig) och `data/loggar/arkiv/app-<dag>.log`
+  för tidigare dagar. Felloggen kan rensas i Inställningar när felen är åtgärdade.
 - **Logotypimport:** SVG, **EPS** (via Ghostscript) och **PDF** (via PyMuPDF)
   utöver PNG/JPG, plus ett **storleksreglage 25–300 %** per flik. Logotypen
   kan aldrig bli så stor att den hamnar över tabellen eller färgförklaringen.

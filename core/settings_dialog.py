@@ -63,7 +63,14 @@ from PySide6.QtWidgets import (
 )
 
 from core import i18n, updater
-from core.logging_setup import get_log_file, log_summary, tail_log
+from core.logging_setup import (
+    clear_error_log,
+    error_log_lines,
+    get_error_log_file,
+    get_log_file,
+    log_summary,
+    tail_log,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -366,6 +373,38 @@ class SettingsDialog(QDialog):
         button_row.addWidget(self.copy_log_button)
         button_row.addStretch()
         inner.addLayout(button_row)
+
+        # Felloggen (v2.12.0): egna fel, kvar tills de är åtgärdade
+        error_path = log_info.get("error_log") or str(get_error_log_file() or "—")
+        self.error_log_label = QLabel(
+            i18n.t(
+                "settings.error_log_file",
+                path=error_path,
+                count=log_info.get("error_lines", 0),
+            )
+        )
+        self.error_log_label.setStyleSheet("color: #777; font-size: 11px;")
+        self.error_log_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self.error_log_label.setWordWrap(True)
+        inner.addWidget(self.error_log_label)
+
+        error_row = QHBoxLayout()
+        self.open_error_log_button = QPushButton(i18n.t("settings.open_error_log"))
+        self.open_error_log_button.clicked.connect(self._open_error_log)
+        self.open_error_log_button.setEnabled(bool(log_info.get("error_log")))
+        error_row.addWidget(self.open_error_log_button)
+
+        self.clear_error_log_button = QPushButton(i18n.t("settings.clear_error_log"))
+        self.clear_error_log_button.setToolTip(i18n.t("settings.clear_error_log.tooltip"))
+        self.clear_error_log_button.clicked.connect(self._clear_error_log)
+        self.clear_error_log_button.setEnabled(
+            bool(log_info.get("error_log")) and log_info.get("error_lines", 0) > 1
+        )
+        error_row.addWidget(self.clear_error_log_button)
+        error_row.addStretch()
+        inner.addLayout(error_row)
 
         layout.addWidget(group)
         layout.addWidget(self._create_update_group())
@@ -841,6 +880,61 @@ class SettingsDialog(QDialog):
                 self,
                 i18n.t("settings.title"),
                 i18n.t("settings.open_log_error", error=exc),
+            )
+
+    def _open_error_log(self) -> None:
+        """Öppna felloggen i systemets standardprogram (v2.12.0)."""
+        error_log = get_error_log_file()
+        if error_log is None or not Path(error_log).exists():
+            QMessageBox.information(
+                self,
+                i18n.t("settings.title"),
+                i18n.t("settings.error_log_empty"),
+            )
+            return
+
+        try:
+            if platform.system() == "Windows":
+                os.startfile(str(error_log))  # type: ignore[attr-defined]
+            elif platform.system() == "Darwin":
+                subprocess.run(["open", str(error_log)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(error_log)], check=False)
+        except Exception as exc:  # pragma: no cover – defensivt
+            logger.warning(f"Kunde inte öppna felloggen: {exc}")
+            QMessageBox.warning(
+                self,
+                i18n.t("settings.title"),
+                i18n.t("settings.open_log_error", error=exc),
+            )
+
+    def _clear_error_log(self) -> None:
+        """Rensa felloggen när felen är åtgärdade (v2.12.0)."""
+        answer = QMessageBox.question(
+            self,
+            i18n.t("settings.title"),
+            i18n.t("settings.clear_error_log_confirm"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        if clear_error_log():
+            logger.info("Felloggen rensad av användaren")
+            self.error_log_label.setText(
+                i18n.t(
+                    "settings.error_log_file",
+                    path=str(get_error_log_file() or "—"),
+                    count=error_log_lines(),
+                )
+            )
+            self.clear_error_log_button.setEnabled(False)
+        else:
+            QMessageBox.warning(
+                self,
+                i18n.t("settings.title"),
+                i18n.t("settings.clear_error_log_failed"),
             )
 
     def _copy_log_tail(self) -> None:

@@ -42,7 +42,9 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
   och **städas automatiskt när appen avslutas** (kan stängas av i
   *Inställningar → Avancerat*). Vid start rensas bara gammalt skräp, så en
   omstart inte tvingar fram nya renderingar.
-- **Loggning** till `data/app.log` (roterande, 2 MB × 5) och `data/crash.log`.
+- **Loggning** i egna mappen `data/loggar/`: `app.log` (roterande, 2 MB × 5),
+  **`fel.log`** för ERROR/CRITICAL (arkiveras aldrig – ligger kvar tills felen
+  är åtgärdade) och `arkiv/app-<dag>.log` för tidigare dagar, samt `data/crash.log`.
 - **Teman**: ljust, mörkt eller följ systemet. Svenska och engelska.
 
 ## Installation
@@ -113,7 +115,7 @@ FORSLAG.md            förslag på kommande funktioner
 |---------|--------|
 | Ingenting händer vid start | Starta från terminal: `python main.pyw` och läs felmeddelandet |
 | Appen syns inte | Den startar i systemfältet – klicka på ikonen |
-| PDF:en blir tom/fel | Kontrollera listfilen i fliken, se `data/app.log` |
+| PDF:en blir tom/fel | Kontrollera listfilen i fliken, se `data/loggar/app.log` |
 | Uppdateringen hittar inget | Kolla nätet och att det finns en publik release |
 
 Loggfilens sökväg visas i **Inställningar → Avancerat**.

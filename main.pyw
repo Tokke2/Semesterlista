@@ -138,13 +138,16 @@ if str(PROJECT_ROOT) not in sys.path:
 # saknade filer hamnar i data/app.log i stället för bara i konsolen
 # (pythonw.exe har ingen konsol).
 #
-#   Fil     data/app.log   (roterar vid 2 MB, 5 gamla filer sparas)
+#   Fil     data/loggar/app.log   (roterar vid 2 MB, 5 gamla filer sparas)
+#   Fel     data/loggar/fel.log   (ERROR/CRITICAL, arkiveras aldrig)
+#   Arkiv   data/loggar/arkiv/app-<dag>.log  (tidigare dagar)
 #   Reserv  %TEMP%/Semesterlista/app.log om data/ inte går att skriva
 #   Nivå    INFO, eller DEBUG om miljövariabeln SEMESTERLISTA_DEBUG är satt
 #   Krasch  data/crash.log (faulthandler, t.ex. segmenteringsfel)
 #
 try:
     from core.logging_setup import (
+        get_error_log_file,
         get_log_file,
         install_excepthook,
         install_faulthandler,
@@ -167,6 +170,7 @@ except Exception as _exc:  # pragma: no cover – loggningen får aldrig stoppa 
     install_qt_message_handler = None  # type: ignore[assignment]
     log_startup_context = None  # type: ignore[assignment]
     get_log_file = lambda: None  # type: ignore[assignment]
+    get_error_log_file = lambda: None  # type: ignore[assignment]
     tail_log = lambda lines=40: []  # type: ignore[assignment]
     logging.basicConfig(
         level=logging.INFO,
@@ -1798,6 +1802,7 @@ def main() -> None:
         (time.perf_counter() - t_start) * 1000,
     )
     logger.info("Loggfil: %s", LOG_FILE or "—")
+    logger.info("Fellogg: %s", get_error_log_file() or "—")
 
     # 13. Event-loop
     # OBS: main_window.show() anropas EJ → startar minimerat!

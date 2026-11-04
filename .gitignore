@@ -13,6 +13,7 @@ dist/
 
 # Loggar och temporärfiler
 data/*.log
+data/loggar/
 *.tmp
 *.bak
 
