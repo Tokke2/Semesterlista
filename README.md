@@ -41,7 +41,9 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
   alltid. EPS kräver Ghostscript och PDF kräver PyMuPDF (frivilliga paket).
 - **Systray**: startar minimerat, vänsterklick visar/döljer, högerklick ger
   *Visa*, *Dölj*, *Inställningar…*, *Sök efter uppdatering…*, *Om…* och *Avsluta*.
-- **Uppdatering från GitHub Releases** med knapp i appen, säkerhetskopia i
+- **Uppdatering från GitHub Releases**: en manuell sökning som hittar en ny version
+  öppnar en Ja/Nej-dialog direkt. Nej är förvalt; ingen installation sker utan Ja.
+  Uppdateringen har säkerhetskopia i
   `data/backup/` och automatisk omstart – dina listor och inställningar rörs aldrig.
 - **Lediga dagar**: skriv `Roland: 18/12 - 7/1` (eller `;` / `|`) i `Anställda.txt`
   så markeras frånvaron med ett **fett kryss i gråblå cell** i PDF:en – namnet

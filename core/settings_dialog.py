@@ -75,7 +75,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.12.1"
+MODULE_VERSION: str = "2.12.2"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark")
@@ -559,6 +559,10 @@ class SettingsDialog(QDialog):
                 self.update_status_label.setText(
                     text + "\n" + i18n.t("update.no_zip")
                 )
+            else:
+                # Manual search (settings, Help or tray): offer the existing
+                # confirmation immediately. No installation without Yes.
+                self.install_update()
         else:
             self.update_status_label.setText(
                 i18n.t("update.latest", version=info.version or self._app_version)
@@ -568,7 +572,7 @@ class SettingsDialog(QDialog):
     def install_update(self) -> None:
         """Fråga först, ladda sedan ner och installera i bakgrunden."""
         info = self._update_info
-        if info is None or not info.available or self._update_busy:
+        if info is None or not info.available or not info.zip_url or self._update_busy:
             return
 
         answer = QMessageBox.question(

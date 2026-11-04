@@ -2915,3 +2915,16 @@ tillkommer. Spara/Avbryt ligger utanför rullområdet. Startstorleken är högst
 Uppdateringsknappar visas vertikalt och datamappens sökväg radbryts.
 385 tester, inklusive liten dialog (560 × 420), långa releasenoteringar
 och åtkomliga knappar på svenska och engelska.
+
+
+## 31. Bekräfta hittad uppdatering (v2.12.2)
+
+Manuell sökning via Inställningar, Hjälp eller systemfältet öppnar direkt
+en Ja/Nej-dialog när en ny version med nedladdningslänk hittas. Dialogen
+visar gammal/ny version och information om säkerhetskopiering. Nej är
+förvalt. Ja startar installationen en gång utan ytterligare bekräftelse.
+Nej behåller möjligheten att senare välja Uppdatera nu. Fel, senaste
+version och saknad nedladdningslänk ger ingen installationsfråga.
+Den automatiska startkontrollen fortsätter endast visa en avisering.
+Regressionstester täcker Ja, Nej och utebliven fråga när installation
+inte är möjlig. Testsviten omfattar nu 388 tester.

@@ -124,6 +124,14 @@ class SettingsDialogTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
 
+        # Never open a blocking native prompt in the test runner.
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QMessageBox
+        prompt = patch("core.settings_dialog.QMessageBox.question",
+                       return_value=QMessageBox.StandardButton.No)
+        self.update_question = prompt.start()
+        self.addCleanup(prompt.stop)
+
         self.manager = SettingsManager(self._tmp.name)
         self.i18n.init(self.manager)
 
@@ -404,6 +412,51 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertIn("2.9.0", dialog.update_status_label.text())
         self.assertIn("2026-11-02", dialog.update_status_label.text())
         self.assertIn("uppdateringsknapp", dialog.update_status_label.text())
+
+    def test_new_update_prompts_and_no_does_not_install(self) -> None:
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QMessageBox
+        dialog = self.make_dialog(app_version="2.8.1")
+        with patch("core.settings_dialog.threading.Thread") as worker:
+            dialog._on_update_checked(self._update_info(), None)
+            worker.assert_not_called()
+        self.update_question.assert_called_once()
+        args = self.update_question.call_args.args
+        self.assertIn("2.8.1", args[2])
+        self.assertIn("2.9.0", args[2])
+        self.assertEqual(args[-1], QMessageBox.StandardButton.No)
+        self.assertTrue(dialog.update_install_button.isEnabled())
+        self.assertFalse(dialog._update_busy)
+
+    def test_new_update_yes_starts_one_install_without_second_prompt(self) -> None:
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QMessageBox
+        self.update_question.return_value = QMessageBox.StandardButton.Yes
+        dialog = self.make_dialog(app_version="2.8.1")
+        info = self._update_info()
+        with patch("core.settings_dialog.threading.Thread") as worker:
+            dialog._on_update_checked(info, None)
+            worker.assert_called_once_with(target=dialog._install_worker,
+                                           args=(info,), daemon=True)
+            worker.return_value.start.assert_called_once()
+        self.update_question.assert_called_once()
+        self.assertTrue(dialog._update_busy)
+        self.assertFalse(dialog.update_install_button.isEnabled())
+        self.assertFalse(dialog.update_check_button.isEnabled())
+
+    def test_no_prompt_for_latest_error_or_missing_download(self) -> None:
+        dialog = self.make_dialog(app_version="2.9.0")
+        no_zip = self._update_info()
+        no_zip.zip_url = ""
+        for info, error in [
+            (self._update_info(version="2.9.0", local="2.9.0"), None),
+            (None, RuntimeError("offline")),
+            (no_zip, None),
+        ]:
+            dialog._on_update_checked(info, error)
+            self.update_question.assert_not_called()
+        dialog.install_update()
+        self.update_question.assert_not_called()
 
     def test_update_latest_disables_install(self) -> None:
         dialog = self.make_dialog(app_version="2.9.0")

@@ -56,7 +56,7 @@ from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.12.1"
+MODULE_VERSION: str = "2.12.2"
 
 #: GitHub-repot som uppdateringen hämtas från
 GITHUB_OWNER: str = "Tokke2"
