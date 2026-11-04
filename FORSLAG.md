@@ -4,6 +4,44 @@ Status per 2026-11-03 (v2.11.0). **[KLART]** = finns i koden nu, **[FÖRSLAG]** 
 Den ursprungliga listan står kvar nedan; **25 helt nya förslag** finns i
 avsnittet ”25 nya förslag” längst ner.
 
+## Vad kan bli bättre? (genomgång 2026-11-04, v2.11.0)
+
+Genomgång av koden (17 451 rader, 370 tester) med fokus på sådant som **faktiskt
+är fel eller riskerar att bli fel** – inte fler funktioner.
+
+### A. Riktiga brister (störst nytta)
+
+| # | Vad | Bevis i koden | Insats |
+|---|-----|----------------|--------|
+| A1 | **Helgdagsregionen används aldrig** – väljer man *USA* i Inställningar händer ingenting i PDF:en | `holiday_region` sparas i `settings_dialog.py:763`, men **ingen** plugin importerar `core/holidays.py`. `plugins/lista/plugin.py` har egna `get_swedish_holidays()` (rad 317) och `get_half_days()` (rad 393) – dubbletter som kan glida isär | Liten–medel |
+| A2 | **Versionsfällan** – appen kan inte uppdatera sig | Versionen står still på 2.11.0 medan releaserna går (v0.0.3 → v0.0.7); uppdateraren jämför versionsnummer och säger ”senaste versionen” | Liten |
+| A3 | **`core/holidays.py` har 0 tester** (samma för `single_instance.py`, `theme_manager.py`, `plugin_base.py`) | Påskberäkning, midsommar, USA-helger är ren logik – billigast av allt att testa, och ett fel där syns som fel färg i PDF:en | Liten |
+| A4 | **142 `except Exception`** (punkt 9 i listan) | Flera sväljer fel utan `exc_info`; minst `main.pyw` och `single_instance.py` bör snävas in | Medel |
+| A5 | **PDF:ens innehåll testas inte** (N22) | Testerna kontrollerar sidantal och legendtext – inte att rätt dagar är röda/blå eller att krysset hamnar rätt | Medel |
+
+### B. Struktur och underhåll
+
+| # | Vad | Varför |
+|---|-----|--------|
+| B1 | Dela `plugins/lista/plugin.py` (2 333 rader, punkt 12) i `pdf.py`, `view.py`, `list_io.py` | Största filen i projektet; Fordon ärver redan därifrån, så varje ändring rör allt |
+| B2 | PDF i `QThread` med progress (punkt 6) + `QPrinter` för direktutskrift (punkt 5) | 100–200 ms i dag, men vyn fryser med många rader/logotyp – och utskrift saknas helt |
+| B3 | Typkontroll (`mypy`/`pyright`) i CI | `pyflakes` fångar bara oanvända namn, inte felaktiga typer (t.ex. `Path` vs `str`) |
+
+### C. Små saker som syns mycket
+
+| # | Vad | Kommentar |
+|---|-----|-----------|
+| C1 | Sidhuvud/sidfot i PDF:en – ”Sida 2 av 4”, utskriftsdatum, företagsnamn (förslag 4) | Gör utskriften komplett |
+| C2 | Dra-och-släpp av logotyp + kopiera in filen till `assets/` (förslag 6–7) | I dag kan en logotyp utanför `assets/` ”försvinna” om filen flyttas |
+| C3 | Okänd Qt-varning `QFont::setPointSize: Point size <= 0 (-1)` | Kommer inte från vår kod (ingen `setPointSize` i repot); går att spåra genom att logga widgetnamn i `install_qt_message_handler` |
+
+### Rekommendation
+
+1. **A1** (rätt helger – en verklig bugg), **A2** (så att uppdateringar når fram) och
+   **A3** (tester på ren logik). Det är en kvälls arbete och ger mest tillbaka.
+2. Därefter **A5** och **B1** – de gör resten billigare.
+3. Sist **B2**, **A4** och småsakerna i C.
+
 ## Flikar & logotyp (från senaste önskemålen)
 
 1. **[KLART] Tre flikar** – Hyra, Semesterlista och Fordon, i fast ordning
