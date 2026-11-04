@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sida till PDF – Inställningar</title>
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body class="options">
+    <div class="page">
+      <header class="page-header">
+        <img class="app-icon" src="../icons/icon128.png" width="44" height="44" alt="" />
+        <div class="header-titles">
+          <h1 data-i18n="options.title">Inställningar</h1>
+          <p class="muted" data-i18n="options.subtitle">
+            Välj vilka webbplatser som får sparas som PDF.
+          </p>
+        </div>
+        <span id="save-flash" class="save-flash" data-i18n="options.general.saved" hidden>Sparat</span>
+      </header>
+
+      <div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+      <section class="card" aria-labelledby="sites-title">
+        <div class="card-head">
+          <h2 id="sites-title" data-i18n="options.sites.title">Valda webbplatser</h2>
+          <span id="site-count" class="pill">–</span>
+        </div>
+        <p class="card-desc" data-i18n="options.sites.desc"></p>
+
+        <form id="add-form" class="add-form" novalidate>
+          <input
+            id="new-pattern"
+            class="input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            data-i18n-placeholder="options.sites.placeholder"
+            placeholder="t.ex. aftonbladet.se eller *.example.com/nyheter"
+          />
+          <button class="btn btn-primary" type="submit" data-i18n="options.sites.add">Lägg till</button>
+        </form>
+        <p id="site-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+
+        <ul id="site-list" class="site-list"></ul>
+        <p id="site-empty" class="empty" data-i18n="options.sites.empty" hidden></p>
+      </section>
+
+      <section class="card" aria-labelledby="button-title">
+        <div class="card-head">
+          <h2 id="button-title" data-i18n="options.button.title">Knapp på sidan</h2>
+        </div>
+        <p class="card-desc" data-i18n="options.button.desc"></p>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.button.show">Visa PDF-knapp på valda sidor</span>
+          </div>
+          <label class="switch">
+            <input id="button-show" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.button.show">Visa PDF-knapp på valda sidor</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="button-position" data-i18n="options.button.position">Placering</label>
+          </div>
+          <select id="button-position" class="select select-sm">
+            <option value="br" data-i18n="options.button.br">Nere till höger</option>
+            <option value="bl" data-i18n="options.button.bl">Nere till vänster</option>
+            <option value="tr" data-i18n="options.button.tr">Uppe till höger</option>
+            <option value="tl" data-i18n="options.button.tl">Uppe till vänster</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="pdf-title">
+        <div class="card-head">
+          <h2 id="pdf-title" data-i18n="options.pdf.title">PDF-inställningar</h2>
+        </div>
+        <p class="card-desc" data-i18n="options.pdf.desc"></p>
+
+        <div class="grid-2">
+          <div class="field field-column">
+            <label class="field-label" for="pdf-format" data-i18n="options.pdf.format">Pappersformat</label>
+            <select id="pdf-format" class="select">
+              <option value="A4">A4</option>
+              <option value="Letter">Letter</option>
+              <option value="Legal">Legal</option>
+              <option value="A3">A3</option>
+            </select>
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-margin" data-i18n="options.pdf.margin">Marginal (mm)</label>
+            <input id="pdf-margin" class="input" type="number" min="0" max="50" step="1" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-scale" data-i18n="options.pdf.scale">Skala (%)</label>
+            <input id="pdf-scale" class="input" type="number" min="50" max="200" step="5" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-wait" data-i18n="options.pdf.wait">Väntetid före utskrift (ms)</label>
+            <input id="pdf-wait" class="input" type="number" min="0" max="5000" step="100" />
+            <span class="field-note" data-i18n="options.pdf.waitHint"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.background">Skriv ut bakgrundsfärger och bilder</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-background" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.background"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.header">Sidhuvud och sidofot med sidnummer</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-header" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.header"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.cssPage">Följ sidans egen utskriftsstorlek (CSS @page)</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-css-page" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.cssPage"></span>
+          </label>
+        </div>
+
+        <div class="card-actions">
+          <button id="reset-pdf" class="btn btn-ghost btn-sm" type="button">
+            <span data-i18n="options.pdf.reset">Återställ PDF-inställningar</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="file-title">
+        <div class="card-head">
+          <h2 id="file-title" data-i18n="options.file.title">Filnamn och sparplats</h2>
+        </div>
+        <p class="card-desc" data-i18n="options.file.desc"></p>
+
+        <div class="grid-2">
+          <div class="field field-column">
+            <label class="field-label" for="file-folder" data-i18n="options.file.folder">Underkatalog</label>
+            <input id="file-folder" class="input" type="text" spellcheck="false" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="file-template" data-i18n="options.file.template">Filnamnsmall</label>
+            <input id="file-template" class="input" type="text" spellcheck="false" />
+            <span class="field-note" data-i18n="options.file.templateHint"></span>
+          </div>
+        </div>
+
+        <div class="preview" aria-live="polite">
+          <span class="preview-label" data-i18n="options.file.preview">Exempel</span>
+          <code id="file-preview">Sidor/example.com/2026-11-04_Exempel.pdf</code>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.file.perSiteFolder">Egen undermapp per webbplats</span>
+          </div>
+          <label class="switch">
+            <input id="file-per-site" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.file.perSiteFolder"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.file.saveAs">Fråga var filen ska sparas varje gång</span>
+          </div>
+          <label class="switch">
+            <input id="file-save-as" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.file.saveAs"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="general-title">
+        <div class="card-head">
+          <h2 id="general-title" data-i18n="options.general.title">Allmänt</h2>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="language" data-i18n="options.general.language">Språk</label>
+          </div>
+          <select id="language" class="select select-sm">
+            <option value="auto" data-i18n="options.general.languageAuto">Automatisk</option>
+            <option value="sv" data-i18n="options.general.languageSv">Svenska</option>
+            <option value="en" data-i18n="options.general.languageEn">English</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.allowAll">Tillåt alla webbplatser</span>
+            <span class="field-note" data-i18n="options.general.allowAllHint"></span>
+          </div>
+          <label class="switch">
+            <input id="allow-all" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.general.allowAll"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.shortcut">Snabbtangent</span>
+            <span id="shortcut-value" class="field-note"></span>
+            <span class="field-note" data-i18n="options.general.shortcutHint"></span>
+          </div>
+          <div class="field-actions">
+            <button id="shortcut-button" class="btn btn-secondary btn-sm" type="button">
+              <span data-i18n="options.general.shortcutChange">Ändra snabbtangent</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.data">Inställningsfil</span>
+          </div>
+          <div class="field-actions">
+            <button id="export-button" class="btn btn-secondary btn-sm" type="button">
+              <span data-i18n="options.general.export">Exportera</span>
+            </button>
+            <button id="import-button" class="btn btn-secondary btn-sm" type="button">
+              <span data-i18n="options.general.import">Importera</span>
+            </button>
+            <input id="import-file" type="file" accept="application/json,.json" hidden />
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button id="reset-all" class="btn btn-danger btn-sm" type="button">
+            <span data-i18n="options.general.reset">Återställ allt</span>
+          </button>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <p class="muted" data-i18n="options.footer.note">
+          PDF:er skapas lokalt i webbläsaren. Inga sidor skickas någonstans.
+        </p>
+        <p class="muted">Sida till PDF · v1.0.0</p>
+      </footer>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

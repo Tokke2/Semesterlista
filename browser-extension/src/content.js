@@ -1,0 +1,298 @@
+/**
+ * Innehållsskript – ritar den flytande PDF-knappen och toasten.
+ *
+ * Skriptet är medvetet fristående (inga importer) eftersom det registreras
+ * dynamiskt som ett klassiskt skript. All logik kring valda webbplatser
+ * ligger i bakgrundstjänsten, som svarar på PAGE_CONTEXT.
+ */
+
+(() => {
+  if (window.__pageToPdfInjected) return;
+  window.__pageToPdfInjected = true;
+
+  const HOST_ID = 'page-to-pdf-host';
+  const POSITIONS = {
+    br: { bottom: '20px', right: '20px' },
+    bl: { bottom: '20px', left: '20px' },
+    tr: { top: '20px', right: '20px' },
+    tl: { top: '20px', left: '20px' }
+  };
+
+  let context = null;
+  let host = null;
+  let shadow = null;
+  let button = null;
+  let label = null;
+  let toast = null;
+  let toastTimer = null;
+  let busy = false;
+  let lastHref = location.href;
+
+  const CSS = `
+    :host { all: initial; }
+    .wrap {
+      position: fixed;
+      z-index: 2147483647;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+      font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      pointer-events: none;
+    }
+    .wrap.pos-br { bottom: 20px; right: 20px; }
+    .wrap.pos-bl { bottom: 20px; left: 20px; align-items: flex-start; }
+    .wrap.pos-tr { top: 20px; right: 20px; }
+    .wrap.pos-tl { top: 20px; left: 20px; align-items: flex-start; }
+
+    button.save {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 9px 14px 9px 11px;
+      border: 0;
+      border-radius: 999px;
+      background: #d93b30;
+      color: #fff;
+      font: 600 13px/1 "Segoe UI", system-ui, -apple-system, sans-serif;
+      letter-spacing: .01em;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(16, 24, 40, .22), 0 1px 2px rgba(16, 24, 40, .18);
+      opacity: .96;
+      transition: transform .12s ease, opacity .12s ease, background-color .12s ease, box-shadow .12s ease;
+    }
+    button.save:hover { opacity: 1; background: #c22f25; transform: translateY(-1px); box-shadow: 0 10px 22px rgba(16, 24, 40, .28); }
+    button.save:active { transform: translateY(0); }
+    button.save:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+    button.save[disabled] { cursor: progress; opacity: .8; }
+    button.save svg { flex: none; display: block; }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,.45);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      pointer-events: none;
+      max-width: 320px;
+      padding: 10px 13px;
+      border-radius: 10px;
+      background: #16181d;
+      color: #f7f8fa;
+      font: 500 12.5px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+      box-shadow: 0 10px 28px rgba(16, 24, 40, .3);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .18s ease, transform .18s ease;
+      word-break: break-word;
+    }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast.error { background: #8f1d15; }
+    .toast.saved { background: #12492c; }
+
+    @media (prefers-reduced-motion: reduce) {
+      button.save, .toast { transition: none; }
+      .spinner { animation-duration: 2s; }
+    }
+  `;
+
+  /**
+   * Constructable stylesheets påverkas inte av sidans CSP. I äldre miljöer
+   * faller vi tillbaka på ett vanligt style-element.
+   */
+  function applyStyles(root) {
+    try {
+      if (typeof CSSStyleSheet === 'function' && 'adoptedStyleSheets' in root) {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(CSS);
+        root.adoptedStyleSheets = [sheet];
+        return true;
+      }
+    } catch {
+      /* faller tillbaka */
+    }
+    return false;
+  }
+
+  function buildUi(position) {
+    if (host) return;
+    host = document.createElement('div');
+    host.id = HOST_ID;
+    host.setAttribute('data-page-to-pdf', '');
+    shadow = host.attachShadow({ mode: 'open' });
+
+    if (!applyStyles(shadow)) {
+      const style = document.createElement('style');
+      style.textContent = CSS;
+      shadow.appendChild(style);
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = `wrap pos-${position}`;
+
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'save';
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+              fill="currentColor" opacity=".22"/>
+        <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+              stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M14 3v5h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M12 11v7m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="label">PDF</span>`;
+
+    label = button.querySelector('.label');
+    button.addEventListener('click', onSaveClick);
+
+    wrap.appendChild(toast);
+    wrap.appendChild(button);
+    shadow.appendChild(wrap);
+    document.documentElement.appendChild(host);
+  }
+
+  function positionUi(position) {
+    if (!shadow) return;
+    const wrap = shadow.querySelector('.wrap');
+    if (!wrap) return;
+    wrap.className = `wrap pos-${POSITIONS[position] ? position : 'br'}`;
+  }
+
+  function removeUi() {
+    if (!host) return;
+    host.remove();
+    host = null;
+    shadow = null;
+    button = null;
+    label = null;
+    toast = null;
+    clearTimeout(toastTimer);
+  }
+
+  function showToast({ state = 'info', text = '' } = {}) {
+    if (!toast || !text) return;
+    clearTimeout(toastTimer);
+    toast.textContent = text;
+    toast.className = `toast ${state}`;
+    // Tvinga fram en omritning så att övergången spelas upp igen.
+    void toast.offsetWidth;
+    toast.classList.add('visible');
+    if (state === 'saved' || state === 'error') {
+      toastTimer = setTimeout(() => {
+        toast?.classList.remove('visible');
+      }, state === 'error' ? 7000 : 4500);
+    }
+  }
+
+  function setBusy(value) {
+    busy = value;
+    if (!button) return;
+    button.disabled = value;
+    button.setAttribute(
+      'aria-label',
+      context?.strings?.button || 'Save as PDF'
+    );
+    const existingSpinner = button.querySelector('.spinner');
+    if (value && !existingSpinner) {
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner';
+      button.replaceChildren(spinner);
+    } else if (!value) {
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+                fill="currentColor" opacity=".22"/>
+          <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+                stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M14 3v5h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 11v7m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="label"></span>`;
+      label = button.querySelector('.label');
+      label.textContent = context?.strings?.buttonShort || 'PDF';
+      button.title = context?.strings?.button || 'Save as PDF';
+    }
+  }
+
+  async function onSaveClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'SAVE_PDF' });
+      if (response && response.ok === false) {
+        const text = response.message || context?.strings?.failed || 'Error';
+        if (!toast?.classList.contains('visible')) showToast({ state: 'error', text });
+      }
+    } catch {
+      showToast({ state: 'error', text: context?.strings?.failed || 'Error' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function apply() {
+    if (!context || !context.allowed || !context.show) {
+      removeUi();
+      return;
+    }
+    buildUi(context.position);
+    positionUi(context.position);
+    if (label) label.textContent = context.strings?.buttonShort || 'PDF';
+    if (button) {
+      button.title = context.strings?.button || 'Save as PDF';
+      button.setAttribute('aria-label', context.strings?.button || 'Save as PDF');
+    }
+  }
+
+  async function refresh() {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'PAGE_CONTEXT', url: location.href });
+      context = response?.context || null;
+    } catch {
+      context = null;
+    }
+    apply();
+  }
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (!message || typeof message !== 'object') return;
+    if (message.type === 'TOAST') showToast(message);
+    if (message.type === 'REFRESH') void refresh();
+  });
+
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area === 'local' && changes.settings) void refresh();
+  });
+
+  // SPA:er byter adress utan omladdning – håll koll på URL:en.
+  setInterval(() => {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    void refresh();
+  }, 1200);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void refresh();
+  });
+
+  void refresh();
+})();
