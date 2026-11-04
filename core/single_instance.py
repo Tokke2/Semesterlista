@@ -1,4 +1,4 @@
-"""
+r"""
 Single-instance-lock – Säkerställer att endast en instans körs.
 
 Detta modul förhindrar att flera instanser av applikationen
@@ -838,7 +838,7 @@ class SingleInstanceLock(QObject):
         return self._autostart.set(enabled)
 
     def get_autostart_info(self) -> str:
-        """
+        r"""
         Returnera information om autostart-implementationen.
 
         Visar var på disken/registret autostart lagras.

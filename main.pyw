@@ -1585,6 +1585,16 @@ def main() -> None:
     step("2", "Single-instance-lås", f"pid={os.getpid()}")
 
     # 3. QApplication
+    # Hög DPI måste ställas in **innan** QApplication skapas – annars varnar
+    # Qt: "setHighDpiScaleFactorRoundingPolicy must be called before creating
+    # the QGuiApplication instance" (fixat efter loggen 2026-11-03).
+    try:
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+    except Exception:  # pragma: no cover – Qt-version utan stödet
+        logger.debug("Kunde inte ställa in hög DPI-policy", exc_info=True)
+
     app = QApplication(sys.argv)
     app.setApplicationName(app_name)
     app.setApplicationVersion(APP_VERSION)
@@ -1629,10 +1639,6 @@ def main() -> None:
     set_windows_app_user_model_id()
     apply_app_icon(app)
 
-    # Hög DPI-stöd
-    app.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
     step("3", "QApplication, appikon, Qt-loggning")
 
     # 4. SettingsManager

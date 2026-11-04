@@ -2429,6 +2429,20 @@ och att dialogen fungerar utan valfria komponenter.
 
 ---
 
+### 22.4 Varningar som åtgärdats (2026-11-03)
+
+Loggen från en riktig körning (Windows 11, Python 3.14) visade två varningar
+som nu är rättade:
+
+| Varning | Orsak | Åtgärd |
+|---------|-------|--------|
+| `SyntaxWarning: "\S" is an invalid escape sequence` (`core/single_instance.py:14` och `:852`) | Windows-sökvägarna `HKCU\Software\…` låg i vanliga docsträngar | Docsträngarna är **råa** (`r"""`); `tests/test_no_warnings.py` kompilerar alla moduler med `SyntaxWarning` som fel |
+| `setHighDpiScaleFactorRoundingPolicy must be called before creating the QGuiApplication instance` | Anropet låg **efter** `QApplication(...)` i `main.pyw` | Anropet flyttat till radan före `QApplication(sys.argv)` (i `try/except` för äldre Qt) |
+
+Kvarstår: `QFont::setPointSize: Point size <= 0 (-1)` kommer inte från appens
+kod (ingen `setPointSize` finns i repot) utan från Qt:s egen stilmall – den är
+ofarlig och påverkar inte PDF:en.
+
 ## 23. UPPDATERING FRÅN GITHUB (v2.9.0)
 
 ### 23.1 Knappen
@@ -2706,7 +2720,7 @@ går att tolka **stoppar inte** PDF:en – de loggas som varning och hamnar i
 | `tests/test_list_editor.py` | 3 | hjälptexten (sv/en) och att raden behålls orörd |
 | `tests/test_roster.py` | +4 | `read_names()` tar bort frånvaro, `read_entries()`, kolon som bara delar vid datum |
 
-Svitens total: **350 tester**.
+Svitens total: **352 tester**.
 
 
 ---
@@ -2840,7 +2854,7 @@ visar reglaget direkt: 50 % ritar logotypen i halva rutan, 100 % fyller rutan.
 | `tests/test_pdf_assets.py` | +13 | Ghostscript i `PATH`/miljövariabel, saknad Ghostscript (förklaring), EPS → PNG med cache, felutskrift vid misslyckad konvertering, EPS bevarar originalets sökväg, PDF rastreras + cache, skalans inverkan på storlek och `auto_size`, taken, `logo_for_settings` (procent, standard, klamning) |
 | `tests/test_logo_picker.py` | +7 | importfiltret (SVG/EPS/PDF/PNG/JPG), knapptexten, reglagets standard och gränser, `scale_changed`, storlek i konstruktorn, förhandsgranskningen krymper, EPS utan Ghostscript visar förklaringen |
 
-Svitens total: **350 tester**.
+Svitens total: **352 tester**.
 
 ---
 
