@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -74,7 +75,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.12.0"
+MODULE_VERSION: str = "2.12.1"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark")
@@ -133,7 +134,7 @@ class SettingsDialog(QDialog):
         self._update_signals.installed.connect(self._on_update_installed)
 
         self.setWindowTitle(i18n.t("settings.title"))
-        self.setMinimumSize(560, 520)
+        self.setMinimumSize(460, 320)
         self.setModal(True)
 
         try:
@@ -146,6 +147,11 @@ class SettingsDialog(QDialog):
         self._plugin_checks: Dict[str, QCheckBox] = {}
         self._build_ui()
         self._load_settings()
+        # Logical pixels: respect the work area also with Windows DPI scaling.
+        screen = self.screen()
+        if screen is not None:
+            area = screen.availableGeometry()
+            self.resize(min(720, area.width() - 48), min(780, area.height() - 80))
 
         logger.debug("Inställningsdialogen skapad")
 
@@ -164,16 +170,17 @@ class SettingsDialog(QDialog):
         layout.addWidget(title)
 
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._create_general_tab(), i18n.t("settings.tab.general"))
-        self._tabs.addTab(self._create_window_tab(), i18n.t("settings.tab.window"))
-        self._tabs.addTab(self._create_plugins_tab(), i18n.t("settings.tab.plugins"))
-        self._tabs.addTab(self._create_advanced_tab(), i18n.t("settings.tab.advanced"))
+        self._tabs.addTab(self._scrollable_tab(self._create_general_tab()), i18n.t("settings.tab.general"))
+        self._tabs.addTab(self._scrollable_tab(self._create_window_tab()), i18n.t("settings.tab.window"))
+        self._tabs.addTab(self._scrollable_tab(self._create_plugins_tab()), i18n.t("settings.tab.plugins"))
+        self._tabs.addTab(self._scrollable_tab(self._create_advanced_tab()), i18n.t("settings.tab.advanced"))
         layout.addWidget(self._tabs, 1)
 
         # Data-mapp
         data_label = QLabel(
             f"{i18n.t('settings.data_path')} {self._data_path()}"
         )
+        data_label.setWordWrap(True)
         data_label.setStyleSheet("color: #777; font-size: 11px;")
         data_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(data_label)
@@ -191,6 +198,16 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    @staticmethod
+    def _scrollable_tab(page: QWidget) -> QScrollArea:
+        """Keep controls at their minimum size; scroll instead of clipping."""
+        page.layout().setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
 
     def _create_general_tab(self) -> QWidget:
         """Språk, tema och helgdagar."""
@@ -448,7 +465,7 @@ class SettingsDialog(QDialog):
         )
         inner.addWidget(self.update_status_label)
 
-        button_row = QHBoxLayout()
+        button_row = QVBoxLayout()
 
         self.update_check_button = QPushButton(i18n.t("update.check"))
         self.update_check_button.clicked.connect(self.check_for_updates)

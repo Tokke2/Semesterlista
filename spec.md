@@ -2905,3 +2905,13 @@ av antalet månader per blad i kapitel 27.
   CI installerar PyMuPDF för att köra innehållskontrollerna.
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════ ║ SLUT PÅ SPECIFIKATION ║ ║ Version: 2.11.0 | Datum: 2026-11-03 | Status: 50/50 (100%) ║ ║ Copyright: Rickard Längkvist 2025 – dynamiskt år ║ ═══════════════════════════════════════════════════════════════════════════════ -->
+
+## 30. Inställningslayout (v2.12.1)
+
+Alla inställningsflikar omges av QScrollArea. Innehållets minimistorlek
+bevaras så att kontroller inte klipps när dialogen krymps eller releasetext
+tillkommer. Spara/Avbryt ligger utanför rullområdet. Startstorleken är högst
+720 × 780 logiska pixlar, begränsad av skärmens tillgängliga arbetsyta.
+Uppdateringsknappar visas vertikalt och datamappens sökväg radbryts.
+385 tester, inklusive liten dialog (560 × 420), långa releasenoteringar
+och åtkomliga knappar på svenska och engelska.

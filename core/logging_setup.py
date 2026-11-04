@@ -47,7 +47,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-MODULE_VERSION: str = "2.12.0"
+MODULE_VERSION: str = "2.12.1"
 
 #: Standardmapp (relativt appens rotmapp) – loggarna har en egen undermapp
 DEFAULT_LOG_DIR: str = "data"

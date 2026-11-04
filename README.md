@@ -21,6 +21,9 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 
 ## Funktioner
 
+- **Anpassade inställningar:** fönstret anpassar startstorleken till skärmens arbetsyta.
+  Flikarna kan rullas på mindre skärmar; Spara och Avbryt ligger utanför rullningen.
+
 - **PDF-export** med färgkodning (helgdagar, lördagar, halvdagar, veckonummer),
   valbar startmånad (även över årsskifte) och 1, 2 eller 3 månader per blad.
   **1 månad = stående A4; 2–3 = liggande A4.** Valda månader hålls på samma

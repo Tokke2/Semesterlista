@@ -148,6 +148,37 @@ class SettingsDialogTests(unittest.TestCase):
 
     # ── Bygge ────────────────────────────────────────────
 
+    def test_small_window_scrolls_without_hiding_actions(self) -> None:
+        from PySide6.QtWidgets import QDialogButtonBox, QScrollArea
+        from PySide6.QtCore import QPoint
+        for language in ("sv", "en"):
+            self.i18n.set_language(language)
+            dialog = self.make_dialog()
+            dialog._tabs.setCurrentIndex(3)
+            dialog.update_status_label.setText("Release notes\n" * 35)
+            dialog.resize(560, 420)
+            dialog.show()
+            self.app.processEvents()
+            scroll = dialog._tabs.currentWidget()
+            self.assertIsInstance(scroll, QScrollArea)
+            self.assertGreater(scroll.verticalScrollBar().maximum(), 0)
+            self.assertLessEqual(dialog.height(), 420)
+            buttons = dialog.findChild(QDialogButtonBox)
+            self.assertTrue(dialog.rect().contains(buttons.mapTo(dialog, buttons.rect().bottomRight())))
+            scroll.ensureWidgetVisible(dialog.update_release_button)
+            self.app.processEvents()
+            button = dialog.update_release_button
+            self.assertTrue(scroll.viewport().rect().contains(button.mapTo(scroll.viewport(), QPoint(1, 1))))
+            self.assertGreaterEqual(button.height(), button.minimumSizeHint().height())
+            dialog.close()
+
+    def test_all_tabs_have_scroll_access(self) -> None:
+        from PySide6.QtWidgets import QScrollArea
+        dialog = self.make_dialog()
+        for index in range(dialog._tabs.count()):
+            self.assertIsInstance(dialog._tabs.widget(index), QScrollArea)
+            self.assertTrue(dialog._tabs.widget(index).widgetResizable())
+
     def test_module_version(self) -> None:
         self.assertEqual(MODULE_VERSION, APP_VERSION)
 
