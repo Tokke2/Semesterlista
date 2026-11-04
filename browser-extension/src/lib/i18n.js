@@ -81,7 +81,8 @@ export const STRINGS = {
     'options.file.desc': 'Filerna hamnar i webbläsarens mapp för hämtade filer.',
     'options.file.folder': 'Underkatalog',
     'options.file.template': 'Filnamnsmall',
-    'options.file.templateHint': 'Taggar: {site} {title} {date} {time} {year} {month} {day}',
+    'options.file.templateHint':
+      'Taggar: {site} {title} {date} {time} {year} {month} {day}. Standard är sidtiteln.',
     'options.file.perSiteFolder': 'Egen undermapp per webbplats',
     'options.file.saveAs': 'Fråga var filen ska sparas varje gång',
     'options.file.preview': 'Exempel',
@@ -203,7 +204,8 @@ export const STRINGS = {
     'options.file.desc': 'Files are saved to the browser downloads folder.',
     'options.file.folder': 'Subfolder',
     'options.file.template': 'File name template',
-    'options.file.templateHint': 'Tags: {site} {title} {date} {time} {year} {month} {day}',
+    'options.file.templateHint':
+      'Tags: {site} {title} {date} {time} {year} {month} {day}. The default is the page title.',
     'options.file.perSiteFolder': 'Separate subfolder per website',
     'options.file.saveAs': 'Ask where to save the file every time',
     'options.file.preview': 'Example',

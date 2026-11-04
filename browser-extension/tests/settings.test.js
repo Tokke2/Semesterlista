@@ -1,0 +1,77 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  DEFAULT_SETTINGS,
+  mergeSettings,
+  normalizeSite,
+  createId
+} from '../src/lib/settings.js';
+
+test('standardmallen döper filen efter sidtiteln', () => {
+  assert.equal(DEFAULT_SETTINGS.file.template, '{title}');
+  assert.equal(DEFAULT_SETTINGS.version, 2);
+  assert.equal(mergeSettings({}).file.template, '{title}');
+  assert.equal(mergeSettings({}).version, 2);
+});
+
+test('gamla standardmallen migreras men egna mallar lämnas orörda', () => {
+  assert.equal(
+    mergeSettings({ version: 1, file: { template: '{date}_{title}' } }).file.template,
+    '{title}'
+  );
+  assert.equal(
+    mergeSettings({ version: 1, file: { template: 'mina-pdf/{title}' } }).file.template,
+    'mina-pdf/{title}'
+  );
+  assert.equal(
+    mergeSettings({ version: 2, file: { template: '{date}_{title}' } }).file.template,
+    '{date}_{title}'
+  );
+});
+
+test('mergeSettings klämmer värden och fyller i standardvärden', () => {
+  const settings = mergeSettings({
+    pdf: { format: 'A9', marginMm: 99, scale: 4, waitMs: 99999, printBackground: 'ja' },
+    button: { show: 'nej', position: 'xx' },
+    language: 'de',
+    allowAll: 'true'
+  });
+
+  assert.equal(settings.pdf.format, 'A4');
+  assert.equal(settings.pdf.marginMm, 50);
+  assert.equal(settings.pdf.scale, 2);
+  assert.equal(settings.pdf.waitMs, 5000);
+  assert.equal(settings.pdf.printBackground, false);
+  assert.equal(settings.button.show, true);
+  assert.equal(settings.button.position, 'br');
+  assert.equal(settings.language, 'auto');
+  assert.equal(settings.allowAll, false);
+});
+
+test('sajtlistan städas och begränsas', () => {
+  const settings = mergeSettings({
+    sites: [
+      { pattern: 'example.com', enabled: false },
+      { pattern: '' },
+      null,
+      { id: 'fast', pattern: '*.example.se' }
+    ]
+  });
+
+  assert.equal(settings.sites.length, 2);
+  assert.equal(settings.sites[0].pattern, 'example.com');
+  assert.equal(settings.sites[0].enabled, false);
+  assert.ok(settings.sites[0].id);
+  assert.equal(settings.sites[1].id, 'fast');
+  assert.equal(settings.sites[1].enabled, true);
+});
+
+test('normalizeSite och createId ger användbara objekt', () => {
+  assert.equal(normalizeSite(null), null);
+  assert.equal(normalizeSite({ pattern: '   ' }), null);
+  const site = normalizeSite({ pattern: ' example.com ' });
+  assert.equal(site.pattern, 'example.com');
+  assert.equal(site.enabled, true);
+  assert.match(createId(), /^s_[a-z0-9]+_[a-z0-9]+$/);
+});

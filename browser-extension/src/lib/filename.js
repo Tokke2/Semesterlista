@@ -6,13 +6,36 @@
 const RESERVED_WINDOWS_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 const ILLEGAL_CHARS = /[\u0000-\u001f\u007f<>:"/\\|?*]/g;
 
-/** Gör om godtycklig text till en säker filnamnsdel. */
+/**
+ * Gör om godtycklig text till en säker mappdel.
+ * Otillåtna tecken ersätts med bindestreck.
+ */
 export function sanitizeSegment(input, maxLength = 80) {
   let value = String(input ?? '');
   value = value.normalize('NFC');
   value = value.replace(ILLEGAL_CHARS, '-');
   value = value.replace(/\s+/g, ' ');
   value = value.replace(/-{2,}/g, '-');
+  value = value.replace(/^[.\s-]+/, '').replace(/[.\s-]+$/, '');
+  if (!value) value = 'sida';
+  if (RESERVED_WINDOWS_NAMES.test(value)) value = '_' + value;
+  if (value.length > maxLength) {
+    value = value.slice(0, maxLength).replace(/[.\s-]+$/, '');
+  }
+  return value || 'sida';
+}
+
+/**
+ * Rensar en sidtitel för användning som filnamn.
+ * Otillåtna tecken tas bort helt (inte ersatta), så att filnamnet blir
+ * så nära titeln som möjligt – t.ex. "removing - refitting : multifunction
+ * video camera" → "removing - refitting multifunction video camera".
+ */
+export function sanitizeTitle(input, maxLength = 90) {
+  let value = String(input ?? '');
+  value = value.normalize('NFC');
+  value = value.replace(ILLEGAL_CHARS, '');
+  value = value.replace(/\s+/g, ' ');
   value = value.replace(/^[.\s-]+/, '').replace(/[.\s-]+$/, '');
   if (!value) value = 'sida';
   if (RESERVED_WINDOWS_NAMES.test(value)) value = '_' + value;
@@ -42,19 +65,19 @@ export function dateParts(date = new Date()) {
  * Bygger ett relativt filnamn (utan inledande snedstreck) för chrome.downloads.
  *
  * @param {object} options
- * @param {string} options.template      t.ex. "{date}_{title}"
+ * @param {string} options.template      t.ex. "{title}" eller "{date}_{title}"
  * @param {string} options.folder        underkatalog i Hämtade filer
  * @param {boolean} options.perSiteFolder egen undermapp per webbplats
  * @param {string} options.site          värdnamn
  * @param {string} options.title         sidtitel
  * @param {Date}   [options.date]        tidpunkt (default: nu)
- * @returns {string} t.ex. "Sidor/example.com/2026-11-04_Artikel.pdf"
+ * @returns {string} t.ex. "Sidor/app.alldata.com/Removing - Refitting.pdf"
  */
 export function buildFilename({ template, folder, perSiteFolder, site, title, date = new Date() } = {}) {
   const parts = dateParts(date);
   const tokens = {
     site: sanitizeSegment(site || 'webbplats', 60),
-    title: sanitizeSegment(title || 'sida', 70),
+    title: sanitizeTitle(title || 'sida', 90),
     date: parts.date,
     time: parts.time,
     year: parts.year,
@@ -62,7 +85,8 @@ export function buildFilename({ template, folder, perSiteFolder, site, title, da
     day: parts.day
   };
 
-  const rawTemplate = typeof template === 'string' && template.trim() ? template : '{date}_{title}';
+  const rawTemplate =
+    typeof template === 'string' && template.trim() ? template : '{title}';
   // Kända taggar ersätts, okända plockas bort.
   let name = rawTemplate.replace(/\{(\w+)\}/g, (match, key) =>
     Object.prototype.hasOwnProperty.call(tokens, key) ? tokens[key] : ''

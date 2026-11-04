@@ -16,7 +16,7 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 | **Snabbtangent** | `Alt+Shift+P` sparar aktuell sida utan att du behöver klicka. |
 | **Högerklicksmeny** | ”Spara sidan som PDF” på valda sidor. |
 | **Ren utskrift** | Vit bakgrund, A4, inga sidhuvuden/sidofot och anpassade marginaler. Allt går att ändra. |
-| **Filnamn och mappar** | Filerna sparas som `Sidor/<sajt>/<datum>_<titel>.pdf` med valfri mall och egen underkatalog. |
+| **Filnamn och mappar** | Filerna döps efter sidtiteln: `Sidor/<sajt>/<titel>.pdf`. Otillåtna tecken tas bort automatiskt. Mall och underkatalog går att ändra. |
 | **Svenska / engelska** | Välj språk i inställningarna, eller låt webbläsarens språk styra. |
 | **Import/export** | Hela inställningsfilen kan exporteras och importeras som JSON. |
 
@@ -68,7 +68,7 @@ Inställningssidan öppnas via kugghjulet i panelen eller via `chrome://extensio
 - **Valda webbplatser** – lista, på/av, åtkomst och borttagning.
 - **Knapp på sidan** – visa/dölj och placering (fyra hörn).
 - **PDF** – pappersformat (A4/Letter/Legal/A3), marginal, skala, bakgrundsfärger, sidhuvud med sidnummer, CSS `@page` och väntetid före utskrift.
-- **Filnamn** – underkatalog, mall med taggarna `{site} {title} {date} {time} {year} {month} {day}`, egen mapp per sajt och ”fråga var filen ska sparas”.
+- **Filnamn** – underkatalog, mall med taggarna `{site} {title} {date} {time} {year} {month} {day}`, egen mapp per sajt och ”fråga var filen ska sparas”. Standardmallen är `{title}`; vill du ha datum före titeln använder du `{date}_{title}`.
 - **Allmänt** – språk, tillåt alla webbplatser, snabbtangent, import/export och återställning.
 
 Inställningarna sparas lokalt i webbläsaren. Använd **Exportera** om du vill säkerhetskopiera eller flytta dem till en annan dator.
@@ -88,6 +88,21 @@ Inställningarna sparas lokalt i webbläsaren. Använd **Exportera** om du vill 
 | `offscreen` | Gör om PDF:en till en blob så att filer över 2 MB sparas hela (data-URL:er klipps annars av). |
 
 Ingen kod körs på sajter du inte har valt, och inga data lämnar datorn.
+
+---
+
+### Filnamn
+
+Filnamnet byggs av flikens titel. Tecken som inte får finnas i filnamn
+(`< > : " / \ | ? *`) tas bort, blanksteg städas och filen får ändelsen `.pdf`:
+
+| Sidtitel | Filnamn |
+| --- | --- |
+| `removing - refitting : multifunction video camera` | `removing - refitting multifunction video camera.pdf` |
+| `FAQ: Vanliga/Frågor?` | `FAQ VanligaFrågor.pdf` |
+
+Reserverade namn som `CON` och `NUL` får ett understreck framför, och blir titeln
+bara tecken som rensas bort används `sida.pdf`.
 
 ---
 

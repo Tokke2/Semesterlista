@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sanitizeSegment, buildFilename, dateParts } from '../src/lib/filename.js';
+import { sanitizeSegment, sanitizeTitle, buildFilename, dateParts } from '../src/lib/filename.js';
 
 const date = new Date(2026, 10, 4, 14, 5, 9); // 2026-11-04 14:05:09 lokal tid
 
@@ -12,6 +12,17 @@ test('sanitizeSegment rensar otillåtna tecken', () => {
   assert.equal(sanitizeSegment(''), 'sida');
   assert.equal(sanitizeSegment('CON'), '_CON');
   assert.equal(sanitizeSegment('en', 1), 'e');
+});
+
+test('sanitizeTitle tar bort otillåtna tecken i stället för att ersätta dem', () => {
+  assert.equal(
+    sanitizeTitle(' removing - refitting : multifunction video camera '),
+    'removing - refitting multifunction video camera'
+  );
+  assert.equal(sanitizeTitle('FAQ: Vanliga/Frågor?'), 'FAQ VanligaFrågor');
+  assert.equal(sanitizeTitle('  -- Titel: X -- '), 'Titel X');
+  assert.equal(sanitizeTitle('...'), 'sida');
+  assert.equal(sanitizeTitle('NUL'), '_NUL');
 });
 
 test('dateParts formaterar lokal tid', () => {
@@ -39,6 +50,7 @@ test('buildFilename bygger mapp och filnamn', () => {
 });
 
 test('buildFilename klarar tom mall, tom mapp och utan sajtmapp', () => {
+  // Tom mall faller tillbaka på standardmallen {title}.
   assert.equal(
     buildFilename({
       template: '',
@@ -48,7 +60,7 @@ test('buildFilename klarar tom mall, tom mapp och utan sajtmapp', () => {
       title: 'Sida',
       date
     }),
-    '2026-11-04_Sida.pdf'
+    'Sida.pdf'
   );
 });
 
@@ -61,8 +73,22 @@ test('buildFilename ersätter okända taggar och städar filnamn', () => {
     title: 'A/B: test?',
     date
   });
-  assert.equal(name, 'PDF/www.example.com-A-B- test.pdf');
+  assert.equal(name, 'PDF/www.example.com-AB test.pdf');
   assert.ok(!name.includes('{'), 'inga taggar ska vara kvar');
+});
+
+test('buildFilename använder sidtiteln som standard', () => {
+  const name = buildFilename({
+    folder: 'Sidor',
+    perSiteFolder: true,
+    site: 'app.alldata.com',
+    title: 'removing - refitting : multifunction video camera',
+    date
+  });
+  assert.equal(
+    name,
+    'Sidor/app.alldata.com/removing - refitting multifunction video camera.pdf'
+  );
 });
 
 test('buildFilename lägger bara till .pdf en gång', () => {

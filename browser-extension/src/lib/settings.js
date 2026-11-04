@@ -9,7 +9,7 @@ export const HISTORY_KEY = 'history';
 const HISTORY_LIMIT = 15;
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  version: 1,
+  version: 2,
   language: 'auto', // 'auto' | 'sv' | 'en'
   allowAll: false,
   sites: [], // { id, pattern, enabled }
@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   },
   file: {
     folder: 'Sidor',
-    template: '{date}_{title}',
+    template: '{title}',
     perSiteFolder: true,
     saveAs: false
   }
@@ -76,8 +76,20 @@ export function mergeSettings(raw) {
     ? source.sites.map(normalizeSite).filter(Boolean).slice(0, 500)
     : [];
 
+  const sourceVersion = Number(source.version);
+  const version = Number.isFinite(sourceVersion) && sourceVersion > 0 ? sourceVersion : 1;
+
+  let template =
+    typeof file.template === 'string' && file.template.trim()
+      ? file.template.slice(0, 120)
+      : DEFAULT_SETTINGS.file.template;
+
+  // Migrering: från och med version 2 döps filen efter sidtiteln. Har man
+  // kvar den gamla standardmallen byts den ut, egna mallar lämnas orörda.
+  if (version < 2 && template === '{date}_{title}') template = DEFAULT_SETTINGS.file.template;
+
   return {
-    version: 1,
+    version: DEFAULT_SETTINGS.version,
     language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_SETTINGS.language,
     allowAll: source.allowAll === true,
     sites,
@@ -96,10 +108,7 @@ export function mergeSettings(raw) {
     },
     file: {
       folder: typeof file.folder === 'string' ? file.folder.slice(0, 80) : DEFAULT_SETTINGS.file.folder,
-      template:
-        typeof file.template === 'string' && file.template.trim()
-          ? file.template.slice(0, 120)
-          : DEFAULT_SETTINGS.file.template,
+      template,
       perSiteFolder: file.perSiteFolder !== false,
       saveAs: file.saveAs === true
     }
