@@ -33,6 +33,7 @@ const els = {
   banner: document.getElementById('banner'),
   primary: document.getElementById('primary'),
   secondary: document.getElementById('secondary'),
+  saveAs: document.getElementById('save-as'),
   lastSaved: document.getElementById('last-saved'),
   shortcut: document.getElementById('shortcut'),
   openOptions: document.getElementById('open-options'),
@@ -111,6 +112,7 @@ function render() {
 
   els.siteName.textContent = hostname || t(lang, 'popup.openPage');
   els.siteName.title = hostname;
+  els.saveAs.checked = settings.file.saveAs;
 
   let pillText = '';
   let pillClass = 'pill';
@@ -224,6 +226,8 @@ async function savePdf() {
     if (response?.ok) {
       setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
       await renderHistory();
+    } else if (response?.error === 'canceled') {
+      setBanner('info', response.message || t(state.lang, 'errors.canceled'));
     } else {
       setBanner('error', response?.message || t(state.lang, 'errors.unexpected'));
     }
@@ -305,6 +309,15 @@ function openOptions(event) {
 els.primary.addEventListener('click', () => {
   if (state.allowed) void savePdf();
   else void addSiteAndSave();
+});
+
+els.saveAs.addEventListener('change', () => {
+  void (async () => {
+    await updateSettings((draft) => {
+      draft.file.saveAs = els.saveAs.checked;
+    });
+    state.settings = await getSettings();
+  })();
 });
 
 els.secondary.addEventListener('click', () => {

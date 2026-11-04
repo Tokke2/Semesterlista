@@ -9,7 +9,7 @@ export const HISTORY_KEY = 'history';
 const HISTORY_LIMIT = 15;
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  version: 2,
+  version: 3,
   language: 'auto', // 'auto' | 'sv' | 'en'
   allowAll: false,
   sites: [], // { id, pattern, enabled }
@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     folder: 'Sidor',
     template: '{title}',
     perSiteFolder: true,
-    saveAs: false
+    saveAs: true
   }
 });
 
@@ -88,6 +88,10 @@ export function mergeSettings(raw) {
   // kvar den gamla standardmallen byts den ut, egna mallar lämnas orörda.
   if (version < 2 && template === '{date}_{title}') template = DEFAULT_SETTINGS.file.template;
 
+  // Från och med version 3 frågar tillägget var filen ska sparas, så att man
+  // själv väljer mapp. Tidigare versioner hade alltid tyst nedladdning.
+  const saveAs = version < 3 ? true : file.saveAs === true;
+
   return {
     version: DEFAULT_SETTINGS.version,
     language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_SETTINGS.language,
@@ -110,7 +114,7 @@ export function mergeSettings(raw) {
       folder: typeof file.folder === 'string' ? file.folder.slice(0, 80) : DEFAULT_SETTINGS.file.folder,
       template,
       perSiteFolder: file.perSiteFolder !== false,
-      saveAs: file.saveAs === true
+      saveAs
     }
   };
 }

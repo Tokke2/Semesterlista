@@ -73,6 +73,18 @@
 
     <button id="secondary" class="btn btn-ghost btn-block" type="button" hidden></button>
 
+    <div class="option-row">
+      <div class="option-text">
+        <span class="option-label" data-i18n="popup.saveAs">Fråga var filen ska sparas</span>
+        <span class="option-note" data-i18n="popup.saveAsHint">Du väljer mapp i webbläsarens dialog.</span>
+      </div>
+      <label class="switch">
+        <input id="save-as" type="checkbox" />
+        <span class="track"></span>
+        <span class="sr-only" data-i18n="popup.saveAs"></span>
+      </label>
+    </div>
+
     <div class="last-saved">
       <span class="muted" data-i18n="popup.lastSaved">Senast sparad</span>
       <span id="last-saved" class="last-file">–</span>

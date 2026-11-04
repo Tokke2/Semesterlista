@@ -45,6 +45,7 @@ function errorText(lang, code) {
     'notAllowed',
     'noTab',
     'busy',
+    'canceled',
     'unexpected'
   ];
   return t(lang, `errors.${known.includes(code) ? code : 'unexpected'}`);
@@ -167,10 +168,12 @@ async function waitForPageReady(target, waitMs) {
 }
 
 function mapError(error, stage) {
-  if (error instanceof PdfError) return error;
-  const message = String(error?.message || error || '');
+  const message = String(error?.detail || error?.message || error || '');
   if (/another debugger is already attached/i.test(message)) {
     return new PdfError('devtools', message);
+  }
+  if (/cancel/i.test(message)) {
+    return new PdfError('canceled', message);
   }
   if (/cannot access|chrome:\/\/|extension pages|the tab is not|not supported/i.test(message)) {
     return new PdfError('restricted', message);
@@ -178,6 +181,7 @@ function mapError(error, stage) {
   if (/no tab with given id|tab was closed/i.test(message)) {
     return new PdfError('noTab', message);
   }
+  if (error instanceof PdfError) return error;
   return new PdfError(stage, message);
 }
 
@@ -274,16 +278,20 @@ async function downloadPdf(base64, filename, settings) {
     const blobUrl = await makeBlobUrl(base64);
     return await downloadUrl(blobUrl, filename, settings);
   } catch (error) {
+    const mapped = mapError(error, 'download');
+    // Avbröt användaren spar-dialogen ska vi inte försöka igen.
+    if (mapped.code === 'canceled') throw mapped;
+
     // Reservlösning om offscreen inte fungerar: data-URL, som bara klarar
     // filer under cirka 2 MB (base64).
     if (base64.length < 1400000) {
-      return downloadUrl(`data:application/pdf;base64,${base64}`, filename, settings).catch(
-        (fallbackError) => {
-          throw mapError(fallbackError, 'download');
-        }
-      );
+      try {
+        return await downloadUrl(`data:application/pdf;base64,${base64}`, filename, settings);
+      } catch (fallbackError) {
+        throw mapError(fallbackError, 'download');
+      }
     }
-    throw mapError(error, 'download');
+    throw mapped;
   }
 }
 
@@ -355,6 +363,14 @@ async function runSave(tab) {
   } catch (error) {
     const mapped = mapError(error, 'unexpected');
     const message = errorText(lang, mapped.code);
+
+    if (mapped.code === 'canceled') {
+      // Användaren stängde spar-dialogen – inget fel, bara ingen fil.
+      await sendToast(tabId, { state: 'info', text: message });
+      clearBadgeLater(tabId, 1500);
+      return { ok: false, error: 'canceled', message };
+    }
+
     console.warn('PDF misslyckades:', mapped.code, mapped.detail || '');
     await setBadge(tabId, BADGE_FAIL, '#b42318');
     await sendToast(tabId, { state: 'error', text: message });

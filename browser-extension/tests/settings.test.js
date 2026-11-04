@@ -10,9 +10,18 @@ import {
 
 test('standardmallen döper filen efter sidtiteln', () => {
   assert.equal(DEFAULT_SETTINGS.file.template, '{title}');
-  assert.equal(DEFAULT_SETTINGS.version, 2);
+  assert.equal(DEFAULT_SETTINGS.version, 3);
   assert.equal(mergeSettings({}).file.template, '{title}');
-  assert.equal(mergeSettings({}).version, 2);
+  assert.equal(mergeSettings({}).version, 3);
+});
+
+test('spara-dialogen är på som standard och slås på vid migrering', () => {
+  assert.equal(DEFAULT_SETTINGS.file.saveAs, true);
+  assert.equal(mergeSettings({}).file.saveAs, true);
+  // Gamla installationer hade tyst nedladdning – nu frågar vi i stället.
+  assert.equal(mergeSettings({ version: 2, file: { saveAs: false } }).file.saveAs, true);
+  // Har man aktivt stängt av den i version 3 respekteras det.
+  assert.equal(mergeSettings({ version: 3, file: { saveAs: false } }).file.saveAs, false);
 });
 
 test('gamla standardmallen migreras men egna mallar lämnas orörda', () => {

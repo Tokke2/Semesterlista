@@ -193,7 +193,7 @@
     // Tvinga fram en omritning så att övergången spelas upp igen.
     void toast.offsetWidth;
     toast.classList.add('visible');
-    if (state === 'saved' || state === 'error') {
+    if (state === 'saved' || state === 'error' || state === 'info') {
       toastTimer = setTimeout(() => {
         toast?.classList.remove('visible');
       }, state === 'error' ? 7000 : 4500);

@@ -25,6 +25,8 @@ export const STRINGS = {
     'popup.addAndSave': 'Lägg till {site} och spara',
     'popup.enableSite': 'Aktivera {site}',
     'popup.removeSite': 'Ta bort {site} från listan',
+    'popup.saveAs': 'Fråga var filen ska sparas',
+    'popup.saveAsHint': 'Du väljer mapp i webbläsarens dialog.',
     'popup.lastSaved': 'Senast sparad',
     'popup.neverSaved': 'Ingen PDF sparad än',
     'popup.settings': 'Inställningar',
@@ -85,6 +87,8 @@ export const STRINGS = {
       'Taggar: {site} {title} {date} {time} {year} {month} {day}. Standard är sidtiteln.',
     'options.file.perSiteFolder': 'Egen undermapp per webbplats',
     'options.file.saveAs': 'Fråga var filen ska sparas varje gång',
+    'options.file.saveAsHint': 'Av: filen hamnar direkt i Hämtade filer (med underkatalogerna ovan).',
+    'options.file.saveAsHintOn': 'På: du väljer mapp och kan ändra namnet i webbläsarens dialog.',
     'options.file.preview': 'Exempel',
     'options.file.sampleTitle': 'Exempel på sidtitel',
 
@@ -112,6 +116,7 @@ export const STRINGS = {
     'options.footer.note': 'PDF:er skapas lokalt i webbläsaren. Inga sidor skickas någonstans.',
 
     'errors.restricted': 'Interna sidor och webbläsarsidor kan inte sparas som PDF.',
+    'errors.canceled': 'Sparandet avbröts – ingen fil skapades.',
     'errors.devtools': 'Stäng DevTools för fliken och försök igen.',
     'errors.attach': 'Kunde inte ansluta till fliken. Ladda om sidan och försök igen.',
     'errors.print': 'Kunde inte skapa PDF:en.',
@@ -148,6 +153,8 @@ export const STRINGS = {
     'popup.addAndSave': 'Add {site} and save',
     'popup.enableSite': 'Enable {site}',
     'popup.removeSite': 'Remove {site} from list',
+    'popup.saveAs': 'Ask where to save the file',
+    'popup.saveAsHint': 'Pick a folder in the browser dialog.',
     'popup.lastSaved': 'Last saved',
     'popup.neverSaved': 'No PDF saved yet',
     'popup.settings': 'Settings',
@@ -208,6 +215,8 @@ export const STRINGS = {
       'Tags: {site} {title} {date} {time} {year} {month} {day}. The default is the page title.',
     'options.file.perSiteFolder': 'Separate subfolder per website',
     'options.file.saveAs': 'Ask where to save the file every time',
+    'options.file.saveAsHint': 'Off: the file goes straight to Downloads (with the subfolders above).',
+    'options.file.saveAsHintOn': 'On: you pick a folder and can edit the name in the browser dialog.',
     'options.file.preview': 'Example',
     'options.file.sampleTitle': 'Example page title',
 
@@ -235,6 +244,7 @@ export const STRINGS = {
     'options.footer.note': 'PDFs are created locally in the browser. No pages are sent anywhere.',
 
     'errors.restricted': 'Internal and browser pages cannot be saved as PDF.',
+    'errors.canceled': 'Saving was cancelled – no file was created.',
     'errors.devtools': 'Close DevTools for this tab and try again.',
     'errors.attach': 'Could not attach to the tab. Reload the page and try again.',
     'errors.print': 'The PDF could not be created.',

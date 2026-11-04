@@ -16,6 +16,7 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 | **Snabbtangent** | `Alt+Shift+P` sparar aktuell sida utan att du behöver klicka. |
 | **Högerklicksmeny** | ”Spara sidan som PDF” på valda sidor. |
 | **Ren utskrift** | Vit bakgrund, A4, inga sidhuvuden/sidofot och anpassade marginaler. Allt går att ändra. |
+| **Välj mapp** | Som standard öppnas webbläsarens spar-dialog, där du väljer mapp och kan ändra filnamnet. Stäng av det i panelen om du hellre vill spara tyst i Hämtade filer. |
 | **Filnamn och mappar** | Filerna döps efter sidtiteln: `Sidor/<sajt>/<titel>.pdf`. Otillåtna tecken tas bort automatiskt. Mall och underkatalog går att ändra. |
 | **Svenska / engelska** | Välj språk i inställningarna, eller låt webbläsarens språk styra. |
 | **Import/export** | Hela inställningsfilen kan exporteras och importeras som JSON. |
@@ -46,7 +47,8 @@ Efter installationen öppnas inställningssidan automatiskt. Där lägger du til
 
 1. **Lägg till en webbplats** – klicka på tilläggets ikon när du står på sidan och välj **Lägg till … och spara**. Du kan också skriva adressen direkt i inställningarna, t.ex. `aftonbladet.se`, `*.example.com` eller `example.com/nyheter`.
 2. **Bevilja åtkomst** när webbläsaren frågar. Det behövs för att den flytande knappen ska kunna visas på just den sajten. Utan åtkomst fungerar fortfarande verktygsfältets knapp och snabbtangenten.
-3. **Klicka på PDF-knappen** som dyker upp längst ner på sidan. Klart – filen ligger i Hämtade filer.
+3. **Klicka på PDF-knappen** som dyker upp längst ner på sidan. Välj mapp i dialogen som öppnas (mappen `Sidor/<sajt>` och titelnamnet är förvalt) och spara.
+   Vill du slippa dialogen stänger du av **Fråga var filen ska sparas** i panelen – då hamnar filen direkt i Hämtade filer.
 
 ### Mönster
 
@@ -68,7 +70,14 @@ Inställningssidan öppnas via kugghjulet i panelen eller via `chrome://extensio
 - **Valda webbplatser** – lista, på/av, åtkomst och borttagning.
 - **Knapp på sidan** – visa/dölj och placering (fyra hörn).
 - **PDF** – pappersformat (A4/Letter/Legal/A3), marginal, skala, bakgrundsfärger, sidhuvud med sidnummer, CSS `@page` och väntetid före utskrift.
-- **Filnamn** – underkatalog, mall med taggarna `{site} {title} {date} {time} {year} {month} {day}`, egen mapp per sajt och ”fråga var filen ska sparas”. Standardmallen är `{title}`; vill du ha datum före titeln använder du `{date}_{title}`.
+- **Filnamn** – underkatalog, mall med taggarna `{site} {title} {date} {time} {year} {month} {day}`, egen mapp per sajt och **Fråga var filen ska sparas** (på som standard). Standardmallen är `{title}`; vill du ha datum före titeln använder du `{date}_{title}`.
+
+**Fråga var filen ska sparas** styr om webbläsarens spar-dialog öppnas:
+
+| Inställning | Resultat |
+| --- | --- |
+| På (standard) | Du väljer mapp och kan ändra namnet varje gång. Underkatalogen och titelnamnet är förvalt. |
+| Av | Filen sparas direkt i Hämtade filer, i underkatalogen `Sidor/<sajt>/`. |
 - **Allmänt** – språk, tillåt alla webbplatser, snabbtangent, import/export och återställning.
 
 Inställningarna sparas lokalt i webbläsaren. Använd **Exportera** om du vill säkerhetskopiera eller flytta dem till en annan dator.
@@ -124,7 +133,9 @@ Medan tillägget skapar PDF:en visas en liten informationsrad i webbläsaren: *�
 | ”Stäng DevTools för fliken och försök igen.” | DevTools får bara ha en felsökare per flik. Stäng DevTools-panelen och klicka igen. |
 | Interna sidor kan inte sparas | `chrome://`, `brave://`, webbutiken och nya flikar kan inte skrivas ut. |
 | Ingen PDF-knapp på sidan | Kontrollera att sajten är **aktiv** i listan och att **Åtkomst beviljad** står vid den. Ladda om sidan efteråt. |
-| Filen sparas inte | Slå av ”Fråga var filen ska sparas” om du inte vill bekräfta varje gång, och kontrollera webbläsarens nedladdningsinställningar. |
+| Ingen spar-dialog dyker upp | Slå på **Fråga var filen ska sparas** i panelen eller i inställningarna. |
+| Filen sparas inte | Kontrollera webbläsarens nedladdningsinställningar och att mappen du valde är skrivbar. |
+| Fel mapp föreslås i dialogen | Webbläsaren minns senast använda mapp – navigera till rätt mapp, den används nästa gång. |
 | Ingenting händer vid klick | Ladda om tillägget på `chrome://extensions` efter en uppdatering av filerna. |
 
 ---
@@ -155,6 +166,8 @@ cd browser-extension
 npm test        # 21 tester för mönster, filnamn och översättningar
 npm run check   # syntaxkontroll av alla skript
 ```
+
+Aktuell version: **1.1.0**.
 
 Ändringar slår igenom efter **Ladda om** på `chrome://extensions`. Innehållsskriptet på redan öppna flikar uppdateras när du laddar om sidan.
 

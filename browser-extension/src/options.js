@@ -40,6 +40,7 @@ const els = {
   filePreview: document.getElementById('file-preview'),
   filePerSite: document.getElementById('file-per-site'),
   fileSaveAs: document.getElementById('file-save-as'),
+  saveAsHint: document.getElementById('save-as-hint'),
   language: document.getElementById('language'),
   allowAll: document.getElementById('allow-all'),
   shortcutValue: document.getElementById('shortcut-value'),
@@ -175,6 +176,10 @@ function renderAll() {
   els.fileTemplate.value = settings.file.template;
   els.filePerSite.checked = settings.file.perSiteFolder;
   els.fileSaveAs.checked = settings.file.saveAs;
+  els.saveAsHint.textContent = t(
+    state.lang,
+    settings.file.saveAs ? 'options.file.saveAsHintOn' : 'options.file.saveAsHint'
+  );
 
   els.language.value = settings.language;
   els.allowAll.checked = settings.allowAll;
