@@ -229,9 +229,20 @@ function renderSites() {
     if (!granted) {
       const grant = document.createElement('button');
       grant.type = 'button';
-      grant.className = 'link';
+      grant.className = 'link grant-link';
       grant.dataset.action = 'grant';
-      grant.textContent = t(lang, 'options.sites.grant');
+
+      const grantIcon = document.createElement('span');
+      grantIcon.className = 'grant-icon';
+      grantIcon.setAttribute('aria-hidden', 'true');
+      grantIcon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3.2l7 2.9v5.4c0 4.2-2.9 7.4-7 9.3-4.1-1.9-7-5.1-7-9.3V6.1l7-2.9Z"
+          stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="m9.2 12 2 2 3.6-3.6" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
+      grant.append(grantIcon, document.createTextNode(t(lang, 'options.sites.grant')));
       meta.appendChild(grant);
     }
 

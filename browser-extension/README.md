@@ -20,6 +20,7 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 | **Visa i mapp** | Efter sparning finns **Visa i mapp** och **Öppna PDF** i panelen, så du hamnar direkt i mappen du valde. |
 | **Filnamn och mappar** | Filerna döps efter sidtiteln: `Sidor/<sajt>/<titel>.pdf`. Otillåtna tecken tas bort automatiskt. Mall och underkatalog går att ändra. |
 | **Svenska / engelska** | Välj språk i inställningarna, eller låt webbläsarens språk styra. |
+| **Enhetliga ikoner** | Egen appikon, samma linjeikoner i panelen, inställningarna, sidknappen och i toast-meddelandena. |
 | **Import/export** | Hela inställningsfilen kan exporteras och importeras som JSON. |
 
 ---
@@ -147,7 +148,7 @@ Medan tillägget skapar PDF:en visas en liten informationsrad i webbläsaren: *�
 ```
 browser-extension/
 ├── manifest.json
-├── icons/                  # ikoner (SVG-källa + PNG i 16/32/48/128)
+├── icons/                  # appikon: icon.svg (+ förenklad icon16.svg) och PNG 16/32/48/128
 ├── src/
 │   ├── background.js       # service worker: PDF, behörigheter, meny, badge
 │   ├── content.js          # flytande knapp + toast (klassiskt skript)
@@ -169,7 +170,7 @@ npm test        # 21 tester för mönster, filnamn och översättningar
 npm run check   # syntaxkontroll av alla skript
 ```
 
-Aktuell version: **1.2.0**.
+Aktuell version: **1.3.0**.
 
 Ändringar slår igenom efter **Ladda om** på `chrome://extensions`. Innehållsskriptet på redan öppna flikar uppdateras när du laddar om sidan.
 

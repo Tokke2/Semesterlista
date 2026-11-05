@@ -14,17 +14,49 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
 
-const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-  <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
+const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
     stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M14 3v5h5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M12 11v7m0 0-3-3m3 3 3-3" stroke="currentColor" stroke-width="1.7"
+  <path d="M14 3v5h5M12 12v6" stroke="currentColor" stroke-width="1.7"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m9.3 15.3 2.7 2.7 2.7-2.7" stroke="currentColor" stroke-width="1.7"
     stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-const PLUS_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+const PLUS_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
   <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
 </svg>`;
+
+const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 7h16M9.5 7V5.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V7"
+    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6.5 7l.8 11.3c.05.7.6 1.2 1.3 1.2h6.8c.7 0 1.25-.5 1.3-1.2L17.5 7"
+    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
+  <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.7"
+    stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+const BANNER_ICONS = {
+  ok: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+  error: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="12" cy="16.6" r="1.05" fill="currentColor"/>
+  </svg>`,
+  info: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M12 11v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="12" cy="7.6" r="1.05" fill="currentColor"/>
+  </svg>`
+};
 
 const els = {
   siteName: document.getElementById('site-name'),
@@ -105,7 +137,19 @@ function computeState() {
 function setBanner(kind, text) {
   els.banner.hidden = !text;
   els.banner.className = `banner ${kind}`;
-  els.banner.textContent = text || '';
+  els.banner.replaceChildren();
+  if (!text) return;
+
+  const icon = document.createElement('span');
+  icon.className = 'banner-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = BANNER_ICONS[kind] || BANNER_ICONS.info;
+
+  const label = document.createElement('span');
+  label.className = 'banner-text';
+  label.textContent = text;
+
+  els.banner.append(icon, label);
 }
 
 function setPrimary({ icon, label, loading = false, disabled = false }) {
@@ -193,9 +237,18 @@ function render() {
     const isDisabled = !matchedSite.enabled;
     els.secondary.hidden = false;
     els.secondary.disabled = false;
-    els.secondary.textContent = isDisabled
+
+    const icon = document.createElement('span');
+    icon.className = 'btn-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = isDisabled ? CHECK_ICON : TRASH_ICON;
+
+    const text = document.createElement('span');
+    text.textContent = isDisabled
       ? t(lang, 'popup.enableSite', { site: matchedSite.pattern })
       : t(lang, 'popup.removeSite', { site: matchedSite.pattern });
+
+    els.secondary.replaceChildren(icon, text);
     els.secondary.dataset.action = isDisabled ? 'enable' : 'remove';
   } else {
     els.secondary.hidden = true;
