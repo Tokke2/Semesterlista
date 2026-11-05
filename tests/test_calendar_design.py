@@ -88,6 +88,53 @@ class SeasonalExportTests(PdfLayoutTestBase):
         self.assertGreater(heights[0], 400)
         self.assertGreater(heights[0] - heights[1], 45)
 
+    @unittest.skipUnless(importlib.util.find_spec('fitz'), 'PyMuPDF unavailable')
+    def test_us_calendar_names_and_pagination_in_both_languages(self):
+        import fitz
+        from core import i18n
+        from core.calendar_pdf import export_calendar
+        from core.observances import get_us_observances
+        original = i18n.current_language()
+        try:
+            for language in ('sv', 'en'):
+                i18n.set_language(language)
+                for per_page in (1, 2, 3):
+                    path = self.outdir / 'us-observances.pdf'
+                    self.assertTrue(export_calendar(path, 2027, range(1, 13), per_page, 'us', self._images()))
+                    with fitz.open(path) as doc:
+                        self.assertEqual(len(doc), 12 // per_page)
+                        text = ' '.join(' '.join(page.get_text() for page in doc).split())
+                        for keys in get_us_observances(2027).values():
+                            for key in keys:
+                                self.assertIn(' '.join(i18n.holiday_name(key).split()) + ' *', text)
+                        self.assertIn(i18n.t('calendar.observed_label', name=i18n.holiday_name('us.christmas')), text)
+                        self.assertIn(i18n.t('calendar.observance_note'), text)
+                        self.assertTrue(all(page.rect.width > page.rect.height for page in doc))
+        finally:
+            i18n.set_language(original)
+
+    def test_us_screen_labels_match_pdf_model(self):
+        from PySide6.QtCore import QDate
+        from plugins.kalender.plugin import Plugin
+        from core.calendar_data import day_labels
+        from core.event_bus import EventBus
+        from core import i18n
+        plugin = Plugin(EventBus(), self.settings_manager)
+        with patch('plugins.kalender.plugin.get_region_from_settings', return_value='us'):
+            view = plugin.get_tab_widget()
+            view.calendar.setSelectedDate(QDate(2027, 3, 17))
+            view.refresh()
+            labels = day_labels(year_days(2027, 'us')[date(2027, 3, 17)])
+            self.assertIn(labels[0], view.names.text())
+            self.assertEqual(view.calendar.dateTextFormat(QDate(2027, 3, 17)).toolTip(), labels[0])
+            self.assertEqual(view.observance_note.text(), i18n.t('calendar.observance_note'))
+            # December 24 has two separate labels: observed Christmas and Christmas Eve.
+            view.calendar.setSelectedDate(QDate(2027, 12, 24))
+            view.refresh()
+            for label in day_labels(year_days(2027, 'us')[date(2027, 12, 24)]):
+                self.assertIn(label, view.names.text())
+        view.deleteLater()
+
     def test_roster_vehicle_images_keep_all_months(self):
         self.plugin.settings.update(self._images())
         for mode in ('Semesterlista', 'Limokörning'):

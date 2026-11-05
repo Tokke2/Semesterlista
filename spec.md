@@ -3049,3 +3049,21 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Befintlig Python, samma paketmiljö, veckointervall och loggplacering ändras inte.
 - Windows-CI provar verklig VBS-start med dold konsol, blanksteg/svenska tecken
   i sökvägen, vidarebefordrad underhållsflagga och felkod, utan paketinstallation.
+
+
+## 38. Amerikanska högtider och tydliga ersättningsdagar (v2.16.0)
+
+- `core/observances.py` innehåller 33 typer av vanliga amerikanska högtider och
+  märkesdagar. Inte en uttömmande kalender för delstater/religioner. Påsk följer
+  västerländsk/gregoriansk beräkning. Federal valdag visas endast jämna år.
+- Kalenderdagar håller officiell helgdag, faktiskt högtidsdatum, ersättningsflagga
+  och flera samtidiga märkesdagar åtskilda. Befintligt `kind` beräknas oförändrat.
+- Gemensamma översatta etiketter används på skärm/PDF. Märkesdagar har * med
+  förklaring: inte federal helgdag. De ges inte officiell röd markering i sig.
+- Både juldagens faktiska datum och ersättningsdatum syns 2027; julafton behålls
+  på samma datum som ersättningsdagen. Nyårshelgens årsskifte är också tydligt.
+- Ingen ändring i `get_holidays`, halvdagar eller `vacation_workdays`.
+  Semesterlista/Fordon får officiella datumförtydliganden, inte alla märkesdagar.
+- Regressioner: önskade fasta/rörliga datum, kollisioner, årsskifte,
+  arbetsdagsklassificering 2020–2035, semestersumma, svensk isolering,
+  skärm/PDF-samstämmighet och sv/en-PDF med 1/2/3 månader och bilder.

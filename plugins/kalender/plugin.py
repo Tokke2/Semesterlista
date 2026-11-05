@@ -8,14 +8,14 @@ from PySide6.QtWidgets import (
     QCalendarWidget, QListWidget, QListWidgetItem, QPushButton, QFileDialog, QMessageBox,
 )
 from core import i18n
-from core.calendar_data import year_days
+from core.calendar_data import year_days, day_labels
 from core.calendar_pdf import export_calendar
 from core.holidays import get_region_from_settings, describe_region
 from core.seasonal_options import edit_seasonal_options
 from core.ui_layout import FlowLayout
 from plugins.base_plugin import BasePlugin
 
-PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.15.2", "author": "Rickard Längkvist"}
+PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.16.0", "author": "Rickard Längkvist"}
 
 
 class CalendarView(QWidget):
@@ -57,6 +57,10 @@ class CalendarView(QWidget):
         self.names.setWordWrap(True)
         self.names.setTextFormat(Qt.TextFormat.PlainText)
         layout.addWidget(self.names)
+        self.observance_note = QLabel()
+        self.observance_note.setWordWrap(True)
+        self.observance_note.setProperty("role", "muted")
+        layout.addWidget(self.observance_note)
         months_label = QLabel(i18n.t("calendar.months"))
         layout.addWidget(months_label)
         self.months = QListWidget()
@@ -138,18 +142,23 @@ class CalendarView(QWidget):
             if day.month != self.calendar.monthShown():
                 continue
             bg = {"holiday": "#FFE1E1", "sunday": "#FFE1E1", "saturday": "#E4EEF9", "halfday": "#E4F0D7"}.get(info.kind)
-            if bg:
+            labels = day_labels(info)
+            if bg or labels:
                 fmt = QTextCharFormat()
-                fmt.setBackground(QColor(bg))
-                fmt.setForeground(QColor("#111111"))
-                if info.holiday_key:
-                    fmt.setToolTip(i18n.holiday_name(info.holiday_key))
+                if bg:
+                    fmt.setBackground(QColor(bg))
+                    fmt.setForeground(QColor("#111111"))
+                if labels:
+                    fmt.setToolTip(" / ".join(labels))
+                    fmt.setFontWeight(700)
                 qdate = QDate(day.year, day.month, day.day)
                 self.calendar.setDateTextFormat(qdate, fmt)
                 self.formats.add(qdate)
-            if info.holiday_key:
-                names.append(f"{day.day}: {i18n.holiday_name(info.holiday_key)}")
+            if labels:
+                names.append(f"{day.day}: {' / '.join(labels)}")
         self.names.setText(" · ".join(names) if names else i18n.t("calendar.no_holidays"))
+        self.observance_note.setText(i18n.t("calendar.observance_note") if region == "us" else "")
+        self.observance_note.setVisible(region == "us")
 
     def _select_all(self):
         for index in range(self.months.count()):
@@ -180,7 +189,7 @@ class CalendarView(QWidget):
 
 class Plugin(BasePlugin):
     NAME = "Kalender"
-    VERSION: str = "2.15.2"
+    VERSION: str = "2.16.0"
     AUTHOR = "Rickard Längkvist"
     TAB_ORDER = 0
 

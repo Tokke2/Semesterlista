@@ -20,6 +20,27 @@ Semesterlista, Fordon och Hyra kan ha **egen logotyp** (SVG, EPS eller PDF) som 
 automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 `assets/` och dess undermappar, eller infogas med *Infoga logotyp…*.
 
+## Amerikanska högtider från 2.16.0
+
+Kalenderfliken visar nu även **33 typer av vanliga amerikanska högtider och
+märkesdagar**, utöver federala helgdagar. Välj USA som helgdagsregion.
+
+- Bland annat St. Patrick’s Day, alla hjärtans dag, Halloween, mors dag,
+  fars dag, mor-/farföräldrarnas dag, Earth Day, Flag Day och Cinco de Mayo.
+- Västerländska påskdagar, Mardi Gras, askonsdagen, Kristi himmelsfärds dag
+  och pingst; dessutom Black Friday, Cyber Monday, Giving Tuesday med flera.
+- Ordinarie federala valdagen visas under jämna år.
+- **\*** betyder högtid/temadag, **inte federal helgdag**. Den ändrar inte
+  arbetsdagsklassificeringen eller semestersummeringen. Delstater och
+  arbetsgivare kan ha egna ledighetsregler.
+- Faktiskt datum och ersättningsdag visas separat. Julen 2027 visar
+  exempelvis ”Juldagen – ersättningsdag” den 24:e och ”Juldagen” den 25:e.
+  Julafton visas som en separat högtid den 24:e.
+- Listan är inte en fullständig delstats-/religionskalender och innehåller
+  inte svenska namnsdagar. Sammanfallande dagar behåller alla namn.
+- Högtiderna visas på skärmen och i kalender-PDF. Semesterlista/Fordon behåller
+  sina ledighetsregler och får bara förtydligade officiella helgdagsnamn.
+
 ## Nytt i 2.15.0
 
 - Fyra flikar i ordningen **Kalender, Semesterlista, Fordon, Hyra**.

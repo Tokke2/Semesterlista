@@ -28,7 +28,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
-from core.calendar_data import year_days
+from core.calendar_data import year_days, day_labels
 from core.seasonal_pdf import seasonal_header, print_canvas
 from core.pdf_readability import confirm_readability
 from core import holidays
@@ -878,9 +878,9 @@ class PDFGenerator(ListReader):
 
                 page_elements.append(table)
                 # Text names make holiday information independent of colour.
-                notes = [f"{day.day}: {i18n.holiday_name(info.holiday_key)}"
+                notes = [f"{day.day}: {' / '.join(day_labels(info, include_observances=False))}"
                          for day, info in month_days.items()
-                         if day.month == month_num and info.holiday_key]
+                         if day.month == month_num and (info.holiday_key or info.actual_holiday_key)]
                 if notes:
                     page_elements.append(Paragraph(escape(" / ".join(notes)),
                         ParagraphStyle("holiday-notes", fontSize=7, leading=8.5, spaceBefore=3)))

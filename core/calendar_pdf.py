@@ -12,7 +12,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepInFrame
 from core import i18n
-from core.calendar_data import month_weeks
+from core.calendar_data import month_weeks, day_labels
 from core.pdf_readability import confirm_readability
 from core.seasonal_pdf import seasonal_header, print_canvas
 
@@ -32,9 +32,14 @@ def export_calendar(path, year, months, per_page, region, settings):
     measuring = Canvas(BytesIO(), pagesize=pagesize)
     for offset in range(0, len(months), per_page):
         content = []
+        note_height = 0
+        if region == "us":
+            note = Paragraph(escape(i18n.t("calendar.observance_note")), small)
+            note_height = note.wrapOn(measuring, width, height)[1] + 4
+            content.extend([note, Spacer(1, 4)])
         page_months = months[offset:offset + per_page]
         gap = 8
-        slot_height = (height - gap * (len(page_months) - 1)) / len(page_months)
+        slot_height = (height - note_height - gap * (len(page_months) - 1)) / len(page_months)
         for index, month in enumerate(page_months):
             header = seasonal_header(month, settings, width)
             header.append(Paragraph(f"{escape(i18n.month_name(month))} {year}", title))
@@ -56,8 +61,8 @@ def export_calendar(path, year, months, per_page, region, settings):
                         cells.append("")
                         continue
                     parts = [Paragraph(str(day.date.day), cell)]
-                    if day.holiday_key:
-                        parts.append(Paragraph(escape(i18n.holiday_name(day.holiday_key)), small))
+                    for label in day_labels(day):
+                        parts.append(Paragraph(escape(label), small))
                     cells.append(parts)
                     bg = {"holiday": "#FFE1E1", "sunday": "#FFE1E1", "saturday": "#E4EEF9", "halfday": "#E4F0D7"}.get(day.kind)
                     if bg:
