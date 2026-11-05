@@ -75,7 +75,7 @@ from core.pdf_assets import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.17.2"
+MODULE_VERSION: str = "2.17.3"
 
 #: Höjd på förhandsgranskningen (px) – bredden följer fönstret
 PREVIEW_HEIGHT: int = 56

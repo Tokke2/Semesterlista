@@ -15,7 +15,7 @@ from core.seasonal_options import edit_seasonal_options
 from core.ui_layout import FlowLayout
 from plugins.base_plugin import BasePlugin
 
-PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.17.2", "author": "Rickard Längkvist"}
+PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.17.3", "author": "Rickard Längkvist"}
 
 
 class CalendarView(QWidget):
@@ -190,7 +190,7 @@ class CalendarView(QWidget):
 
 class Plugin(BasePlugin):
     NAME = "Kalender"
-    VERSION: str = "2.17.2"
+    VERSION: str = "2.17.3"
     AUTHOR = "Rickard Längkvist"
     TAB_ORDER = 0
 

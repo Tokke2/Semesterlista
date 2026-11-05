@@ -5,47 +5,16 @@ $ErrorActionPreference = 'Stop'
 $discovered = Find-Python
 if (-not $discovered -or -not (Test-Path $discovered.executable)) { throw 'Could not discover runner Python' }
 $script:commands = @()
-function Invoke-Winget([string[]]$Arguments) {
-    $script:commands += ,$Arguments
-    return 0
-}
+function Invoke-Winget([string[]]$Arguments) { $script:commands += ,$Arguments; return 0 }
 function Get-Command { return @{ Source = 'winget.exe' } }
 $python = [pscustomobject]@{ major = 3; minor = 12; executable = 'C:\Python312\python.exe' }
 $result = Update-Python $python
-if ($result.executable -ne $python.executable) { throw 'Changed Python path' }
-if ($script:commands.Count -ne 1) { throw 'Expected one upgrade' }
-if ($script:commands[0][0] -ne 'upgrade') { throw 'Must not install over existing Python' }
-if ($script:commands[0] -notcontains 'Python.Python.3.12') { throw 'Wrong series' }
-# An unrecognized winget installation must not trigger an install fallback.
-function Invoke-Winget([string[]]$Arguments) {
-    if ($Arguments[0] -eq 'install') { throw 'Unexpected installation' }
-    return 42
-}
-$result = Update-Python $python
-if ($result.executable -ne $python.executable) { throw 'Lost existing Python on failure' }
-# Install is allowed only when discovery returned no Python.
-$script:commands = @()
-function Invoke-Winget([string[]]$Arguments) { $script:commands += ,$Arguments; return 0 }
+if ($result.executable -ne $python.executable -or $script:commands.Count -ne 0) { throw 'Existing Python must never be upgraded' }
 $script:detectedPython = $python
 function Find-Python { return $script:detectedPython }
 $result = Update-Python $null
-if ($script:commands[0][0] -ne 'install') { throw 'Missing Python should be installed' }
-Write-Host 'Windows runtime bootstrap tests passed'
-
-# Weekly boundary and persistence: local Monday 08:00, including catch-up.
-if ((Get-WeeklySlot ([datetime]'2026-11-09T07:59:00')) -ne '2026-11-02') { throw 'Before Monday 8 boundary' }
-if ((Get-WeeklySlot ([datetime]'2026-11-09T08:00:00')) -ne '2026-11-09') { throw 'Monday 8 boundary' }
-if ((Get-WeeklySlot ([datetime]'2026-11-15T23:59:00')) -ne '2026-11-09') { throw 'Sunday catch-up boundary' }
-$temp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
-try {
-    if (-not (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-09T08:00:00'))) { throw 'First weekly attempt required' }
-    if (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-10T12:00:00')) { throw 'Repeated attempt in same week' }
-    if (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-16T07:59:00')) { throw 'Too early on next Monday' }
-    if (-not (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-16T08:00:00'))) { throw 'Next week should be due' }
-} finally {
-    Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
-}
-Write-Host 'Weekly schedule tests passed'
+if ($script:commands.Count -ne 1 -or $script:commands[0][0] -ne 'install') { throw 'First installation broken' }
+Write-Host 'No automatic Python upgrade tests passed'
 
 # Exercise the real GUI launcher using a harmless fake bootstrap in a path
 # with spaces and non-ASCII characters. Never update the runner's packages.
@@ -89,33 +58,42 @@ exit 23
 }
 Write-Host 'Hidden Windows launcher tests passed'
 
-# Startup must not claim a weekly slot or upgrade existing Python, even if due.
-$script:claims = 0
-$script:upgrades = @()
+# Normal start still uses the runtime with its interactive repair offer.
 $script:runtimeCalls = @()
-function Claim-WeeklyMaintenance { $script:claims++; return $true }
-function Update-Python($Python) { $script:upgrades += ,$Python; return $script:detectedPython }
 function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
     $script:runtimeCalls += ,@{ Python = $Python; Arguments = $Arguments }
     return 0
 }
 if ((Start-Runtime -Python $python) -ne 0) { throw 'Normal start failed' }
-if ($script:claims -ne 0 -or $script:upgrades.Count -ne 0) { throw 'Startup attempted weekly/Python maintenance' }
-if ($script:runtimeCalls.Count -ne 1 -or $script:runtimeCalls[0].Arguments.Count -ne 0) { throw 'Startup must use normal runtime with repair offer' }
-if ($script:runtimeCalls[0].Python.executable -ne $python.executable) { throw 'Startup changed Python' }
-if ((Start-Runtime -Python $python -Maintenance) -ne 0) { throw 'Maintenance failed' }
-if ($script:claims -ne 1 -or $script:upgrades.Count -ne 1) { throw 'Separate weekly maintenance lost' }
-if ($script:runtimeCalls[1].Arguments -notcontains '--maintenance-only') { throw 'Maintenance may not launch app' }
-# Missing Python may be installed at first app launch, but not by the task.
-$script:claims = 0
-$script:upgrades = @()
+if ($script:runtimeCalls.Count -ne 1 -or $script:runtimeCalls[0].Arguments.Count -ne 0) { throw 'Normal repair path lost' }
 $script:runtimeCalls = @()
+$script:commands = @()
+Start-Runtime -Python $python -Maintenance | Out-Null
 Start-Runtime -Python $null -Maintenance | Out-Null
-if ($script:claims -ne 0 -or $script:upgrades.Count -ne 0 -or $script:runtimeCalls.Count -ne 0) { throw 'Task installed missing Python' }
-Start-Runtime -Python $null | Out-Null
-if ($script:upgrades.Count -ne 1 -or $null -ne $script:upgrades[0]) { throw 'First installation path broken' }
-if ($script:runtimeCalls[0].Arguments.Count -ne 0) { throw 'First launch forced package maintenance' }
-# Runtime failures must propagate, not report success to the launcher.
-function Invoke-RuntimeCheck { return 43 }
-if ((Start-Runtime -Python $python) -ne 43) { throw 'Runtime error code lost' }
-Write-Host 'Startup without Python upgrade tests passed'
+if ($script:runtimeCalls.Count -ne 0 -or $script:commands.Count -ne 0) { throw 'Retired maintenance did work' }
+
+# Task removal is confined to our exact name/path/action; mock all OS changes.
+$script:task = $null
+$script:disabled = 0
+$script:deleted = 0
+function Get-ScheduledTask { return $script:task }
+function Disable-ScheduledTask { $script:disabled++ }
+function Unregister-ScheduledTask { $script:deleted++ }
+if (-not (Remove-LegacyMaintenance)) { throw 'No-task cleanup failed' }
+if ($script:deleted -ne 0) { throw 'Deleted a nonexistent task' }
+foreach ($arguments in @(
+    ('//NoLogo "' + (Join-Path $Root 'Starta Semesterlista.vbs') + '" /maintenance'),
+    ('-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $Root 'tools\start_semesterlista.ps1') + '" -MaintenanceOnly')
+)) {
+    $script:task = [pscustomobject]@{ Actions = [pscustomobject]@{ Arguments = $arguments } }
+    if (-not (Remove-LegacyMaintenance)) { throw 'Known task cleanup failed' }
+}
+if ($script:deleted -ne 2 -or $script:disabled -ne 2) { throw 'Both legacy formats must be disabled and deleted' }
+$script:task = [pscustomobject]@{ Actions = [pscustomobject]@{ Arguments = 'another app folder' } }
+Remove-LegacyMaintenance | Out-Null
+if ($script:deleted -ne 2) { throw 'Unrelated task removed' }
+$script:task = [pscustomobject]@{ Actions = [pscustomobject]@{ Arguments = $arguments } }
+function Disable-ScheduledTask { throw 'Access denied' }
+if (Remove-LegacyMaintenance) { throw 'Permission error hidden' }
+if ($script:deleted -ne 2) { throw 'Deletion attempted after disable failed' }
+Write-Host 'Retired scheduler and safe cleanup tests passed'

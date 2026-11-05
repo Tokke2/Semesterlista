@@ -152,45 +152,33 @@ Dialogen kräver inte Qt. Standardval är **Nej**.
 - Ingen ny Python, separat miljö eller automatisk installationsloop skapas.
 - Tilläggen verifieras före ett enda nytt startförsök. Misslyckande visas som
   meddelande med sökväg till `data/loggar/fel.log` och loggas beständigt.
-- Normal start gör inga extra pip-/uppdateringskontroller. Det ordinarie
-  veckounderhållet är oförändrat; interaktiv reparation är ett separat undantag.
+- Normal start gör inga extra pip-/uppdateringskontroller. Från 2.17.3 finns
+  inget automatiskt veckounderhåll; interaktiv reparation är kvar.
 - Reparation tillåts inte medan en annan start/app äger underhållslåset.
-  Schemalagt underhåll visar ingen reparationsfråga.
+  Äldre schemalagda underhållsanrop gör inget.
 - Paket delas med andra program som använder samma Python. Stäng sådana
   program innan du godkänner reparationen.
 
-### Veckokontroll av Python och tillägg på Windows
+### Windows-start utan automatiska Python-uppdateringar (2.17.3)
 
-Dubbelklicka på **`Starta Semesterlista.vbs`** för att starta **utan terminalfönster**.
-Skapa gärna en skrivbordsgenväg till den filen. Även veckounderhållet körs dolt.
-Den äldre `.cmd`-filen vidarebefordrar starten, men själva CMD-fönstret kan
-blinka till; använd därför `.vbs` direkt. Windows Script Host/VBScript måste
-vara tillgängligt för denna startfil. Direktstart av `main.pyw` fungerar också
-när Python finns och `.pyw` är kopplad till `pythonw.exe`. Appen använder **befintlig Python och dess vanliga
-paketmiljö** – ingen egen `.venv` skapas eller används. En gammal `.venv`
-från tidigare version lämnas orörd men används inte längre.
+Dubbelklicka på **`Starta Semesterlista.vbs`** för start utan terminalfönster.
+Skapa gärna en skrivbordsgenväg till filen. Den äldre `.cmd`-filen kan blinka
+till och bör inte användas om du vill undvika det. Windows Script Host/VBScript
+krävs för VBS-filen; `.pyw` kan också startas via befintlig `pythonw.exe`.
 
-- Kontroll och uppdatering sker **en gång per vecka, måndag kl. 08.00 lokal tid**.
-  Ett schema registreras för inloggad användare i Windows Schemaläggaren.
-- **Från 2.17.2 uppdateras befintlig Python aldrig som del av appstarten.**
-  Inget missat veckounderhåll tas igen i startflödet, inte heller första gången.
-  Starten kör inga automatiska pip-/winget-uppdateringar. Erbjudandet att
-  installera/reparera saknade tillägg finns kvar och kräver ditt godkännande.
-- Schemaläggaren kan köra ett missat veckotillfälle separat. Om appen redan
-  körs avstår underhållet för att skydda dess paket; nästa möjlighet blir ett
-  senare underhållstillfälle, inte nästa appstart. Om schemat inte kan
-  registreras startar appen ändå utan uppdatering.
-- Försöket sparas i `data/runtime-weekly.json`, även vid nätfel, så upprepade
-  starter inte orsakar nya uppdateringsförsök samma vecka.
-- Bara det separata underhållet får uppgradera befintlig Python med winget
-  inom samma versionsserie. Vid appstart får en första Python-installation
-  fortfarande göras om Python helt saknas (Python 3.14), aldrig som en extra kopia.
-- PySide6 och reportlab uppdateras via den befintliga Python-installationens
-  pip. PyMuPDF och svglib uppdateras om de redan finns. **Det kan påverka
-  andra program som använder samma Python och tillägg.**
-- winget krävs för Python-uppdatering. Behörighets-/nätfel rapporteras;
-  befintlig Python behålls. Paketunderhåll loggas i `data/loggar/app.log`
-  och fel i `fel.log`. Linux/macOS behåller manuell beroendehantering.
+- **Inget veckoschema registreras längre.** Befintlig Python uppdateras inte
+  automatiskt, vare sig vid start eller på måndagar kl. 08.
+- Vid start av den nya versionen avaktiveras och tas det gamla schemat
+  `Semesterlista - veckounderhall` bort om det pekar på den här installationen.
+  Andra scheman/installationer rörs inte. Om behörighet saknas visas en varning
+  om att avaktivera det manuellt i Schemaläggaren.
+- Gamla `-MaintenanceOnly`-anrop avslutas utan Python-/paketunderhåll, även
+  om schemat inte kunde tas bort.
+- Erbjudandet att installera/reparera saknade tillägg är kvar, endast efter Ja.
+  Samma befintliga Python används, utan separat `.venv`.
+- Första installation av Python får fortfarande göras om Python helt saknas,
+  aldrig som extra kopia. En gammal `.venv` lämnas orörd men används inte.
+- Felloggen ligger kvar i `data/loggar/fel.log`. Ingen automatisk felrensning.
 
 ### Uppdatera
 

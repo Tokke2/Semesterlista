@@ -3117,3 +3117,21 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Windows-regressioner verifierar normalstart med förfallen veckokontroll,
   schemalagd uppdatering, första installation, inga underhållsflaggor vid start
   samt vidarebefordrad runtime-felkod. Befintliga reparationstester är kvar.
+
+
+## 42. Avveckla schemalagt Python-underhåll (v2.17.3)
+
+- Ingen registrering av veckoschema vid start. Uppgradering av befintlig Python
+  har också tagits bort ur Windows-startprogrammets hjälpfunktion.
+- Remove-LegacyMaintenance avaktiverar/raderar endast det gamla namngivna
+  schemat i rotmappen när dess enda åtgärd exakt matchar denna installation.
+  Både tidigare PowerShell-format och VBS-format känns igen.
+- Borttagningsfel ger en varning med instruktion för manuell avaktivering.
+  Gamla -MaintenanceOnly-anrop avslutas före Python-sökning och gör inget,
+  även om borttagningen misslyckas. Andra appars scheman lämnas orörda.
+- Start-Runtime -Maintenance är också verkningslös. Vanlig start och dess
+  erbjudande om godkänd paketinstallation/reparation behålls.
+- Ingen uppdatering av befintlig Python; första installation vid helt saknad
+  Python är fortfarande tillåten. Ingen separat miljö.
+- Windows-tester verifierar borttagning av båda gamla formaten, saknat schema,
+  annan målsökväg, behörighetsfel, neutraliserat underhåll och normalstart.

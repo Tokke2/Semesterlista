@@ -59,77 +59,38 @@ function Invoke-Winget([string[]]$Arguments) {
 }
 
 function Update-Python($Python) {
+    # Compatibility name: never upgrade an existing interpreter.
+    if ($Python) { return $Python }
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if (-not $Python) {
-        if (-not $winget) { throw 'Python saknas. Installera Python från python.org eller installera Windows App Installer (winget).' }
-        # Supported stable baseline, not preview/nightly. Only this branch installs.
-        $code = Invoke-Winget -Arguments @('install', '--id', 'Python.Python.3.14', '--exact',
-            '--source', 'winget', '--scope', 'user', '--silent',
-            '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
-        if ($code -ne 0) { throw "Python kunde inte installeras (kod $code)." }
-        $Python = Find-Python
-        if (-not $Python) { throw 'Python installerades men hittades inte. Starta om startprogrammet.' }
-        return $Python
-    }
-    if ($Python.major -ne 3 -or $Python.minor -lt 10) {
-        throw 'Befintlig Python är för gammal (minst 3.10 krävs). Uppgradera den manuellt; ingen extra kopia installeras.'
-    }
-    if ($winget) {
-        try {
-            $id = "Python.Python.$($Python.major).$($Python.minor)"
-            # Upgrade ONLY the installed series. Never fall back to install.
-            $code = Invoke-Winget -Arguments @('upgrade', '--id', $id, '--exact', '--source', 'winget',
-                '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
-            if ($code -ne 0) { Write-Host "Ingen Python-uppgradering utförd (winget-kod $code). Befintlig Python behålls." }
-        } catch { Write-Warning "Python kunde inte uppdateras: $_. Befintlig installation behålls." }
-    } else {
-        Write-Warning 'winget saknas; Python-versionen kan inte uppdateras automatiskt.'
-    }
+    if (-not $winget) { throw 'Python saknas. Installera Python från python.org eller Windows App Installer (winget).' }
+    $code = Invoke-Winget -Arguments @('install', '--id', 'Python.Python.3.14', '--exact',
+        '--source', 'winget', '--scope', 'user', '--silent',
+        '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
+    if ($code -ne 0) { throw "Python kunde inte installeras (kod $code)." }
+    $Python = Find-Python
+    if (-not $Python) { throw 'Python installerades men hittades inte. Starta om startprogrammet.' }
     return $Python
 }
 
-function Get-WeeklySlot([datetime]$Now = (Get-Date)) {
-    $days = (([int]$Now.DayOfWeek + 6) % 7)
-    $slot = $Now.Date.AddDays(-$days).AddHours(8)
-    if ($Now -lt $slot) { $slot = $slot.AddDays(-7) }
-    return $slot.ToString('yyyy-MM-dd')
-}
-
-function Claim-WeeklyMaintenance([string]$Directory, [datetime]$Now = (Get-Date)) {
-    # Called only while owning the mutex. Record attempts, also when offline,
-    # to avoid repeating update requests on every subsequent application start.
-    $state = Join-Path $Directory 'data\runtime-weekly.json'
-    $slot = Get-WeeklySlot $Now
-    if (Test-Path $state) {
-        try {
-            $saved = Get-Content $state -Raw | ConvertFrom-Json
-            if ($saved.slot -ge $slot) { return $false }
-        } catch { Write-Warning 'Veckostatus kunde inte läsas; en ny kontroll görs.' }
-    }
-    New-Item (Split-Path $state) -ItemType Directory -Force | Out-Null
-    $temporary = "$state.tmp"
-    @{ slot = $slot; attempted_at = $Now.ToString('o') } | ConvertTo-Json | Set-Content $temporary -Encoding UTF8
-    Move-Item $temporary $state -Force
-    return $true
-}
-
-function Register-WeeklyMaintenance {
-    # Current user, no elevation. Maintenance is separate from app startup.
-    # Never stop a running app to update its loaded libraries.
+function Remove-LegacyMaintenance {
+    # Only remove our known task when its action targets THIS installation.
+    # Never delete unrelated tasks, or a task belonging to another app folder.
     try {
-        $scriptPath = Join-Path $Root 'Starta Semesterlista.vbs'
-        $arguments = '//NoLogo "' + $scriptPath + '" /maintenance'
-        $hostPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
         $name = 'Semesterlista - veckounderhall'
-        $existing = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
-        if ($existing -and $existing.Actions.Arguments -eq $arguments -and $existing.Actions.Execute -eq $hostPath) { return }
-        $action = New-ScheduledTaskAction -Execute $hostPath -Argument $arguments
-        $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '08:00'
-        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
-        $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-        Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
-    } catch { Write-Warning "Veckoschemat kunde inte registreras. Appen startar utan uppdatering. $_" }
+        $existing = Get-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction SilentlyContinue
+        if (-not $existing) { return $true }
+        $knownArguments = @(
+            ('//NoLogo "' + (Join-Path $Root 'Starta Semesterlista.vbs') + '" /maintenance'),
+            ('-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $Root 'tools\start_semesterlista.ps1') + '" -MaintenanceOnly')
+        )
+        if (@($existing.Actions).Count -ne 1 -or $existing.Actions.Arguments -notin $knownArguments) { return $true }
+        Disable-ScheduledTask -TaskName $name -TaskPath '\' -ErrorAction Stop | Out-Null
+        Unregister-ScheduledTask -TaskName $name -TaskPath '\' -Confirm:$false -ErrorAction Stop
+        return $true
+    } catch {
+        Write-Warning "Det gamla veckoschemat kunde inte tas bort. Avaktivera 'Semesterlista - veckounderhall' i Schemaläggaren. $_"
+        return $false
+    }
 }
 
 function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
@@ -138,15 +99,9 @@ function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
 }
 
 function Start-Runtime($Python, [switch]$Maintenance) {
-    if ($Maintenance) {
-        # Only the separate maintenance invocation may claim a weekly slot
-        # and upgrade an existing interpreter. Never install Python in a task.
-        if (-not $Python) { return 0 }
-        if (-not (Claim-WeeklyMaintenance $Root)) { return 0 }
-        Write-Host 'Veckokontroll: uppdaterar befintlig Python och dess tillägg...'
-        $Python = Update-Python $Python
-        return (Invoke-RuntimeCheck -Python $Python -Arguments @('--maintenance-only'))
-    }
+    # Old task/manual maintenance invocations must do nothing, even if task
+    # removal was denied. No discovery, upgrades or package maintenance.
+    if ($Maintenance) { return 0 }
     # First installation remains possible only if no Python exists at all.
     # No weekly catch-up and no upgrade of existing Python during app startup.
     if (-not $Python) { $Python = Update-Python $null }
@@ -154,7 +109,16 @@ function Start-Runtime($Python, [switch]$Maintenance) {
 }
 
 if ($FunctionsOnly) { return }
-if (-not $MaintenanceOnly) { Register-WeeklyMaintenance }
+$removed = Remove-LegacyMaintenance
+if ($MaintenanceOnly) { exit 0 }
+if (-not $removed) {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show(
+            "Det gamla veckoschemat kunde inte tas bort. Avaktivera 'Semesterlista - veckounderhall' i Schemaläggaren. Appen kan ändå startas och gamla underhållsanrop gör inget.",
+            'Semesterlista') | Out-Null
+    } catch { }
+}
 $mutex = New-Object System.Threading.Mutex($false, 'Local\SemesterlistaRuntimeMaintenance')
 $owned = $false
 try {
