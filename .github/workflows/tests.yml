@@ -46,5 +46,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Testa startprogrammets Python-val utan installation
-        shell: pwsh
+        shell: powershell
         run: ./tests/test_runtime_windows.ps1

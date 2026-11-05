@@ -1,6 +1,9 @@
 ﻿# Run on Windows CI without upgrading the runner's Python.
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/../tools/start_semesterlista.ps1" -FunctionsOnly
+# Exercise real discovery against the runner, without running winget.
+$discovered = Find-Python
+if (-not $discovered -or -not (Test-Path $discovered.executable)) { throw 'Could not discover runner Python' }
 $script:commands = @()
 function Invoke-Winget([string[]]$Arguments) {
     $script:commands += ,$Arguments

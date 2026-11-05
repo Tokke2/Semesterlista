@@ -25,7 +25,7 @@ function Find-Python {
                        'HKLM:\Software\WOW6432Node\Python\PythonCore')) {
         foreach ($version in @(Get-ChildItem $key -ErrorAction SilentlyContinue)) {
             $install = Get-ItemProperty ($version.PSPath + '\InstallPath') -ErrorAction SilentlyContinue
-            if ($install) {
+            if ($install -and $install.'(default)') {
                 $exe = Join-Path $install.'(default)' 'python.exe'
                 if (Test-Path $exe) { $candidates += ,@($exe) }
             }
@@ -109,6 +109,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Semesterlista kunde inte startas. Se data/loggar/app.log.' }
 } catch {
     Write-Host "Startfel: $_" -ForegroundColor Red
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show("Startfel: $_", 'Semesterlista') | Out-Null
+    } catch { }
     exit 1
 } finally {
     if ($owned) { $mutex.ReleaseMutex() }
