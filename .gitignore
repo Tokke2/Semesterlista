@@ -29,3 +29,6 @@ Hyresgäster.txt
 data/*.log.*
 
 data/backup/
+
+# Local weekly maintenance state
+data/runtime-weekly.json

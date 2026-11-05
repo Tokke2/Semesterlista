@@ -70,28 +70,30 @@ python main.pyw
 Kräver **Python 3.10+** och beroendena i [`requirements.txt`](requirements.txt)
 (PySide6, reportlab).
 
-### Automatisk startkontroll på Windows
+### Veckokontroll av Python och tillägg på Windows
 
-Starta med **`Starta Semesterlista.cmd`** (fungerar även när Python saknas).
-Direktstart av `main.pyw` går också genom kontrollen när Python redan finns.
+Starta med **`Starta Semesterlista.cmd`**. Direktstart av `main.pyw` fungerar
+också när Python finns. Appen använder **befintlig Python och dess vanliga
+paketmiljö** – ingen egen `.venv` skapas eller används. En gammal `.venv`
+från tidigare version lämnas orörd men används inte längre.
 
-- Python hittas via Python Launcher, PATH eller Windows-registret.
-- Befintlig Python uppgraderas med winget **inom samma versionsserie**.
-  Ingen extra Python-installation görs när en befintlig hittas. Övergång
-  exempelvis 3.12 → 3.14 görs inte automatiskt, eftersom den normalt skapar
-  en separat installation. Saknas Python installeras stabila Python 3.14.
-- PySide6 och reportlab kontrolleras/uppdateras vid varje ny appstart i
-  appens **`.venv`**, som återanvänds. PyMuPDF och svglib uppdateras också
-  om de redan finns. Andra programs Python-tillägg ändras inte.
-- winget (Windows App Installer) krävs för automatisk Python-installation
-  och uppgradering. Saknas winget används befintlig Python med varning.
-- Utan nät försöker appen använda befintliga fungerande tillägg. Trasig
-  miljö stoppar starten med felmeddelande; den skrivs inte över automatiskt.
-- Startkontrollen kan ta tid och visar ett konsolfönster. Paketkontrollen
-  loggas i `data/loggar/app.log`, fel även i `fel.log`.
-- Om appen redan körs ändras inte dess laddade tillägg; befintligt fönster
-  visas i stället. Linux/macOS behåller manuell beroendehantering.
-
+- Kontroll och uppdatering sker **en gång per vecka, måndag kl. 08.00 lokal tid**.
+  Ett schema registreras för inloggad användare i Windows Schemaläggaren.
+- Om tiden missas, eller schemat inte kan registreras, görs veckans försök
+  vid nästa appstart. Vanliga starter samma vecka gör inga pip-/winget-kontroller.
+  Första användningen räknas som en missad veckokontroll och körs direkt.
+- Om appen körs vid schematiden skjuts kontrollen upp till nästa start,
+  så att tillägg inte byts medan appen använder dem.
+- Försöket sparas i `data/runtime-weekly.json`, även vid nätfel, så upprepade
+  starter inte orsakar nya uppdateringsförsök samma vecka.
+- Befintlig Python uppgraderas med winget inom samma versionsserie. En ny
+  Python-installation görs bara om Python saknas (Python 3.14).
+- PySide6 och reportlab uppdateras via den befintliga Python-installationens
+  pip. PyMuPDF och svglib uppdateras om de redan finns. **Det kan påverka
+  andra program som använder samma Python och tillägg.**
+- winget krävs för Python-uppdatering. Behörighets-/nätfel rapporteras;
+  befintlig Python behålls. Paketunderhåll loggas i `data/loggar/app.log`
+  och fel i `fel.log`. Linux/macOS behåller manuell beroendehantering.
 
 ### Uppdatera
 

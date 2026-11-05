@@ -75,7 +75,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.13.0"
+MODULE_VERSION: str = "2.13.1"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark")

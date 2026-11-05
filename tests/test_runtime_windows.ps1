@@ -31,3 +31,18 @@ function Find-Python { return $script:detectedPython }
 $result = Update-Python $null
 if ($script:commands[0][0] -ne 'install') { throw 'Missing Python should be installed' }
 Write-Host 'Windows runtime bootstrap tests passed'
+
+# Weekly boundary and persistence: local Monday 08:00, including catch-up.
+if ((Get-WeeklySlot ([datetime]'2026-11-09T07:59:00')) -ne '2026-11-02') { throw 'Before Monday 8 boundary' }
+if ((Get-WeeklySlot ([datetime]'2026-11-09T08:00:00')) -ne '2026-11-09') { throw 'Monday 8 boundary' }
+if ((Get-WeeklySlot ([datetime]'2026-11-15T23:59:00')) -ne '2026-11-09') { throw 'Sunday catch-up boundary' }
+$temp = Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
+try {
+    if (-not (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-09T08:00:00'))) { throw 'First weekly attempt required' }
+    if (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-10T12:00:00')) { throw 'Repeated attempt in same week' }
+    if (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-16T07:59:00')) { throw 'Too early on next Monday' }
+    if (-not (Claim-WeeklyMaintenance $temp ([datetime]'2026-11-16T08:00:00'))) { throw 'Next week should be due' }
+} finally {
+    Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Host 'Weekly schedule tests passed'

@@ -1,7 +1,6 @@
-"""Maintain only this application's venv, before importing Qt/reportlab."""
+"""Weekly package maintenance in the existing Python installation."""
 from __future__ import annotations
 
-import json
 from importlib import metadata
 import logging
 import os
@@ -35,18 +34,10 @@ def run(command, timeout=240):
 
 
 def prepare_environment(root=ROOT):
-    environment = root / ".venv"
-    executable = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    if not executable.exists():
-        if environment.exists():
-            raise RuntimeError(".venv finns men är skadad. Reparera den innan appen startas.")
-        run([sys.executable, "-m", "venv", str(environment)])
-    # No system-wide pip changes, and no recreation of an existing environment.
+    executable = Path(sys.executable)
+    # The launcher selects the base interpreter, never an application venv.
     try:
-        installed = json.loads(run([str(executable), "-m", "pip", "list", "--format=json"]))
-        names = {item["name"].lower() for item in installed}
-        optional = sorted(set(available_optional_packages()) |
-                          {name for name in OPTIONAL_PACKAGES if name in names})
+        optional = available_optional_packages()
         run([str(executable), "-m", "pip", "install", "--upgrade",
              "--disable-pip-version-check", "--no-input", "--timeout", "15", "--retries", "1",
              "-r", str(root / "requirements.txt"), *optional])
@@ -64,7 +55,11 @@ def main():
     from core.logging_setup import setup_logging
     setup_logging(ROOT)
     try:
-        executable = prepare_environment()
+        executable = Path(sys.executable)
+        if "--maintain" in sys.argv or "--maintenance-only" in sys.argv:
+            executable = prepare_environment()
+        if "--maintenance-only" in sys.argv:
+            return 0
         env = dict(os.environ, SEMESTERLISTA_RUNTIME_READY="1")
         if os.name == "nt":
             executable = executable.with_name("pythonw.exe")

@@ -2930,26 +2930,26 @@ Regressionstester täcker Ja, Nej och utebliven fråga när installation
 inte är möjlig. Testsviten omfattar nu 388 tester.
 
 
-## 32. Python och paket före Windows-start (v2.13.0)
+## 32. Veckounderhåll i befintlig Python (v2.13.1)
 
-Starta Semesterlista.cmd kör tools/start_semesterlista.ps1 innan Qt laddas.
-Direkt Windows-start av main.pyw dirigeras till samma flöde. Startprogrammet
-söker befintlig Python via py, PATH och PythonCore-registernycklar. En trasig
-befintlig installation ger fel, aldrig en extra installation som reserv.
-Winget upgrade använder exakt ID för befintlig major/minor-serie. Detta
-uppdaterar inom serien, inte till ny minor/major. Bara när ingen Python
-hittas tillåts winget install av stabila 3.14. Saknad winget/offline behåller
-befintlig Python. Uppgradering kan kräva rättigheter eller manuell åtgärd.
+Ersätter startunderhållet i v2.13.0. Ingen egen virtuell miljö skapas eller
+används. Befintlig Python hittas via launcher/PATH/Store/register och dess
+basinterpreter används. Gamla .venv-mappar lämnas orörda men väljs inte.
+Python uppgraderas bara inom sin serie via winget; installation är endast
+tillåten när Python saknas. Paket uppdateras med samma interpreters pip.
+Detta kan påverka andra program som använder samma paketmiljö.
 
-Runtime_check skapar .venv endast om den saknas, uppdaterar requirements.txt
-med venvens egen pip och kontrollerar pip check samt Qt/reportlab-import.
-Redan installerade valfria PyMuPDF/svglib bevaras och uppdateras. Befintlig
-trasig venv ersätts inte. Nätfel får passera endast om miljön är fungerande.
-En Windows-mutex hålls under körningen: andra starter ändrar inte laddade
-paket utan skickas till appens vanliga single-instance-hantering.
+Windows Schemaläggaren får uppgiften "Semesterlista - veckounderhall",
+för inloggad användare utan begärd elevation, måndag 08:00 lokal tid och
+StartWhenAvailable. Registrering sker vid första start efter uppdatering.
+Schemat kör underhåll utan att öppna appen. Missad körning/nekad registrering
+hanteras vid nästa appstart. Vanliga starter gör inget paket-/versionsunderhåll.
+Första användningen utan veckostatus kör ett försök direkt.
 
-Loggning använder ordinarie loggmapp/dagarkiv/fellogg. Kontrollen gäller
-Windows; på andra system används befintligt manuellt installationsflöde.
-Tester: sex enhetstester för venv/uppdatering/offline/fel samt Windows-CI
-med mockad winget för befintlig, saknad och ej hanterad Python. Ingen riktig
-systemuppgradering utförs i testmiljön.
+Mutex skyddar appen: om den är igång skjuts underhåll upp till nästa start.
+Veckans försök sparas atomiskt i data/runtime-weekly.json före underhåll,
+även nätfel räknas som ett försök. Veckogränsen är måndag 08:00, inte midnatt.
+Ordinarie appuppdatering via GitHub påverkas inte av Python-schemat.
+
+Tester täcker delad interpreter, ingen venv, normal start utan paketkontroll,
+schemakörning utan appstart, offline/fel och veckogränser/persistens i Windows.

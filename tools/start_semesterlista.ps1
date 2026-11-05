@@ -1,12 +1,10 @@
 ﻿# Windows entry point: runs before any application packages are imported.
-param([switch]$FunctionsOnly)
+param([switch]$FunctionsOnly, [switch]$MaintenanceOnly)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 
 function Find-Python {
     $candidates = @()
-    $venvPython = Join-Path $Root '.venv\Scripts\python.exe'
-    if (Test-Path $venvPython) { $candidates += ,@($venvPython) }
     $storePackages = @(Get-AppxPackage -Name 'PythonSoftwareFoundation.Python.*' -ErrorAction SilentlyContinue)
     foreach ($package in $storePackages) {
         $storePython = Join-Path $package.InstallLocation 'python.exe'
@@ -90,29 +88,86 @@ function Update-Python($Python) {
     return $Python
 }
 
+function Get-WeeklySlot([datetime]$Now = (Get-Date)) {
+    $days = (([int]$Now.DayOfWeek + 6) % 7)
+    $slot = $Now.Date.AddDays(-$days).AddHours(8)
+    if ($Now -lt $slot) { $slot = $slot.AddDays(-7) }
+    return $slot.ToString('yyyy-MM-dd')
+}
+
+function Claim-WeeklyMaintenance([string]$Directory, [datetime]$Now = (Get-Date)) {
+    # Called only while owning the mutex. Record attempts, also when offline,
+    # to avoid repeating update requests on every subsequent application start.
+    $state = Join-Path $Directory 'data\runtime-weekly.json'
+    $slot = Get-WeeklySlot $Now
+    if (Test-Path $state) {
+        try {
+            $saved = Get-Content $state -Raw | ConvertFrom-Json
+            if ($saved.slot -ge $slot) { return $false }
+        } catch { Write-Warning 'Veckostatus kunde inte läsas; en ny kontroll görs.' }
+    }
+    New-Item (Split-Path $state) -ItemType Directory -Force | Out-Null
+    $temporary = "$state.tmp"
+    @{ slot = $slot; attempted_at = $Now.ToString('o') } | ConvertTo-Json | Set-Content $temporary -Encoding UTF8
+    Move-Item $temporary $state -Force
+    return $true
+}
+
+function Register-WeeklyMaintenance {
+    # Current user, no elevation. If registration is denied, startup catch-up
+    # still works. Never stop a running app to update its loaded libraries.
+    try {
+        $scriptPath = Join-Path $PSScriptRoot 'start_semesterlista.ps1'
+        $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $scriptPath + '" -MaintenanceOnly'
+        $name = 'Semesterlista - veckounderhall'
+        $existing = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
+        if ($existing -and $existing.Actions.Arguments -eq $arguments) { return }
+        $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
+        $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '08:00'
+        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
+        $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+        Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+    } catch { Write-Warning "Veckoschemat kunde inte registreras. Kontroll sker vid nästa appstart efter måndag 08:00. $_" }
+}
+
 if ($FunctionsOnly) { return }
+if (-not $MaintenanceOnly) { Register-WeeklyMaintenance }
 $mutex = New-Object System.Threading.Mutex($false, 'Local\SemesterlistaRuntimeMaintenance')
 $owned = $false
 try {
     try { $owned = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $owned = $true }
+    $python = Find-Python
     if (-not $owned) {
-        # An instance is running: do not modify packages it has loaded.
-        $existing = Join-Path $Root '.venv\Scripts\pythonw.exe'
-        if (-not (Test-Path $existing)) { throw 'En startkontroll pågår redan. Försök igen när den är klar.' }
+        if ($MaintenanceOnly) { exit 0 }
+        if (-not $python) { throw 'En startkontroll pågår redan. Försök igen när den är klar.' }
         $env:SEMESTERLISTA_RUNTIME_READY = '1'
-        & $existing (Join-Path $Root 'main.pyw')
+        & $python.executable (Join-Path $Root 'main.pyw')
         exit 0
     }
-    Write-Host 'Kontrollerar Python och Semesterlistas tillägg...'
-    $python = Update-Python (Find-Python)
-    & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py')
-    if ($LASTEXITCODE -ne 0) { throw 'Semesterlista kunde inte startas. Se data/loggar/app.log.' }
+    # A first installation is only needed when Python is genuinely missing.
+    if (-not $python) { $python = Update-Python $null }
+    $due = Claim-WeeklyMaintenance $Root
+    if ($due) {
+        Write-Host 'Veckokontroll: uppdaterar befintlig Python och dess tillägg...'
+        $python = Update-Python $python
+    }
+    if ($MaintenanceOnly) {
+        if ($due) { & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --maintenance-only }
+    } elseif ($due) {
+        & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --maintain
+    } else {
+        & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py')
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'Semesterlista kunde inte startas/uppdateras. Se data/loggar/app.log.' }
 } catch {
     Write-Host "Startfel: $_" -ForegroundColor Red
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        [System.Windows.Forms.MessageBox]::Show("Startfel: $_", 'Semesterlista') | Out-Null
-    } catch { }
+    if (-not $MaintenanceOnly) {
+        try {
+            Add-Type -AssemblyName System.Windows.Forms
+            [System.Windows.Forms.MessageBox]::Show("Startfel: $_", 'Semesterlista') | Out-Null
+        } catch { }
+    }
     exit 1
 } finally {
     if ($owned) { $mutex.ReleaseMutex() }
