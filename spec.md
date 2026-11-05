@@ -3021,3 +3021,17 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Regressionstester täcker veckostart, skottår, region, lokala bilder i samtliga
   tre exporttyper, 1/2/3-månaderssidantal, gråskalepixlar, avbruten/misslyckad
   export, kompakt knapplayout och högkontrast.
+
+
+## 36. Kalender alltid liggande A4 och full utskriftsyta (v2.15.1)
+
+- Endast den fristående kalendern ändras: alltid liggande A4, även en månad.
+- Sidans användbara höjd fördelas på de månader som faktiskt finns på sidan.
+  En sista sida med färre månader fyller också ytan.
+- Kalenderns veckorader utökas till kvarvarande höjd efter rubrik, säsongsband
+  och eventuellt faktiskt visad bild. Ingen tom bildyta reserveras.
+- Långa helgdagsnamn behåller sina naturliga minimihöjder. Befintlig
+  krympning/läsbarhetsvarning finns kvar om innehållet inte ryms.
+- Semesterlista och Fordon behåller stående A4 för en månad och liggande för flera.
+- PDF-regressioner verifierar orientering, sidantal, tabellernas bredd/höjd,
+  sista sidan och skillnaden i tillgängligt utrymme med/utan faktisk bild.

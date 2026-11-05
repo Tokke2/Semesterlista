@@ -34,7 +34,9 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 - Den fristående kalendern börjar alltid på måndag och visar ISO-veckonummer
   samt svenska eller amerikanska helgdagsnamn enligt vald region.
   Markera vilka månader som ska exporteras. Ett helår blir 12, 6 eller 4 sidor
-  med 1, 2 respektive 3 månader per blad; en månad stående A4, fler liggande.
+  med 1, 2 respektive 3 månader per blad. Kalendern använder alltid liggande A4
+  (från 2.15.1) och fyller utskriftsytan. Ingen yta reserveras för bilder som
+  inte visas; utan vald bild får kalendern hela den tillgängliga ytan.
   Varningen för text mindre än 6 punkter finns kvar även med säsongsbilder.
 
 ## Funktioner
@@ -52,7 +54,7 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 - **Anpassade inställningar:** fönstret anpassar startstorleken till skärmens arbetsyta.
   Flikarna kan rullas på mindre skärmar; Spara och Avbryt ligger utanför rullningen.
 
-- **PDF-export** med färgkodning (helgdagar, lördagar, halvdagar, veckonummer),
+- **PDF-export för Semesterlista och Fordon** med färgkodning (helgdagar, lördagar, halvdagar, veckonummer),
   valbar startmånad (även över årsskifte) och 1, 2 eller 3 månader per blad.
   **1 månad = stående A4; 2–3 = liggande A4.** Valda månader hålls på samma
   blad och skalas ned vid behov; mycket långa listor får mindre text.

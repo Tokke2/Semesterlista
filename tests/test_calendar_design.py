@@ -7,6 +7,16 @@ from core.calendar_data import month_weeks, year_days, season
 from test_pdf_layout import PdfLayoutTestBase, _media_box
 
 
+def _calendar_grids(page):
+    import fitz
+    strokes = [d['rect'] for d in page.get_drawings() if d['type'] == 's']
+    horizontal = [r for r in strokes if r.width > 500]
+    left = min(r.x0 for r in horizontal)
+    width = max(r.width for r in horizontal)
+    return [fitz.Rect(r.x0, r.y0, r.x0 + width, r.y1) for r in strokes
+            if r.height > 30 and r.width < 1 and abs(r.x0 - left) < 1]
+
+
 class CalendarModelTests(unittest.TestCase):
     def test_monday_first_leap_year(self):
         weeks = month_weeks(2024, 2)
@@ -44,7 +54,39 @@ class SeasonalExportTests(PdfLayoutTestBase):
             self.assertTrue(export_calendar(path, 2026, range(1, 13), per_page, 'sv', self._images()))
             (width, height), count = _media_box(path)
             self.assertEqual(count, 12 // per_page)
-            self.assertEqual(width > height, per_page > 1)
+            self.assertGreater(width, height)
+
+    @unittest.skipUnless(importlib.util.find_spec('fitz'), 'PyMuPDF unavailable')
+    def test_calendar_without_images_fills_landscape_print_area(self):
+        import fitz
+        from core.calendar_pdf import export_calendar
+        for per_page in (1, 2, 3):
+            path = self.outdir / f'full-{per_page}.pdf'
+            export_calendar(path, 2026, range(1, 13), per_page, 'sv', {'seasonal_pdf': True})
+            with fitz.open(path) as doc:
+                self.assertEqual(len(doc), 12 // per_page)
+                for page in doc:
+                    self.assertGreater(page.rect.width, page.rect.height)
+                    grids = _calendar_grids(page)
+                    self.assertEqual(len(grids), per_page)
+                    self.assertGreater(min(r.width for r in grids), page.rect.width * .88)
+                    self.assertGreater(max(r.y1 for r in grids), page.rect.height - 65)
+
+    @unittest.skipUnless(importlib.util.find_spec('fitz'), 'PyMuPDF unavailable')
+    def test_calendar_only_actual_images_take_space_and_partial_page_expands(self):
+        import fitz
+        from core.calendar_pdf import export_calendar
+        settings = self._images()
+        heights = []
+        for options in ({'seasonal_pdf': True}, settings):
+            path = self.outdir / 'space.pdf'
+            export_calendar(path, 2026, [1], 3, 'sv', options)
+            with fitz.open(path) as doc:
+                grids = _calendar_grids(doc[0])
+                self.assertEqual(len(grids), 1)
+                heights.append(grids[0].height)
+        self.assertGreater(heights[0], 400)
+        self.assertGreater(heights[0] - heights[1], 45)
 
     def test_roster_vehicle_images_keep_all_months(self):
         self.plugin.settings.update(self._images())

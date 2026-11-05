@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.15.0"
+MODULE_VERSION: str = "2.15.1"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -168,7 +168,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "theme.contrast.name": "Hög kontrast",
         "calendar.tab": "Kalender",
         "calendar.title": "Kalender",
-        "calendar.description": "Fristående kalender med helgdagar och lokala bilder. Inga anställda eller semesterperioder. Veckan börjar alltid på måndag.",
+        "calendar.description": "Fristående kalender med helgdagar och lokala bilder. Inga anställda eller semesterperioder. Veckan börjar alltid på måndag. PDF: liggande A4.",
         "calendar.year": "År:",
         "calendar.per_page": "Månader per PDF-blad:",
         "calendar.region": "Helgdagsregion:",
@@ -661,7 +661,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "theme.contrast.name": "High contrast",
         "calendar.tab": "Calendar",
         "calendar.title": "Calendar",
-        "calendar.description": "Standalone calendar with holidays and local images. No employees or vacation periods. Weeks always start on Monday.",
+        "calendar.description": "Standalone calendar with holidays and local images. No employees or vacation periods. Weeks always start on Monday. PDF: landscape A4.",
         "calendar.year": "Year:",
         "calendar.per_page": "Months per PDF sheet:",
         "calendar.region": "Holiday region:",

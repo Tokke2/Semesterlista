@@ -21,19 +21,28 @@ def export_calendar(path, year, months, per_page, region, settings):
     months = sorted(set(months))
     if not months or any(month not in range(1, 13) for month in months) or per_page not in (1, 2, 3):
         raise ValueError(i18n.t("calendar.select_months"))
-    pagesize = A4 if per_page == 1 else landscape(A4)
+    pagesize = landscape(A4)
     width = pagesize[0] - 24 * mm - 12
     height = pagesize[1] - 28 * mm - 20
     title = ParagraphStyle("month", fontSize=15, leading=18, spaceAfter=5, alignment=1)
-    cell = ParagraphStyle("day", fontSize=8, leading=9)
+    cell = ParagraphStyle("day", fontSize=14 if per_page == 1 else 8,
+                          leading=16 if per_page == 1 else 9)
     small = ParagraphStyle("name", fontSize=7, leading=8)
     story, sizes = [], []
     measuring = Canvas(BytesIO(), pagesize=pagesize)
     for offset in range(0, len(months), per_page):
         content = []
-        for month in months[offset:offset + per_page]:
-            content.extend(seasonal_header(month, settings, width))
-            content.append(Paragraph(f"{escape(i18n.month_name(month))} {year}", title))
+        page_months = months[offset:offset + per_page]
+        gap = 8
+        slot_height = (height - gap * (len(page_months) - 1)) / len(page_months)
+        for index, month in enumerate(page_months):
+            header = seasonal_header(month, settings, width)
+            header.append(Paragraph(f"{escape(i18n.month_name(month))} {year}", title))
+            # Only actual header content consumes space: no empty image slot.
+            header_height = sum(flow.wrapOn(measuring, width, height)[1]
+                                + flow.getSpaceBefore() + flow.getSpaceAfter()
+                                for flow in header)
+            content.extend(header)
             data = [[i18n.t("calendar.week")] + list(i18n.weekday_short_names())]
             commands = [("GRID", (0, 0), (-1, -1), .35, colors.grey),
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -56,9 +65,18 @@ def export_calendar(path, year, months, per_page, region, settings):
                 data.append(cells)
             table = Table(data, colWidths=[32] + [(width - 32) / 7] * 7, rowHeights=[18] + [None] * (len(data) - 1))
             # Let long translated holiday names expand rows rather than clip them.
-            commands += [("TOPPADDING", (0, 1), (-1, -1), 5), ("BOTTOMPADDING", (0, 1), (-1, -1), 12)]
+            commands += [("TOPPADDING", (0, 1), (-1, -1), 2), ("BOTTOMPADDING", (0, 1), (-1, -1), 2)]
             table.setStyle(TableStyle(commands))
-            content.extend([table, Spacer(1, 10)])
+            _, natural_height = table.wrapOn(measuring, width, height)
+            extra = max(0, slot_height - header_height - natural_height)
+            row_heights = [table._rowHeights[0]] + [
+                row_height + extra / (len(data) - 1) for row_height in table._rowHeights[1:]]
+            table = Table(data, colWidths=[32] + [(width - 32) / 7] * 7,
+                          rowHeights=row_heights)
+            table.setStyle(TableStyle(commands))
+            content.append(table)
+            if index + 1 < len(page_months):
+                content.append(Spacer(1, gap))
         group = KeepInFrame(width, height, content, mode="shrink")
         group.wrapOn(measuring, width, height)
         sizes.append(7.0 / max(1.0, float(getattr(group, "_scale", 1.0))))
