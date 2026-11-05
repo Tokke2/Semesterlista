@@ -610,6 +610,13 @@ class SemesterlistaView(QWidget):
         generate_btn.clicked.connect(self._generate_pdf)
         layout.addWidget(generate_btn)
 
+        if self._fixed_mode == "Semesterlista":
+            self.vacation_button = QPushButton(i18n.t("vacation.title"))
+            self.vacation_button.clicked.connect(self._manage_vacation)
+            layout.addWidget(self.vacation_button)
+
+
+
         test_btn = QPushButton(i18n.t("lista.button.tests"))
         test_btn.setMinimumHeight(36)
         test_btn.clicked.connect(self._run_tests)
@@ -729,6 +736,18 @@ class SemesterlistaView(QWidget):
             mode = self._fixed_mode or self.mode_combo.currentText()
             name = self._default_file if mode == "Limokörning" else "Anställda.txt"
         return resolve_path(name)
+
+    def _manage_vacation(self):
+        from core.vacation_dialog import VacationDialog
+        from core.holidays import get_region_from_settings
+        from core.roster import RosterError
+        try:
+            dialog = VacationDialog(self._current_list_path(), self.year_spin.value(),
+                                    get_region_from_settings(self.plugin._settings_manager), self)
+            dialog.exec()
+            self._update_list_count()
+        except (OSError, RosterError) as exc:
+            QMessageBox.warning(self, i18n.t("vacation.title"), str(exc))
 
     def _manage_list(self) -> None:
         """

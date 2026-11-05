@@ -102,7 +102,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.13.2",
+    "version":     "2.14.0",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -198,6 +198,8 @@ def get_all_quarter_invoice_info(year: int) -> List[Dict[str, Any]]:
             "quarter":       q,
             "period":        info["period"],
             "send_date_str": QUARTER_INVOICE_DATES[q],
+            "send_date": send_date,
+            "paid_by": date(year, 1 + (q - 1) * 3, 1),
             "status":        status,
             "status_text":   status_text,
         })
@@ -525,13 +527,20 @@ class HyraMainView(QWidget):
             period_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(period_label)
 
-            send_label = QLabel(f"Skickas: {info['send_date_str']}")
+            send_label = QLabel(i18n.t("hyra.quarter.send_by", date=info["send_date"].isoformat()))
+            send_label.setWordWrap(True)
             send_label.setFont(QFont("Helvetica", 10, QFont.Weight.Bold))
             send_label.setStyleSheet(
                 f"color: {fg}; background: transparent; border: none;"
             )
             send_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(send_label)
+            paid = QLabel(i18n.t("hyra.quarter.paid_by", date=info["paid_by"].isoformat()))
+            paid.setWordWrap(True)
+            paid.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            paid.setStyleSheet(f"color: {fg}; background: transparent; border: none;")
+            card_layout.addWidget(paid)
+
 
             status_label = QLabel(info["status_text"])
             status_label.setFont(QFont("Helvetica", 9))
@@ -862,17 +871,17 @@ class PDFGenerator:
         )
 
         quarter_data = [[
-            "Q1: 1 december\n(Jan–Mar)",
-            "Q2: 1 mars\n(Apr–Jun)",
-            "Q3: 1 juni\n(Jul–Sep)",
-            "Q4: 1 september\n(Okt–Dec)",
+            f"Q{info['quarter']}\n"
+            + i18n.t("hyra.quarter.send_by", date=info["send_date"].isoformat())
+            + "\n" + i18n.t("hyra.quarter.paid_by", date=info["paid_by"].isoformat())
+            for info in get_all_quarter_invoice_info(self.tm.get_year())
         ]]
-        quarter_table = Table(quarter_data)
+        quarter_table = Table(quarter_data, colWidths=[190 * mm / 4] * 4)
         quarter_table.setStyle(TableStyle([
             ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
             ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
             ("FONTNAME",      (0, 0), (-1, -1), "Helvetica-Bold"),
-            ("FONTSIZE",      (0, 0), (-1, -1), 9),
+            ("FONTSIZE",      (0, 0), (-1, -1), 8),
             ("BACKGROUND",    (0, 0), (-1, -1), colors.Color(0.93, 0.93, 0.93)),
             ("BOX",           (0, 0), (-1, -1), 1, colors.Color(0.7, 0.7, 0.7)),
             ("TOPPADDING",    (0, 0), (-1, -1), 8),
@@ -986,7 +995,7 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.13.2"
+    VERSION:     str = "2.14.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 

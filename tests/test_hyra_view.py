@@ -92,6 +92,29 @@ class HyraYearChangeTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls._i18n_tmp.cleanup()
 
+    def test_quarter_send_and_paid_dates(self):
+        from datetime import date
+        info = self.module.get_all_quarter_invoice_info(2026)
+        self.assertEqual([item["send_date"] for item in info], [
+            date(2025, 12, 1), date(2026, 3, 1), date(2026, 6, 1), date(2026, 9, 1)])
+        self.assertEqual([item["paid_by"] for item in info], [
+            date(2026, 1, 1), date(2026, 4, 1), date(2026, 7, 1), date(2026, 10, 1)])
+
+    def test_pdf_quarter_table_contains_deadlines_and_fits_width(self):
+        from types import SimpleNamespace
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import mm
+        self.tenants.set_year(2026)
+        generator = self.module.PDFGenerator(SimpleNamespace(tenant_manager=self.tenants))
+        elements = []
+        generator._add_quarter_info(elements, getSampleStyleSheet())
+        table = elements[-1]
+        self.assertLessEqual(table.wrap(190 * mm, 1000)[0], 190 * mm + 0.01)
+        values = str(table._cellvalues)
+        self.assertIn("2025-12-01", values)
+        self.assertIn("2026-01-01", values)
+        self.assertIn("2026-10-01", values)
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)

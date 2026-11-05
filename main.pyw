@@ -271,7 +271,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.13.2"
+APP_VERSION: str = "2.14.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt

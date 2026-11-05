@@ -1,6 +1,6 @@
 # Semesterlista
 
-En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörningsscheman** och **hyresfakturor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
+En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörningsscheman** och **hyreslistor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Licens](https://img.shields.io/badge/licens-MIT-green)
@@ -20,6 +20,16 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 `assets/` och dess undermappar, eller infogas med *Infoga logotyp…*.
 
 ## Funktioner
+
+- **Semesterkalender:** välj anställd, klicka på första och sista semesterdag
+  och lägg till perioden. Veckan börjar alltid på måndag. Valda datum sparas
+  exakt och visas också i semester-PDF:en.
+- **Årssummering:** antal semesterdagar per anställd och valt år, räknat
+  måndag–fredag utan officiella helgdagar i vald region. Överlapp räknas en
+  gång; halvdagar räknas som en dag. Planeringsunderlag, inte löneberäkning.
+- **Hyra skapar inga fakturor:** appen visar listor och utskicksplanering.
+  Kvartalsutskick: 1 december, 1 mars, 1 juni och 1 september. Betalningen
+  ska vara klar vid kvartalets början: 1 januari, 1 april, 1 juli, 1 oktober.
 
 - **Anpassade inställningar:** fönstret anpassar startstorleken till skärmens arbetsyta.
   Flikarna kan rullas på mindre skärmar; Spara och Avbryt ligger utanför rullningen.

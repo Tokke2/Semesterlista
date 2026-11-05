@@ -91,6 +91,20 @@ _SWEDISH_ORDER = str.maketrans({"å": "{", "ä": "|", "ö": "}"})
 # FEL
 # ══════════════════════════════════════════════════════════
 
+def _name_length(entry: str) -> int:
+    # Vacation metadata may contain many periods; the name's PDF width limit
+    # still applies. Non-date semicolon text remains subject to the old limit.
+    from core.leave import split_entry, parse_leave, LeaveError
+    name, rest = split_entry(entry)
+    if rest:
+        try:
+            parse_leave(rest)
+            return len(name)
+        except LeaveError:
+            pass
+    return len(entry)
+
+
 class RosterError(Exception):
     """Fel vid läsning, redigering eller skrivning av en lista."""
 
@@ -397,7 +411,7 @@ class RosterFile:
         entry = normalize_entry(value)
         if not entry:
             raise RosterError("Posten får inte vara tom.")
-        if len(entry) > MAX_ENTRY_LENGTH:
+        if _name_length(entry) > MAX_ENTRY_LENGTH:
             raise RosterError(
                 f"Posten är för lång ({len(entry)} tecken, max {MAX_ENTRY_LENGTH})."
             )
@@ -426,7 +440,7 @@ class RosterFile:
         entry = normalize_entry(value)
         if not entry:
             raise RosterError("Namnet får inte vara tomt.")
-        if len(entry) > MAX_ENTRY_LENGTH:
+        if _name_length(entry) > MAX_ENTRY_LENGTH:
             raise RosterError(
                 f"Namnet är för långt ({len(entry)} tecken, max {MAX_ENTRY_LENGTH})."
             )
@@ -511,7 +525,7 @@ class RosterFile:
                     ))
                     continue
 
-                if len(entry) > MAX_ENTRY_LENGTH:
+                if _name_length(entry) > MAX_ENTRY_LENGTH:
                     issues.append(RosterIssue(
                         level=LEVEL_ERROR,
                         message=(

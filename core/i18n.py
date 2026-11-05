@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.13.2"
+MODULE_VERSION: str = "2.14.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -379,6 +379,20 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # ── Sidlayout (v2.6.0) ────────────────────────────
         "lista.orientation":               "Sidlayout:",
         "lista.company_name": "Företagsnamn i PDF",
+        "vacation.title": "Semesterkalender…",
+        "vacation.year": "År för summering:",
+        "vacation.person": "Anställd",
+        "vacation.total": "Semesterdagar detta år",
+        "vacation.start": "Första semesterdag",
+        "vacation.end": "Sista semesterdag",
+        "vacation.add": "Lägg till vald period",
+        "vacation.remove": "Ta bort markerad period",
+        "vacation.invalid_dates": "Slutdatum får inte vara före startdatum.",
+        "vacation.changed": "Listfilen har ändrats. Stäng och öppna kalendern igen innan du sparar.",
+        "vacation.note": "Summering: måndag–fredag, exklusive officiella helgdagar i vald region. Halvdagar räknas som en dag. Överlapp räknas bara en gång. Kalenderdatum sparas exakt, utan veckosnäppning. Detta är planering, inte beräkning av semesterlön.",
+        "hyra.quarter.send_by": "Skickas senast:\n{date}",
+        "hyra.quarter.paid_by": "Betald senast:\n{date}",
+
         "lista.pdf.small_text.title": "Liten text i PDF",
         "lista.pdf.small_text.message": "Texten blir som minst cirka {size} punkter på sida/sidor {pages} (under 6 punkter) och kan bli svår att läsa.\n\nDu har valt {months} månader per blad. Välj färre månader eller en kortare lista om du vill ha större text.\n\nVill du ändå skapa PDF:en med ditt nuvarande val?",
         "lista.orientation.auto": "Automatiskt: 1 månad = stående A4, 2–3 = liggande A4",
@@ -830,6 +844,20 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # ── Page layout (v2.6.0) ──────────────────────────
         "lista.orientation":               "Page layout:",
         "lista.company_name": "Company name in PDF",
+        "vacation.title": "Vacation calendar…",
+        "vacation.year": "Summary year:",
+        "vacation.person": "Employee",
+        "vacation.total": "Vacation days this year",
+        "vacation.start": "First vacation day",
+        "vacation.end": "Last vacation day",
+        "vacation.add": "Add selected period",
+        "vacation.remove": "Remove selected period",
+        "vacation.invalid_dates": "End date cannot precede start date.",
+        "vacation.changed": "The list file has changed. Reopen the calendar before saving.",
+        "vacation.note": "Summary: Monday–Friday, excluding official holidays in the selected region. Half-days count as one day. Overlaps count once. Calendar dates are saved exactly without week rounding. This is planning, not payroll accounting.",
+        "hyra.quarter.send_by": "Send by:\n{date}",
+        "hyra.quarter.paid_by": "Paid by:\n{date}",
+
         "lista.pdf.small_text.title": "Small text in PDF",
         "lista.pdf.small_text.message": "The smallest text will be approximately {size} points on page(s) {pages} (below 6 points) and may be difficult to read.\n\nYou selected {months} months per sheet. Choose fewer months or a shorter list for larger text.\n\nCreate the PDF with your current selection anyway?",
         "lista.orientation.auto": "Automatic: 1 month = portrait A4, 2–3 = landscape A4",

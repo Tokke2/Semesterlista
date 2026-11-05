@@ -50,7 +50,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.13.2"
+MODULE_VERSION: str = "2.14.0"
 
 #: Avskiljare som alltid delar raden – de förekommer inte i namn.
 STRICT_SEPARATORS: Tuple[str, ...] = (";", "|")
@@ -244,13 +244,16 @@ def parse_leave(
         if not chunk:
             continue
 
+        exact = chunk.startswith("=")
+        if exact:
+            chunk = chunk[1:].strip()
         match = RANGE_RE.search(chunk)
         if match:
             start = _parse_date(match.group("start"), year)
             end = _parse_date(match.group("end"), start.year)
             end_has_year = _has_year(match.group("end"))
             end = _end_year(start, end, end_has_year)
-            if snap:
+            if snap and not exact:
                 start, end = snap_range(start, end)
             ranges.append(LeaveRange(start, end))
             continue
@@ -263,6 +266,24 @@ def parse_leave(
         raise LeaveError(f"Kunde inte tolka frånvaron {chunk!r}")
 
     return ranges
+
+
+def vacation_workdays(ranges: Iterable[LeaveRange], year: int, region: str = "sv") -> int:
+    """Unique Mon–Fri vacation dates, excluding official regional holidays.
+
+    Half-days count as one weekday; this is planning, not payroll accounting.
+    """
+    from core.holidays import get_holidays
+    holidays = get_holidays(year, region)
+    periods = list(ranges)
+    current = date(year, 1, 1)
+    end = date(year, 12, 31)
+    count = 0
+    while current <= end:
+        if current.weekday() < 5 and current not in holidays:
+            count += any(period.contains(current) for period in periods)
+        current += timedelta(days=1)
+    return count
 
 
 def _has_year(text: str) -> bool:

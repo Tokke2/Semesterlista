@@ -1,3 +1,11 @@
+## Genomfört v2.14.0 – valda punkter 1 och 2
+
+- Kalenderbaserat datumval för semester, alltid måndag som veckostart.
+- Semesterdagar per person och år, vardagar minus officiella helgdagar.
+- Hyra är ENDAST utskicksplanering och avprickning. Inga fakturor ska skapas.
+  Kvartalsutskick en månad före kvartalet; betalt vid kvartalets början.
+  Tidigare förslag om fakturanummer, kreditfakturor och fakturagenerering utgår.
+
 ## Beslut 2026-11-05 – avgränsning och läsbarhet
 
 - Anställda: endast semester, inga andra frånvarotyper eller personalfunktioner.

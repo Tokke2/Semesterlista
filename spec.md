@@ -2968,3 +2968,29 @@ Fastställd omfattning: anställda endast semester, fordon endast körning,
 hyresgäster endast månads-/kvartalsfakturering. Framtida kalenderbilder
 ska hämtas ur lokal mapp, inte genereras med AI. Kalenderfunktion och
 bildval ingår inte i denna läsbarhetsändring.
+
+
+## 34. Semesterkalender, årssumma och kvartalsplanering (v2.14.0)
+
+Semesterlistans knapp Semesterkalender öppnar anställda från vald listfil.
+Användaren väljer person, start- och slutdatum i två kalendrar (alltid måndag
+som veckostart), lägger till/tar bort perioder och sparar. Avbryt skriver
+inte till fil. Kalenderns datum lagras exakt med = framför ISO-perioden i
+Anställda.txt. Gamla manuellt skrivna perioder behåller sin veckosnäppning.
+Sparade perioder används av samma LeaveCalendar som PDF-exporten.
+
+Årsöversikten visar antal semesterdagar per person: unika måndag–fredag-datum
+inom valt år, med officiella helgdagar enligt sv/us borttagna. Halvdagar
+räknas som en hel arbetsdag. Detta är en planeringssumma, inte en beräkning
+för lön/semesteravtal eller individuella arbetsscheman. Perioder över
+årsskifte delas mellan årens summor. Datumval flyttas inte till måndag:
+veckostart och valda semesterdagar är separata saker.
+
+Listfilen sparas via ordinarie atomära sparning med .bak. Externa ändringar
+sedan dialogen öppnades stoppar sparningen. Namnets längdgräns kvarstår men
+giltig semestermetadata får innehålla flera perioder utan 80-teckensgränsen.
+
+Hyresdelen är planering/avprickning – inga fakturor skapas. Kvartalskort och
+PDF visar utskick senast 1 december året före Q1, sedan 1 mars/juni/september,
+och betald senast 1 januari/april/juli/oktober i valt år. Det är kvartalets
+början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
