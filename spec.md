@@ -2928,3 +2928,28 @@ version och saknad nedladdningslänk ger ingen installationsfråga.
 Den automatiska startkontrollen fortsätter endast visa en avisering.
 Regressionstester täcker Ja, Nej och utebliven fråga när installation
 inte är möjlig. Testsviten omfattar nu 388 tester.
+
+
+## 32. Python och paket före Windows-start (v2.13.0)
+
+Starta Semesterlista.cmd kör tools/start_semesterlista.ps1 innan Qt laddas.
+Direkt Windows-start av main.pyw dirigeras till samma flöde. Startprogrammet
+söker befintlig Python via py, PATH och PythonCore-registernycklar. En trasig
+befintlig installation ger fel, aldrig en extra installation som reserv.
+Winget upgrade använder exakt ID för befintlig major/minor-serie. Detta
+uppdaterar inom serien, inte till ny minor/major. Bara när ingen Python
+hittas tillåts winget install av stabila 3.14. Saknad winget/offline behåller
+befintlig Python. Uppgradering kan kräva rättigheter eller manuell åtgärd.
+
+Runtime_check skapar .venv endast om den saknas, uppdaterar requirements.txt
+med venvens egen pip och kontrollerar pip check samt Qt/reportlab-import.
+Redan installerade valfria PyMuPDF/svglib bevaras och uppdateras. Befintlig
+trasig venv ersätts inte. Nätfel får passera endast om miljön är fungerande.
+En Windows-mutex hålls under körningen: andra starter ändrar inte laddade
+paket utan skickas till appens vanliga single-instance-hantering.
+
+Loggning använder ordinarie loggmapp/dagarkiv/fellogg. Kontrollen gäller
+Windows; på andra system används befintligt manuellt installationsflöde.
+Tester: sex enhetstester för venv/uppdatering/offline/fel samt Windows-CI
+med mockad winget för befintlig, saknad och ej hanterad Python. Ingen riktig
+systemuppgradering utförs i testmiljön.

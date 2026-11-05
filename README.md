@@ -68,8 +68,30 @@ python main.pyw
 ```
 
 Kräver **Python 3.10+** och beroendena i [`requirements.txt`](requirements.txt)
-(PySide6, reportlab). På Windows startas appen enklast med `pythonw main.pyw`
-(eller en genväg till `main.pyw`) så slipper du terminalfönstret.
+(PySide6, reportlab).
+
+### Automatisk startkontroll på Windows
+
+Starta med **`Starta Semesterlista.cmd`** (fungerar även när Python saknas).
+Direktstart av `main.pyw` går också genom kontrollen när Python redan finns.
+
+- Python hittas via Python Launcher, PATH eller Windows-registret.
+- Befintlig Python uppgraderas med winget **inom samma versionsserie**.
+  Ingen extra Python-installation görs när en befintlig hittas. Övergång
+  exempelvis 3.12 → 3.14 görs inte automatiskt, eftersom den normalt skapar
+  en separat installation. Saknas Python installeras stabila Python 3.14.
+- PySide6 och reportlab kontrolleras/uppdateras vid varje ny appstart i
+  appens **`.venv`**, som återanvänds. PyMuPDF och svglib uppdateras också
+  om de redan finns. Andra programs Python-tillägg ändras inte.
+- winget (Windows App Installer) krävs för automatisk Python-installation
+  och uppgradering. Saknas winget används befintlig Python med varning.
+- Utan nät försöker appen använda befintliga fungerande tillägg. Trasig
+  miljö stoppar starten med felmeddelande; den skrivs inte över automatiskt.
+- Startkontrollen kan ta tid och visar ett konsolfönster. Paketkontrollen
+  loggas i `data/loggar/app.log`, fel även i `fel.log`.
+- Om appen redan körs ändras inte dess laddade tillägg; befintligt fönster
+  visas i stället. Linux/macOS behåller manuell beroendehantering.
+
 
 ### Uppdatera
 

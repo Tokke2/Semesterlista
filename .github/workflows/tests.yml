@@ -40,3 +40,11 @@ jobs:
         # inte och rapporterar falska "undefined name" för __all__.
         run: |
           python -m pyflakes $(git ls-files '*.py' '*.pyw' | grep -v '^core/init.py$')
+
+  windows-runtime:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testa startprogrammets Python-val utan installation
+        shell: pwsh
+        run: ./tests/test_runtime_windows.ps1
