@@ -35,7 +35,7 @@ function Find-Python {
         try {
             $exe = $candidate[0]
             $arguments = @($candidate | Select-Object -Skip 1)
-            $json = & $exe @arguments -c 'import json,sys; print(json.dumps(dict(executable=getattr(sys,"_base_executable",sys.executable),major=sys.version_info[0],minor=sys.version_info[1])))' 2>$null
+            $json = & $exe @arguments -c "import json,sys; print(json.dumps(dict(executable=getattr(sys,'_base_executable',sys.executable),major=sys.version_info[0],minor=sys.version_info[1])))" 2>$null
             if ($LASTEXITCODE -eq 0) { return ($json | ConvertFrom-Json) }
         } catch { }
     }

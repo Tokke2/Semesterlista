@@ -47,4 +47,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Testa startprogrammets Python-val utan installation
         shell: powershell
-        run: ./tests/test_runtime_windows.ps1
+        run: |
+          try { ./tests/test_runtime_windows.ps1 }
+          catch { Write-Output "::error::$($_.Exception.Message)"; throw }
