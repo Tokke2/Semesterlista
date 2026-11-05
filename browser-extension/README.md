@@ -172,6 +172,9 @@ npm run check   # syntaxkontroll av alla skript
 
 Aktuell version: **1.3.0**.
 
+Se **[FORBATTRINGAR.md](FORBATTRINGAR.md)** för 25 förslag på förbättringar inom
+funktion, design, tema, typografi och kod.
+
 Ändringar slår igenom efter **Ladda om** på `chrome://extensions`. Innehållsskriptet på redan öppna flikar uppdateras när du laddar om sidan.
 
 ### Kända begränsningar
