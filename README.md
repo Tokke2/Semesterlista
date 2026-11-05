@@ -172,15 +172,19 @@ från tidigare version lämnas orörd men används inte längre.
 
 - Kontroll och uppdatering sker **en gång per vecka, måndag kl. 08.00 lokal tid**.
   Ett schema registreras för inloggad användare i Windows Schemaläggaren.
-- Om tiden missas, eller schemat inte kan registreras, görs veckans försök
-  vid nästa appstart. Vanliga starter samma vecka gör inga pip-/winget-kontroller.
-  Första användningen räknas som en missad veckokontroll och körs direkt.
-- Om appen körs vid schematiden skjuts kontrollen upp till nästa start,
-  så att tillägg inte byts medan appen använder dem.
+- **Från 2.17.2 uppdateras befintlig Python aldrig som del av appstarten.**
+  Inget missat veckounderhåll tas igen i startflödet, inte heller första gången.
+  Starten kör inga automatiska pip-/winget-uppdateringar. Erbjudandet att
+  installera/reparera saknade tillägg finns kvar och kräver ditt godkännande.
+- Schemaläggaren kan köra ett missat veckotillfälle separat. Om appen redan
+  körs avstår underhållet för att skydda dess paket; nästa möjlighet blir ett
+  senare underhållstillfälle, inte nästa appstart. Om schemat inte kan
+  registreras startar appen ändå utan uppdatering.
 - Försöket sparas i `data/runtime-weekly.json`, även vid nätfel, så upprepade
   starter inte orsakar nya uppdateringsförsök samma vecka.
-- Befintlig Python uppgraderas med winget inom samma versionsserie. En ny
-  Python-installation görs bara om Python saknas (Python 3.14).
+- Bara det separata underhållet får uppgradera befintlig Python med winget
+  inom samma versionsserie. Vid appstart får en första Python-installation
+  fortfarande göras om Python helt saknas (Python 3.14), aldrig som en extra kopia.
 - PySide6 och reportlab uppdateras via den befintliga Python-installationens
   pip. PyMuPDF och svglib uppdateras om de redan finns. **Det kan påverka
   andra program som använder samma Python och tillägg.**

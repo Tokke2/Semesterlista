@@ -88,3 +88,34 @@ exit 23
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
 Write-Host 'Hidden Windows launcher tests passed'
+
+# Startup must not claim a weekly slot or upgrade existing Python, even if due.
+$script:claims = 0
+$script:upgrades = @()
+$script:runtimeCalls = @()
+function Claim-WeeklyMaintenance { $script:claims++; return $true }
+function Update-Python($Python) { $script:upgrades += ,$Python; return $script:detectedPython }
+function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
+    $script:runtimeCalls += ,@{ Python = $Python; Arguments = $Arguments }
+    return 0
+}
+if ((Start-Runtime -Python $python) -ne 0) { throw 'Normal start failed' }
+if ($script:claims -ne 0 -or $script:upgrades.Count -ne 0) { throw 'Startup attempted weekly/Python maintenance' }
+if ($script:runtimeCalls.Count -ne 1 -or $script:runtimeCalls[0].Arguments.Count -ne 0) { throw 'Startup must use normal runtime with repair offer' }
+if ($script:runtimeCalls[0].Python.executable -ne $python.executable) { throw 'Startup changed Python' }
+if ((Start-Runtime -Python $python -Maintenance) -ne 0) { throw 'Maintenance failed' }
+if ($script:claims -ne 1 -or $script:upgrades.Count -ne 1) { throw 'Separate weekly maintenance lost' }
+if ($script:runtimeCalls[1].Arguments -notcontains '--maintenance-only') { throw 'Maintenance may not launch app' }
+# Missing Python may be installed at first app launch, but not by the task.
+$script:claims = 0
+$script:upgrades = @()
+$script:runtimeCalls = @()
+Start-Runtime -Python $null -Maintenance | Out-Null
+if ($script:claims -ne 0 -or $script:upgrades.Count -ne 0 -or $script:runtimeCalls.Count -ne 0) { throw 'Task installed missing Python' }
+Start-Runtime -Python $null | Out-Null
+if ($script:upgrades.Count -ne 1 -or $null -ne $script:upgrades[0]) { throw 'First installation path broken' }
+if ($script:runtimeCalls[0].Arguments.Count -ne 0) { throw 'First launch forced package maintenance' }
+# Runtime failures must propagate, not report success to the launcher.
+function Invoke-RuntimeCheck { return 43 }
+if ((Start-Runtime -Python $python) -ne 43) { throw 'Runtime error code lost' }
+Write-Host 'Startup without Python upgrade tests passed'

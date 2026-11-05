@@ -114,8 +114,8 @@ function Claim-WeeklyMaintenance([string]$Directory, [datetime]$Now = (Get-Date)
 }
 
 function Register-WeeklyMaintenance {
-    # Current user, no elevation. If registration is denied, startup catch-up
-    # still works. Never stop a running app to update its loaded libraries.
+    # Current user, no elevation. Maintenance is separate from app startup.
+    # Never stop a running app to update its loaded libraries.
     try {
         $scriptPath = Join-Path $Root 'Starta Semesterlista.vbs'
         $arguments = '//NoLogo "' + $scriptPath + '" /maintenance'
@@ -129,7 +129,28 @@ function Register-WeeklyMaintenance {
         $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
         $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
-    } catch { Write-Warning "Veckoschemat kunde inte registreras. Kontroll sker vid nästa appstart efter måndag 08:00. $_" }
+    } catch { Write-Warning "Veckoschemat kunde inte registreras. Appen startar utan uppdatering. $_" }
+}
+
+function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
+    & $Python.executable (Join-Path $PSScriptRoot 'runtime_check.py') @Arguments | Out-Host
+    return $LASTEXITCODE
+}
+
+function Start-Runtime($Python, [switch]$Maintenance) {
+    if ($Maintenance) {
+        # Only the separate maintenance invocation may claim a weekly slot
+        # and upgrade an existing interpreter. Never install Python in a task.
+        if (-not $Python) { return 0 }
+        if (-not (Claim-WeeklyMaintenance $Root)) { return 0 }
+        Write-Host 'Veckokontroll: uppdaterar befintlig Python och dess tillägg...'
+        $Python = Update-Python $Python
+        return (Invoke-RuntimeCheck -Python $Python -Arguments @('--maintenance-only'))
+    }
+    # First installation remains possible only if no Python exists at all.
+    # No weekly catch-up and no upgrade of existing Python during app startup.
+    if (-not $Python) { $Python = Update-Python $null }
+    return (Invoke-RuntimeCheck -Python $Python)
 }
 
 if ($FunctionsOnly) { return }
@@ -149,22 +170,9 @@ try {
         & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --no-repair
         exit $LASTEXITCODE
     }
-    # A first installation is only needed when Python is genuinely missing.
-    if (-not $python) { $python = Update-Python $null }
-    $due = Claim-WeeklyMaintenance $Root
-    if ($due) {
-        Write-Host 'Veckokontroll: uppdaterar befintlig Python och dess tillägg...'
-        $python = Update-Python $python
-    }
-    if ($MaintenanceOnly) {
-        if ($due) { & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --maintenance-only }
-    } elseif ($due) {
-        & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --maintain
-    } else {
-        & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py')
-    }
-    if ($LASTEXITCODE -eq 43) { exit 1 } # Python already displayed the error.
-    if ($LASTEXITCODE -ne 0) { throw 'Semesterlista kunde inte startas/uppdateras. Se data/loggar/app.log.' }
+    $code = Start-Runtime -Python $python -Maintenance:$MaintenanceOnly
+    if ($code -eq 43) { exit 1 } # Python already displayed the error.
+    if ($code -ne 0) { throw 'Semesterlista kunde inte startas/uppdateras. Se data/loggar/app.log.' }
 } catch {
     Write-Host "Startfel: $_" -ForegroundColor Red
     if (-not $MaintenanceOnly) {

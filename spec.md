@@ -3101,3 +3101,19 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Regressioner testar verklig main-start med blockerad import, Ja/Nej,
   installationsfel, fortsatt importfel, ensurepip, delad Python, låsbegränsning,
   schemalagt underhåll och standardval i dialogen. Körs även på Windows-CI.
+
+
+## 41. Ingen Python-uppdatering vid appstart (v2.17.2)
+
+- Vanlig appstart använder befintlig Python och startar runtime_check.py utan
+  --maintain. Den anropar inte Claim-WeeklyMaintenance eller uppgradering av
+  befintlig Python, oavsett sparat veckodatum eller första start.
+- Saknade/trasiga tillägg ger fortsatt det Qt-oberoende erbjudandet om reparation
+  efter godkännande. Ingen automatisk pip-uppdatering i normalstarten.
+- Endast separat -MaintenanceOnly får ta veckoslot och uppdatera befintlig
+  Python/tillägg. Måndag 08-schemat behålls; inget catch-up i appstarten.
+- Första installation tillåts fortfarande vid normalstart om Python helt saknas,
+  inte i schemalagd bakgrundskörning. Inga extra miljöer skapas.
+- Windows-regressioner verifierar normalstart med förfallen veckokontroll,
+  schemalagd uppdatering, första installation, inga underhållsflaggor vid start
+  samt vidarebefordrad runtime-felkod. Befintliga reparationstester är kvar.
