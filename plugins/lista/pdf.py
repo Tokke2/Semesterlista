@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import os
+from io import BytesIO
 import calendar
 import webbrowser
 from datetime import date
@@ -21,6 +22,7 @@ from reportlab.platypus import Paragraph
 from reportlab.platypus import Spacer
 from reportlab.platypus import PageBreak
 from reportlab.platypus import KeepInFrame
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.styles import getSampleStyleSheet
@@ -157,6 +159,24 @@ class PDFGenerator(ListReader):
             logger.error(f"Fel vid PDF-generering: {e}")
             QMessageBox.critical(None, "Fel", f"Fel vid PDF-generering: {e}")
             return False
+
+    @staticmethod
+    def _confirm_readability(font_sizes: List[float], months_per_page: int) -> bool:
+        """Warn once if any sheet's calendar text is below 6 points."""
+        small_pages = [str(index + 1) for index, size in enumerate(font_sizes)
+                       if size < 6.0 - 0.01]
+        if not small_pages:
+            return True
+        answer = QMessageBox.question(
+            None,
+            i18n.t("lista.pdf.small_text.title"),
+            i18n.t("lista.pdf.small_text.message",
+                   size=f"{min(font_sizes):.1f}", pages=", ".join(small_pages),
+                   months=months_per_page),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     def _page_logo(self) -> Optional[PdfLogo]:
         """
@@ -625,6 +645,8 @@ class PDFGenerator(ListReader):
         )
 
         elements: List[Any] = []
+        readable_sizes: List[float] = []
+        measuring_canvas = Canvas(BytesIO(), pagesize=pagesize)
 
         # Samla alla år som förekommer i sekvensen
         years_in_sequence = sorted({month_year for month_year, _ in month_sequence})
@@ -669,6 +691,7 @@ class PDFGenerator(ListReader):
         for page_index, page_months in enumerate(pages):
             page_header = build_header(page_months)
             page_elements = list(page_header)
+            smallest_font = float(FONT_SIZE)
 
             for month_year, month_num in page_months:
                 days_in_month = calendar.monthrange(month_year, month_num)[1]
@@ -676,6 +699,7 @@ class PDFGenerator(ListReader):
                     days_in_month, table_width_pt
                 )
                 day_label_size = FONT_SIZE if day_w >= 18 else FONT_SIZE - 1
+                smallest_font = min(smallest_font, day_label_size)
 
                 official_holidays = official_holidays_by_year[month_year]
                 half_days = half_days_by_year[month_year]
@@ -859,14 +883,24 @@ class PDFGenerator(ListReader):
                     page_elements.append(Spacer(1, month_gap))
 
             # One indivisible group per sheet. Shrink, never drop months or rows.
-            elements.append(KeepInFrame(
+            group = KeepInFrame(
                 frame_width - 2 * FRAME_PADDING,
                 available_height - PAGE_SAFETY,
                 page_elements, mode="shrink",
-            ))
+            )
+            # Measure the actual ReportLab shrink factor before opening the
+            # output file. Cancel must leave even an existing PDF untouched.
+            group.wrapOn(measuring_canvas, group.maxWidth, group.maxHeight)
+            scale = max(1.0, float(getattr(group, "_scale", 1.0)))
+            readable_sizes.append(smallest_font / scale)
+            elements.append(group)
 
             if page_index < len(pages) - 1:
                 elements.append(PageBreak())
+
+        if not self._confirm_readability(readable_sizes, months_per_page):
+            logger.info("PDF-export avbruten efter varning om liten text")
+            return False
 
         company = str(self.plugin.settings.get("company_name", "")).strip()
         printed = datetime.now().strftime("%Y-%m-%d")

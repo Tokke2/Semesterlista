@@ -2953,3 +2953,18 @@ Ordinarie appuppdatering via GitHub påverkas inte av Python-schemat.
 
 Tester täcker delad interpreter, ingen venv, normal start utan paketkontroll,
 schemakörning utan appstart, offline/fel och veckogränser/persistens i Windows.
+
+
+## 33. Varning för liten PDF-text och avgränsning (v2.13.2)
+
+Semesterlista/Fordon mäter varje sidgrupp med ReportLabs verkliga
+KeepInFrame-skala innan målfilen öppnas. Om kalendertexten understiger
+6 punkter visas en enda Ja/Nej-fråga med minsta storlek och berörda sidor.
+Nej är förvalt och avbryter utan att skapa/skriva över PDF eller skicka
+pdf_generated. Ja behåller valt antal månader och befintlig A4-layout.
+Texten finns på svenska och engelska. Hyra-exporten ändras inte.
+
+Fastställd omfattning: anställda endast semester, fordon endast körning,
+hyresgäster endast månads-/kvartalsfakturering. Framtida kalenderbilder
+ska hämtas ur lokal mapp, inte genereras med AI. Kalenderfunktion och
+bildval ingår inte i denna läsbarhetsändring.

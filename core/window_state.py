@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import Sequence, Tuple
 
-MODULE_VERSION: str = "2.13.1"
+MODULE_VERSION: str = "2.13.2"
 
 #: Minsta storlek som alltid tillåts (samma som MainWindow.setMinimumSize)
 MIN_WIDTH: int = 800

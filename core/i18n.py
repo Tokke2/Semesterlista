@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.13.1"
+MODULE_VERSION: str = "2.13.2"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -379,6 +379,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # ── Sidlayout (v2.6.0) ────────────────────────────
         "lista.orientation":               "Sidlayout:",
         "lista.company_name": "Företagsnamn i PDF",
+        "lista.pdf.small_text.title": "Liten text i PDF",
+        "lista.pdf.small_text.message": "Texten blir som minst cirka {size} punkter på sida/sidor {pages} (under 6 punkter) och kan bli svår att läsa.\n\nDu har valt {months} månader per blad. Välj färre månader eller en kortare lista om du vill ha större text.\n\nVill du ändå skapa PDF:en med ditt nuvarande val?",
         "lista.orientation.auto": "Automatiskt: 1 månad = stående A4, 2–3 = liggande A4",
         "lista.orientation.landscape":     "Liggande (A4)",
         "lista.orientation.portrait":      "Stående (A4)",
@@ -828,6 +830,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # ── Page layout (v2.6.0) ──────────────────────────
         "lista.orientation":               "Page layout:",
         "lista.company_name": "Company name in PDF",
+        "lista.pdf.small_text.title": "Small text in PDF",
+        "lista.pdf.small_text.message": "The smallest text will be approximately {size} points on page(s) {pages} (below 6 points) and may be difficult to read.\n\nYou selected {months} months per sheet. Choose fewer months or a shorter list for larger text.\n\nCreate the PDF with your current selection anyway?",
         "lista.orientation.auto": "Automatic: 1 month = portrait A4, 2–3 = landscape A4",
         "lista.orientation.landscape":     "Landscape (A4)",
         "lista.orientation.portrait":      "Portrait (A4)",

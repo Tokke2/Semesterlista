@@ -1,3 +1,17 @@
+## Beslut 2026-11-05 – avgränsning och läsbarhet
+
+- Anställda: endast semester, inga andra frånvarotyper eller personalfunktioner.
+- Fordon: endast körning, inga service-/besiktningsfunktioner.
+- Hyresgäster: endast månads-/kvartalsfakturering.
+- Kalenderbilder ska väljas från en mapp på datorn. Ingen AI, extern
+  bildtjänst eller API-nyckel. Kalender/bildval är framtida arbete, inte
+  implementerat av denna ändring.
+- Vald punkt 4: varna före PDF-export om kalendertext efter skalning blir
+  mindre än 6 punkter. Visa ungefärlig storlek och berörda sidor. Nej är
+  förvalt. Ja behåller antalet månader; Nej lämnar tidigare PDF orörd.
+
+Tidigare förslag nedan är historik och gäller inte om de strider mot detta.
+
 ## Genomfört 2026-11-04 – v2.12.0
 
 - **A1 klart:** global Sverige/USA-region styr kalenderfärgerna i scheman.

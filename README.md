@@ -28,6 +28,8 @@ automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
   valbar startmånad (även över årsskifte) och 1, 2 eller 3 månader per blad.
   **1 månad = stående A4; 2–3 = liggande A4.** Valda månader hålls på samma
   blad och skalas ned vid behov; mycket långa listor får mindre text.
+  Om kalendertext blir mindre än 6 punkter visas en varning före export.
+  Du kan fortsätta med samma layout eller avbryta utan att ändra befintlig PDF.
 - **Helgdagsregion** i appens inställningar styr Sverige/USA i semester- och
   fordonsscheman (USA använder federala observed-datum, inga halvdagar).
 - **Sidhuvud/sidfot i scheman:** företagsnamn (anges i flikens inställningar),

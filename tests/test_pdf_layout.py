@@ -114,6 +114,7 @@ class PdfLayoutTestBase(unittest.TestCase):
 
         # Ersätt dialoger/öppning under testerna
         cls._orig = {
+            "question": cls.module.QMessageBox.question,
             "information": cls.module.QMessageBox.information,
             "critical": cls.module.QMessageBox.critical,
             "warning": cls.module.QMessageBox.warning,
@@ -121,6 +122,9 @@ class PdfLayoutTestBase(unittest.TestCase):
             "docs": cls.pdf_module.get_documents_folder,
         }
         cls.messages = []
+        cls.module.QMessageBox.question = staticmethod(
+            lambda *args, **kwargs: cls.module.QMessageBox.StandardButton.Yes
+        )
         cls.module.QMessageBox.information = staticmethod(
             lambda *args, **kwargs: cls.messages.append(("info", args[2] if len(args) > 2 else ""))
         )
@@ -135,6 +139,7 @@ class PdfLayoutTestBase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        cls.module.QMessageBox.question = cls._orig["question"]
         cls.module.QMessageBox.information = cls._orig["information"]
         cls.module.QMessageBox.critical = cls._orig["critical"]
         cls.module.QMessageBox.warning = cls._orig["warning"]

@@ -102,7 +102,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.13.1",
+    "version":     "2.13.2",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -986,7 +986,7 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.13.1"
+    VERSION:     str = "2.13.2"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 
