@@ -3067,3 +3067,18 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Regressioner: önskade fasta/rörliga datum, kollisioner, årsskifte,
   arbetsdagsklassificering 2020–2035, semestersumma, svensk isolering,
   skärm/PDF-samstämmighet och sv/en-PDF med 1/2/3 månader och bilder.
+
+
+## 39. Svenska temadagar och röda dagar i kalendern (v2.17.0)
+
+- 27 svenska märkesdagar inklusive rörliga påskrelaterade dagar, mors/fars dag
+  och advent. Ingen fullständig namnsdagskalender. Befintliga aftnar behålls.
+- `calendar_background` delar samma färgregler mellan fristående kalender och PDF.
+  Svensk allmän helgdag/söndag är röd, aldrig en temadag i sig. I USA markeras
+  federala faktiska datum/ersättningsdagar, inte vanliga söndagar, rött.
+- `kind`, officiella helgdagsmängder och semestersummor lämnas oförändrade.
+  Separat `red_day` används endast för kalenderns presentation.
+- Svenska aftnar och temadagar har * med regionanpassad förklaring.
+  Röd markering på exempelvis mors dag/advent beror på att det är söndag.
+- Tester täcker 2020–2035, rörliga datum, ordinarie arbetsdagar, Lucia/julafton,
+  UI-färg samt faktiska PDF-fyllningar och fullständiga sv/en-exporter med bilder.

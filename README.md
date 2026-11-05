@@ -20,6 +20,24 @@ Semesterlista, Fordon och Hyra kan ha **egen logotyp** (SVG, EPS eller PDF) som 
 automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 `assets/` och dess undermappar, eller infogas med *Infoga logotyp…*.
 
+## Svenska högtider från 2.17.0
+
+Kalenderfliken har nu också **27 svenska högtider och temadagar**, utöver
+befintliga helgdagar och aftnar: bland annat fettisdagen, våffeldagen,
+alla hjärtans dag, mors dag, fars dag, kanelbullens dag, Lucia och fyra advent.
+Datumen visas på skärmen och i PDF, på både svenska och engelska.
+
+**Endast helgdagar markeras rött i den fristående kalendern.** Svenska söndagar
+är allmänna helgdagar och förblir röda. En temadag på en söndag är alltså röd
+på grund av söndagen, inte på grund av temadagen. Vanliga amerikanska söndagar
+är inte federala helgdagar och färgas inte röda enbart för att det är söndag.
+Faktiska federala helgdagar och deras ersättningsdagar markeras fortsatt rött.
+
+Temadagar och aftnar markeras med **\*** och ändrar inte ledighet eller
+semestersummor. Exempelvis är Lucia och julafton 2027 inte röda, men juldagen
+är röd. En fullständig svensk namnsdagskalender ingår inte i denna utökning.
+Semesterlista och Fordon behåller sina tidigare färg-/ledighetsregler.
+
 ## Amerikanska högtider från 2.16.0
 
 Kalenderfliken visar nu även **33 typer av vanliga amerikanska högtider och

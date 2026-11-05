@@ -8,14 +8,14 @@ from PySide6.QtWidgets import (
     QCalendarWidget, QListWidget, QListWidgetItem, QPushButton, QFileDialog, QMessageBox,
 )
 from core import i18n
-from core.calendar_data import year_days, day_labels
+from core.calendar_data import year_days, day_labels, calendar_background
 from core.calendar_pdf import export_calendar
 from core.holidays import get_region_from_settings, describe_region
 from core.seasonal_options import edit_seasonal_options
 from core.ui_layout import FlowLayout
 from plugins.base_plugin import BasePlugin
 
-PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.16.0", "author": "Rickard Längkvist"}
+PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.17.0", "author": "Rickard Längkvist"}
 
 
 class CalendarView(QWidget):
@@ -141,7 +141,7 @@ class CalendarView(QWidget):
         for day, info in days.items():
             if day.month != self.calendar.monthShown():
                 continue
-            bg = {"holiday": "#FFE1E1", "sunday": "#FFE1E1", "saturday": "#E4EEF9", "halfday": "#E4F0D7"}.get(info.kind)
+            bg = calendar_background(info)
             labels = day_labels(info)
             if bg or labels:
                 fmt = QTextCharFormat()
@@ -157,8 +157,9 @@ class CalendarView(QWidget):
             if labels:
                 names.append(f"{day.day}: {' / '.join(labels)}")
         self.names.setText(" · ".join(names) if names else i18n.t("calendar.no_holidays"))
-        self.observance_note.setText(i18n.t("calendar.observance_note") if region == "us" else "")
-        self.observance_note.setVisible(region == "us")
+        note_key = "calendar.observance_note_sv" if region == "sv" else "calendar.observance_note"
+        self.observance_note.setText(i18n.t(note_key))
+        self.observance_note.setVisible(True)
 
     def _select_all(self):
         for index in range(self.months.count()):
@@ -189,7 +190,7 @@ class CalendarView(QWidget):
 
 class Plugin(BasePlugin):
     NAME = "Kalender"
-    VERSION: str = "2.16.0"
+    VERSION: str = "2.17.0"
     AUTHOR = "Rickard Längkvist"
     TAB_ORDER = 0
 

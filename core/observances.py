@@ -1,4 +1,4 @@
-"""Common US observances for display only; never used as non-working days.
+"""Common Swedish and US observances for display only; never used as non-working days.
 
 Not an exhaustive state, religious or name-day calendar. Christian dates
 use the Western/Gregorian Easter calculation. Federal dates stay in holidays.py.
@@ -41,4 +41,34 @@ def get_us_observances(year):
                         (0, "easter_sunday"), (1, "easter_monday"),
                         (39, "ascension"), (49, "pentecost")):
         add(easter + timedelta(days=offset), key)
+    return {day: tuple(keys) for day, keys in result.items()}
+
+
+def get_swedish_observances(year):
+    """Common Swedish calendar dates, not a complete name-day calendar."""
+    result = {}
+
+    def add(day, key):
+        result.setdefault(day, []).append(f"sv.{key}")
+
+    for month, day, key in (
+        (1, 13, "twentieth_day"), (2, 6, "sami_day"), (2, 14, "valentines"),
+        (3, 8, "womens_day"), (3, 25, "waffle_day"), (4, 1, "april_fools"),
+        (4, 22, "earth_day"), (5, 9, "europe_day"), (5, 15, "families_day"),
+        (10, 4, "cinnamon_bun_day"), (10, 24, "un_day"), (10, 31, "halloween"),
+        (11, 6, "gustav_adolf"), (12, 10, "nobel_day"), (12, 13, "lucia"),
+    ):
+        add(date(year, month, day), key)
+    add(nth_weekday_of_month(year, 5, 6, -1), "mothers_day")
+    add(nth_weekday_of_month(year, 11, 6, 2), "fathers_day")
+    easter = get_easter(year)
+    for offset, key in ((-47, "shrove_tuesday"), (-46, "ash_wednesday"),
+                        (-7, "palm_sunday"), (-1, "easter_eve"), (48, "whit_eve")):
+        add(easter + timedelta(days=offset), key)
+    if year >= 2005:
+        add(easter + timedelta(days=50), "whit_monday")
+    christmas = date(year, 12, 25)
+    fourth_advent = christmas - timedelta(days=(christmas.weekday() + 1) % 7 or 7)
+    for number in range(1, 5):
+        add(fourth_advent - timedelta(weeks=4 - number), f"advent_{number}")
     return {day: tuple(keys) for day, keys in result.items()}

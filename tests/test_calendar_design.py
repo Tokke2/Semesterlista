@@ -135,6 +135,55 @@ class SeasonalExportTests(PdfLayoutTestBase):
                 self.assertIn(label, view.names.text())
         view.deleteLater()
 
+    @unittest.skipUnless(importlib.util.find_spec('fitz'), 'PyMuPDF unavailable')
+    def test_swedish_calendar_observances_and_red_cells(self):
+        import fitz
+        from core import i18n
+        from core.calendar_pdf import export_calendar
+        from core.observances import get_swedish_observances
+        original = i18n.current_language()
+        try:
+            for language in ('sv', 'en'):
+                i18n.set_language(language)
+                for per_page in (1, 2, 3):
+                    path = self.outdir / 'sv-observances.pdf'
+                    export_calendar(path, 2027, range(1, 13), per_page, 'sv', self._images())
+                    with fitz.open(path) as doc:
+                        self.assertEqual(len(doc), 12 // per_page)
+                        text = ' '.join(' '.join(page.get_text() for page in doc).split())
+                        for keys in get_swedish_observances(2027).values():
+                            for key in keys:
+                                self.assertIn(i18n.holiday_name(key) + ' *', text)
+                        self.assertIn(i18n.t('calendar.observance_note_sv'), text)
+            path = self.outdir / 'december.pdf'
+            export_calendar(path, 2027, [12], 1, 'sv', {})
+            with fitz.open(path) as doc:
+                page = doc[0]
+                red = [d['rect'] for d in page.get_drawings() if d.get('fill') and
+                       all(abs(a-b) < .01 for a, b in zip(d['fill'], (1, 225/255, 225/255)))]
+                for number, expected in (('13', False), ('24', False), ('25', True), ('12', True)):
+                    word = next(w for w in page.get_text('words') if w[4] == number)
+                    point = fitz.Point(word[0] + 1, word[1] + 1)
+                    self.assertEqual(any(r.contains(point) for r in red), expected, number)
+        finally:
+            i18n.set_language(original)
+
+    def test_swedish_screen_does_not_colour_lucia_red(self):
+        from PySide6.QtCore import QDate
+        from plugins.kalender.plugin import Plugin
+        from core.calendar_data import day_labels
+        from core.event_bus import EventBus
+        plugin = Plugin(EventBus(), self.settings_manager)
+        with patch('plugins.kalender.plugin.get_region_from_settings', return_value='sv'):
+            view = plugin.get_tab_widget()
+            view.calendar.setSelectedDate(QDate(2027, 12, 13))
+            view.refresh()
+            label = day_labels(year_days(2027, 'sv')[date(2027, 12, 13)])[0]
+            self.assertIn(label, view.names.text())
+            self.assertNotEqual(view.calendar.dateTextFormat(QDate(2027, 12, 13)).background().color().name(), '#ffe1e1')
+            self.assertEqual(view.calendar.dateTextFormat(QDate(2027, 12, 25)).background().color().name(), '#ffe1e1')
+        view.deleteLater()
+
     def test_roster_vehicle_images_keep_all_months(self):
         self.plugin.settings.update(self._images())
         for mode in ('Semesterlista', 'Limokörning'):

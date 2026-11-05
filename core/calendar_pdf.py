@@ -12,7 +12,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepInFrame
 from core import i18n
-from core.calendar_data import month_weeks, day_labels
+from core.calendar_data import month_weeks, day_labels, calendar_background
 from core.pdf_readability import confirm_readability
 from core.seasonal_pdf import seasonal_header, print_canvas
 
@@ -24,17 +24,20 @@ def export_calendar(path, year, months, per_page, region, settings):
     pagesize = landscape(A4)
     width = pagesize[0] - 24 * mm - 12
     height = pagesize[1] - 28 * mm - 20
-    title = ParagraphStyle("month", fontSize=15, leading=18, spaceAfter=5, alignment=1)
+    title = ParagraphStyle("month", fontSize=12 if per_page == 3 else 15,
+                           leading=14 if per_page == 3 else 18,
+                           spaceAfter=3 if per_page == 3 else 5, alignment=1)
     cell = ParagraphStyle("day", fontSize=14 if per_page == 1 else 8,
-                          leading=16 if per_page == 1 else 9)
+                          leading=16 if per_page == 1 else 8)
     small = ParagraphStyle("name", fontSize=7, leading=8)
     story, sizes = [], []
     measuring = Canvas(BytesIO(), pagesize=pagesize)
     for offset in range(0, len(months), per_page):
         content = []
         note_height = 0
-        if region == "us":
-            note = Paragraph(escape(i18n.t("calendar.observance_note")), small)
+        if region in ("sv", "us"):
+            note_key = "calendar.observance_note_sv" if region == "sv" else "calendar.observance_note"
+            note = Paragraph(escape(i18n.t(note_key)), small)
             note_height = note.wrapOn(measuring, width, height)[1] + 4
             content.extend([note, Spacer(1, 4)])
         page_months = months[offset:offset + per_page]
@@ -64,13 +67,15 @@ def export_calendar(path, year, months, per_page, region, settings):
                     for label in day_labels(day):
                         parts.append(Paragraph(escape(label), small))
                     cells.append(parts)
-                    bg = {"holiday": "#FFE1E1", "sunday": "#FFE1E1", "saturday": "#E4EEF9", "halfday": "#E4F0D7"}.get(day.kind)
+                    bg = calendar_background(day)
                     if bg:
                         commands.append(("BACKGROUND", (column, row), (column, row), colors.HexColor(bg)))
                 data.append(cells)
             table = Table(data, colWidths=[32] + [(width - 32) / 7] * 7, rowHeights=[18] + [None] * (len(data) - 1))
             # Let long translated holiday names expand rows rather than clip them.
-            commands += [("TOPPADDING", (0, 1), (-1, -1), 2), ("BOTTOMPADDING", (0, 1), (-1, -1), 2)]
+            padding = 1 if per_page == 3 else 2
+            commands += [("TOPPADDING", (0, 1), (-1, -1), padding),
+                         ("BOTTOMPADDING", (0, 1), (-1, -1), padding)]
             table.setStyle(TableStyle(commands))
             _, natural_height = table.wrapOn(measuring, width, height)
             extra = max(0, slot_height - header_height - natural_height)
