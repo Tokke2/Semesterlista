@@ -12,6 +12,7 @@ import {
 } from './lib/sites.js';
 import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
+import { buildFilename } from './lib/filename.js';
 
 const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
   <path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"
@@ -34,6 +35,11 @@ const els = {
   primary: document.getElementById('primary'),
   secondary: document.getElementById('secondary'),
   saveAs: document.getElementById('save-as'),
+  saveAsNote: document.getElementById('save-as-note'),
+  filenamePreview: document.getElementById('filename-preview'),
+  bannerActions: document.getElementById('banner-actions'),
+  openPdf: document.getElementById('open-pdf'),
+  showFolder: document.getElementById('show-folder'),
   lastSaved: document.getElementById('last-saved'),
   shortcut: document.getElementById('shortcut'),
   openOptions: document.getElementById('open-options'),
@@ -57,6 +63,30 @@ function basename(path) {
 
 function suggestedPattern() {
   return suggestPatternFromUrl(state.url);
+}
+
+function previewFilename() {
+  if (!state.printable) return '';
+  try {
+    const host = new URL(state.url).hostname.replace(/^www\./, '') || 'webbplats';
+    return buildFilename({
+      template: state.settings.file.template,
+      folder: state.settings.file.folder,
+      perSiteFolder: state.settings.file.perSiteFolder,
+      site: host,
+      title: state.tab?.title || host,
+      date: new Date()
+    });
+  } catch {
+    return '';
+  }
+}
+
+function setBannerActions(downloadId) {
+  const visible = typeof downloadId === 'number';
+  els.bannerActions.hidden = !visible;
+  els.openPdf.dataset.downloadId = visible ? String(downloadId) : '';
+  els.showFolder.dataset.downloadId = visible ? String(downloadId) : '';
 }
 
 function computeState() {
@@ -113,6 +143,14 @@ function render() {
   els.siteName.textContent = hostname || t(lang, 'popup.openPage');
   els.siteName.title = hostname;
   els.saveAs.checked = settings.file.saveAs;
+  els.saveAsNote.textContent = t(
+    lang,
+    settings.file.saveAs ? 'popup.saveAsHintOn' : 'popup.saveAsHintOff'
+  );
+
+  const preview = previewFilename();
+  els.filenamePreview.textContent = preview || '–';
+  els.filenamePreview.title = preview;
 
   let pillText = '';
   let pillClass = 'pill';
@@ -170,7 +208,10 @@ async function renderHistory() {
   const history = await getHistory();
   const latest = history[0];
   els.lastSaved.textContent = latest ? basename(latest.filename) : t(state.lang, 'popup.neverSaved');
-  els.lastSaved.title = latest?.filename || '';
+  els.lastSaved.title = latest?.filePath || latest?.filename || '';
+  if (latest && typeof latest.downloadId === 'number' && !state.busy) {
+    setBannerActions(latest.downloadId);
+  }
 }
 
 async function renderShortcut() {
@@ -225,14 +266,18 @@ async function savePdf() {
 
     if (response?.ok) {
       setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
+      setBannerActions(response.downloadId);
       await renderHistory();
     } else if (response?.error === 'canceled') {
+      setBannerActions(null);
       setBanner('info', response.message || t(state.lang, 'errors.canceled'));
     } else {
       setBanner('error', response?.message || t(state.lang, 'errors.unexpected'));
+      setBannerActions(null);
     }
   } catch {
     setBanner('error', t(state.lang, 'errors.unexpected'));
+    setBannerActions(null);
   } finally {
     state.busy = false;
     render();
@@ -311,12 +356,30 @@ els.primary.addEventListener('click', () => {
   else void addSiteAndSave();
 });
 
+async function downloadAction(type, downloadId) {
+  if (!downloadId) return;
+  try {
+    await chrome.runtime.sendMessage({ type, downloadId });
+  } catch {
+    /* ignoreras */
+  }
+}
+
+els.openPdf.addEventListener('click', () => {
+  void downloadAction('OPEN_DOWNLOAD', Number(els.openPdf.dataset.downloadId));
+});
+
+els.showFolder.addEventListener('click', () => {
+  void downloadAction('SHOW_DOWNLOAD', Number(els.showFolder.dataset.downloadId));
+});
+
 els.saveAs.addEventListener('change', () => {
   void (async () => {
     await updateSettings((draft) => {
       draft.file.saveAs = els.saveAs.checked;
     });
     state.settings = await getSettings();
+    render();
   })();
 });
 

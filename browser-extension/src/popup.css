@@ -107,6 +107,32 @@ body.popup {
   padding: 8px 10px;
 }
 
+.banner-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  padding-left: 2px;
+}
+
+.filename-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 11.5px;
+}
+
+.filename-value {
+  color: var(--text-muted);
+  max-width: 232px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .option-row {
   display: flex;
   align-items: center;

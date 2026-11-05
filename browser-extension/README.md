@@ -17,6 +17,7 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 | **Högerklicksmeny** | ”Spara sidan som PDF” på valda sidor. |
 | **Ren utskrift** | Vit bakgrund, A4, inga sidhuvuden/sidofot och anpassade marginaler. Allt går att ändra. |
 | **Välj mapp** | Som standard öppnas webbläsarens spar-dialog, där du väljer mapp och kan ändra filnamnet. Stäng av det i panelen om du hellre vill spara tyst i Hämtade filer. |
+| **Visa i mapp** | Efter sparning finns **Visa i mapp** och **Öppna PDF** i panelen, så du hamnar direkt i mappen du valde. |
 | **Filnamn och mappar** | Filerna döps efter sidtiteln: `Sidor/<sajt>/<titel>.pdf`. Otillåtna tecken tas bort automatiskt. Mall och underkatalog går att ändra. |
 | **Svenska / engelska** | Välj språk i inställningarna, eller låt webbläsarens språk styra. |
 | **Import/export** | Hela inställningsfilen kan exporteras och importeras som JSON. |
@@ -47,7 +48,8 @@ Efter installationen öppnas inställningssidan automatiskt. Där lägger du til
 
 1. **Lägg till en webbplats** – klicka på tilläggets ikon när du står på sidan och välj **Lägg till … och spara**. Du kan också skriva adressen direkt i inställningarna, t.ex. `aftonbladet.se`, `*.example.com` eller `example.com/nyheter`.
 2. **Bevilja åtkomst** när webbläsaren frågar. Det behövs för att den flytande knappen ska kunna visas på just den sajten. Utan åtkomst fungerar fortfarande verktygsfältets knapp och snabbtangenten.
-3. **Klicka på PDF-knappen** som dyker upp längst ner på sidan. Välj mapp i dialogen som öppnas (mappen `Sidor/<sajt>` och titelnamnet är förvalt) och spara.
+3. **Klicka på PDF-knappen** som dyker upp längst ner på sidan. Panelen visar innan du klickar vilket **filnamn** filen får, och därefter öppnas spar-dialogen där du väljer mapp (mappen `Sidor/<sajt>` och titelnamnet är förvalt).
+4. Efter sparning visas **Visa i mapp** och **Öppna PDF** – ett klick och du står i rätt mapp, även om du valde en helt annan mapp i dialogen.
    Vill du slippa dialogen stänger du av **Fråga var filen ska sparas** i panelen – då hamnar filen direkt i Hämtade filer.
 
 ### Mönster
@@ -76,7 +78,7 @@ Inställningssidan öppnas via kugghjulet i panelen eller via `chrome://extensio
 
 | Inställning | Resultat |
 | --- | --- |
-| På (standard) | Du väljer mapp och kan ändra namnet varje gång. Underkatalogen och titelnamnet är förvalt. |
+| På (standard) | Du väljer mapp och kan ändra namnet varje gång. Underkatalogen och titelnamnet är förvalt, och webbläsaren minns senast använda mapp. |
 | Av | Filen sparas direkt i Hämtade filer, i underkatalogen `Sidor/<sajt>/`. |
 - **Allmänt** – språk, tillåt alla webbplatser, snabbtangent, import/export och återställning.
 
@@ -167,7 +169,7 @@ npm test        # 21 tester för mönster, filnamn och översättningar
 npm run check   # syntaxkontroll av alla skript
 ```
 
-Aktuell version: **1.1.0**.
+Aktuell version: **1.2.0**.
 
 Ändringar slår igenom efter **Ladda om** på `chrome://extensions`. Innehållsskriptet på redan öppna flikar uppdateras när du laddar om sidan.
 
@@ -176,4 +178,5 @@ Aktuell version: **1.1.0**.
 - Endast `http`/`https` kan sparas.
 - DevTools får inte vara öppet i fliken som sparas.
 - Mycket stora sidor kan ta några sekunder extra; höj **Väntetid före utskrift** om lazy-laddat innehåll saknas.
+- Någon “fast sparmapp” utan dialog finns inte: Brave har File System Access-API:et bakom en flagga, så tillägget använder webbläsarens egen spar-dialog (som minns mappen) i stället.
 - Tillägget är inte signerat – det installeras som opackat och kräver utvecklarläge.

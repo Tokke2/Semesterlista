@@ -295,6 +295,24 @@ async function downloadPdf(base64, filename, settings) {
   }
 }
 
+/** Hämtar information om en nedladdning, bl.a. den absoluta sökvägen. */
+function getDownloadItem(downloadId) {
+  return new Promise((resolve) => {
+    try {
+      chrome.downloads.search({ id: downloadId }, (items) => {
+        const error = chrome.runtime.lastError;
+        if (error || !Array.isArray(items) || !items.length) {
+          resolve(null);
+          return;
+        }
+        resolve(items[0]);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 function makeFilename(tab, settings) {
   let site = 'webbplats';
   try {
@@ -345,9 +363,12 @@ async function runSave(tab) {
     const base64 = await printTabToPdf(tabId, settings);
     const filename = makeFilename(tab, settings);
     const downloadId = await downloadPdf(base64, filename, settings);
+    const item = await getDownloadItem(downloadId);
+    const filePath = item?.filename || '';
 
     await addHistory({
       filename,
+      filePath,
       url: tab.url,
       title: tab.title || filename,
       downloadId
@@ -359,7 +380,7 @@ async function runSave(tab) {
       text: t(lang, 'toast.saved', { file: filename.split('/').pop() })
     });
     clearBadgeLater(tabId);
-    return { ok: true, filename, downloadId };
+    return { ok: true, filename, downloadId, filePath };
   } catch (error) {
     const mapped = mapError(error, 'unexpected');
     const message = errorText(lang, mapped.code);
@@ -641,6 +662,18 @@ async function handleMessage(message, sender) {
         tab = { ...tab, url: message.url };
       }
       return handleSaveRequest(tab);
+    }
+
+    case 'OPEN_DOWNLOAD':
+    case 'SHOW_DOWNLOAD': {
+      if (typeof message.downloadId !== 'number') return { ok: false, error: 'unexpected' };
+      try {
+        if (message.type === 'OPEN_DOWNLOAD') chrome.downloads.open(message.downloadId);
+        else chrome.downloads.show(message.downloadId);
+        return { ok: true };
+      } catch {
+        return { ok: false, error: 'download' };
+      }
     }
 
     case 'SYNC_CONTENT_SCRIPTS': {

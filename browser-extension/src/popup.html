@@ -50,6 +50,10 @@
     </section>
 
     <div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+    <div id="banner-actions" class="banner-actions" hidden>
+      <button id="open-pdf" class="link" type="button" data-i18n="popup.openPdf">Öppna PDF</button>
+      <button id="show-folder" class="link" type="button" data-i18n="popup.showInFolder">Visa i mapp</button>
+    </div>
 
     <button id="primary" class="btn btn-primary btn-block" type="button">
       <svg id="primary-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -76,13 +80,18 @@
     <div class="option-row">
       <div class="option-text">
         <span class="option-label" data-i18n="popup.saveAs">Fråga var filen ska sparas</span>
-        <span class="option-note" data-i18n="popup.saveAsHint">Du väljer mapp i webbläsarens dialog.</span>
+        <span id="save-as-note" class="option-note" data-i18n="popup.saveAsHint">Du väljer mapp i webbläsarens dialog.</span>
       </div>
       <label class="switch">
         <input id="save-as" type="checkbox" />
         <span class="track"></span>
         <span class="sr-only" data-i18n="popup.saveAs"></span>
       </label>
+    </div>
+
+    <div class="filename-row">
+      <span class="muted" data-i18n="popup.filename">Filnamn</span>
+      <span id="filename-preview" class="filename-value">…</span>
     </div>
 
     <div class="last-saved">
