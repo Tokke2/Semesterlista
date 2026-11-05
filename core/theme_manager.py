@@ -87,7 +87,7 @@ class ThemeManager(QObject):
     LIGHT_THEME:  str = "light"
     SYSTEM_THEME: str = "system"
 
-    VALID_THEMES: Tuple[str, str, str] = (DARK_THEME, LIGHT_THEME, SYSTEM_THEME)
+    VALID_THEMES: Tuple[str, ...] = (DARK_THEME, LIGHT_THEME, SYSTEM_THEME, "contrast")
 
     # ──────────────────────────────────────────────────────────
     # Färgdefinitioner – LJUST TEMA
@@ -145,19 +145,19 @@ class ThemeManager(QObject):
     # ──────────────────────────────────────────────────────────
 
     DARK_COLORS: Dict[str, str] = {
-        # ── Knappar – LJUSA med SVART text ────────────────
-        "button_bg":           "#E8E8E8",   # Ljusgrå – syns mot mörk bg
-        "button_fg":           "#000000",   # Svart – hög kontrast
-        "button_border":       "#AAAAAA",   # Mellangrå ram
-        "button_hover_bg":     "#FFFFFF",   # Vit vid hover
+        # ── Knappar – mörka ytor med ljus text ────────────────
+        "button_bg":           "#30363F",
+        "button_fg":           "#FFFFFF",
+        "button_border":       "#687481",
+        "button_hover_bg":     "#414D5A",
         "button_hover_border": "#0078D4",   # Blå accent vid hover
-        "button_pressed_bg":   "#C8C8C8",   # Mörkare ljusgrå vid tryck
+        "button_pressed_bg":   "#243D52",
         "button_disabled_bg":  "#555555",   # Mörkgrå vid inaktiv
-        "button_disabled_fg":  "#888888",   # Grå text
-        # ── Tabbar – LJUSA med SVART text ─────────────────
-        "tab_bg":              "#D0D0D0",   # Ljusgrå – syns mot mörk bg
-        "tab_fg":              "#000000",   # Svart – hög kontrast
-        "tab_hover_bg":        "#E8E8E8",   # Ljusare vid hover
+        "button_disabled_fg":  "#BBBBBB",
+        # ── Tabbar – mörka ytor med ljus text ─────────────────
+        "tab_bg":              "#30363F",
+        "tab_fg":              "#FFFFFF",
+        "tab_hover_bg":        "#414D5A",
         "tab_selected_bg":     "#0078D4",   # Blå accent (aktiv tabb)
         "tab_selected_fg":     "#FFFFFF",   # Vit text på aktiv
         "tab_border":          "#888888",   # Mellangrå ram
@@ -224,7 +224,7 @@ class ThemeManager(QObject):
 
     def is_dark(self) -> bool:
         """Returnera True om aktuellt effektivt tema är mörkt."""
-        if self._current_theme == self.DARK_THEME:
+        if self._current_theme in (self.DARK_THEME, "contrast"):
             return True
         if self._current_theme == self.SYSTEM_THEME:
             return self._detect_system_theme() == self.DARK_THEME
@@ -282,10 +282,31 @@ class ThemeManager(QObject):
 
         effective = self._get_effective_theme()
 
-        if effective == self.DARK_THEME:
+        if effective in (self.DARK_THEME, "contrast"):
             self._apply_dark_theme(app)
         else:
             self._apply_light_theme(app)
+
+        self._current_colors["muted"] = "#BFC9D5" if self.is_dark() else "#536273"
+        self._current_colors["accent"] = "#005A9E"
+        if effective == "contrast":
+            self._current_colors.update({
+                "window_bg": "#000000", "window_fg": "#FFFFFF", "input_bg": "#000000",
+                "input_fg": "#FFFFFF", "input_border": "#FFFFFF", "muted": "#FFFFFF",
+                "accent": "#FFFF00", "tab_selected_bg": "#FFFF00", "tab_selected_fg": "#000000",
+                "input_focus_border": "#FFFF00", "menu_bg": "#000000", "menu_fg": "#FFFFFF",
+                "menu_hover_bg": "#FFFF00", "menu_hover_fg": "#000000",
+                "button_disabled_bg": "#222222", "button_disabled_fg": "#BBBBBB",
+            })
+            palette = app.palette()
+            for role in (QPalette.ColorRole.Window, QPalette.ColorRole.Base, QPalette.ColorRole.AlternateBase):
+                palette.setColor(role, QColor("#000000"))
+            for role in (QPalette.ColorRole.Text, QPalette.ColorRole.WindowText):
+                palette.setColor(role, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor("#FFFF00"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#000000"))
+            app.setPalette(palette)
+        app.setStyle("Fusion")
 
         # Applicera alltid komplett stylesheet –
         # säkerställer att knappar/tabbar är korrekt inverterade
@@ -429,9 +450,10 @@ class ThemeManager(QObject):
         Returnera (bakgrund, text, border) för knappar.
 
         Ljust tema → ("#3D3D3D", "#FFFFFF", "#222222")
-        Mörkt tema → ("#E8E8E8", "#000000", "#AAAAAA")
+        Mörkt tema → ("#30363F", "#FFFFFF", "#687481")
         """
         c = self._current_colors
+        c.setdefault("muted", "#536273")
         return (c["button_bg"], c["button_fg"], c["button_border"])
 
     def get_tab_color(self) -> Tuple[str, str]:
@@ -439,9 +461,10 @@ class ThemeManager(QObject):
         Returnera (bakgrund, text) för tabbar.
 
         Ljust tema → ("#4A4A4A", "#FFFFFF")
-        Mörkt tema → ("#D0D0D0", "#000000")
+        Mörkt tema → ("#30363F", "#FFFFFF")
         """
         c = self._current_colors
+        c.setdefault("muted", "#536273")
         return (c["tab_bg"], c["tab_fg"])
 
     def get_color(self, key: str) -> str:
@@ -564,6 +587,8 @@ class ThemeManager(QObject):
           - Inget tillstånd lämnar knappar/tabbar oläsliga
         """
         c = self._current_colors
+        c.setdefault("muted", "#536273")
+        from core.ui_layout import design_styles
 
         return f"""
 /* ═══════════════════════════════════════════════════════════
@@ -1085,4 +1110,4 @@ QToolTip {{
     font-size: 11px;
     font-weight: bold;
 }}
-"""
+""" + design_styles(c)

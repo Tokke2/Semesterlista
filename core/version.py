@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
-MODULE_VERSION: str = "2.14.0"
+MODULE_VERSION: str = "2.15.0"
 
 #: Filerna som alltid måste följa appens version
 CONFIG_JSON = "config.json"

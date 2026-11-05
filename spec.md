@@ -2994,3 +2994,30 @@ Hyresdelen är planering/avprickning – inga fakturor skapas. Kvartalskort och
 PDF visar utskick senast 1 december året före Q1, sedan 1 mars/juni/september,
 och betald senast 1 januari/april/juli/oktober i valt år. Det är kvartalets
 början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
+
+
+## 35. Fristående kalender, gemensamt utseende och säsongs-PDF (v2.15.0)
+
+- Kalender är en separat plugin, helt utan koppling till anställda eller semester.
+  Flikordning: Kalender, Semesterlista, Fordon, Hyra. Veckostart är alltid måndag.
+- `core/calendar_data.py` delar datum, ISO-veckogrupper och regionala helgdagsnamn/
+  klassificering mellan kalender på skärmen och kalender-/lista-/fordons-PDF.
+  Semester-/fordons-PDF visar dessutom helgdagsnamn som text under respektive månad.
+- Kalender väljer år och exportmånader. 1/2/3 månader per blad ger för helår
+  12/6/4 sidor, stående för en månad och liggande för två/tre.
+- `core/ui_layout.py`: gemensamma spacing-/marginalvärden, brytande knapprader,
+  scrollbar-wrapper och designregler. Flikernas huvudåtgärder ligger sist.
+  Dialogernas Spara/Avbryt ligger utanför rullningsytan.
+- Mörkt tema har mörka kontroll-/meny-/kalenderytor, tydliga disabled-färger och
+  pil-/bockikoner. Högkontrasttema har svart/vitt och gul fokusmarkering.
+  Hyresstatus har kvar text, kalenderhelgdagar har namn, säsongsband har årstidsnamn.
+- Fyra valbara lokala PNG/JPEG-bilder, en per årstid, används i en egen bildyta
+  högst 48 pt före skalning. Bilderna överlagrar aldrig tabeller. Saknad bild
+  ger textfallback och loggvarning; data exporteras ändå. Inga nätanrop för bilder.
+- Ljus PDF är oberoende av UI-tema. Valbar gråskala gäller vektorfärger,
+  säsongsbilder och rasterlogotyper; även Hyra erbjuder gråskaleutskrift.
+- Gemensam läsbarhetskontroll före export varnar under 6 pt, standardval Nej.
+  Kalenderns fil ersätts atomiskt först när rendering lyckats.
+- Regressionstester täcker veckostart, skottår, region, lokala bilder i samtliga
+  tre exporttyper, 1/2/3-månaderssidantal, gråskalepixlar, avbruten/misslyckad
+  export, kompakt knapplayout och högkontrast.

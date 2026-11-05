@@ -1,6 +1,6 @@
 # Semesterlista
 
-En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörningsscheman** och **hyreslistor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
+En liten Windows-app (PySide6) som skriver ut **kalendrar**, **semesterlistor**, **körscheman** och **hyreslistor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Licens](https://img.shields.io/badge/licens-MIT-green)
@@ -11,13 +11,31 @@ En liten Windows-app (PySide6) som skriver ut **semesterlistor**, **limokörning
 
 | Flik | Innehåll |
 |------|----------|
+| **Kalender** | Fristående kalender med veckonummer och namngivna regionala helgdagar, inga anställda/semesterperioder |
+| **Semesterlista** | Anställda och semester, 1–3 månader per blad, automatisk A4-orientering |
+| **Fordon** | Fordon och körning, inga semesteruppgifter |
 | **Hyra** | Månads- och kvartalshyresgäster, kvartalsöversikt, PDF med tomma kryssrutor |
-| **Semesterlista** | Semester- och limokörningsschema, 1–3 månader per blad, automatisk A4-orientering |
-| **Fordon** | Samma schema som Semesterlista men låst till limokörning |
 
-Alla tre flikarna kan ha **egen logotyp** (SVG, EPS eller PDF) som ritas
+Semesterlista, Fordon och Hyra kan ha **egen logotyp** (SVG, EPS eller PDF) som ritas
 automatiskt skalenligt i PDF:ens hörn – väljs i en dropdown med bilderna i
 `assets/` och dess undermappar, eller infogas med *Infoga logotyp…*.
+
+## Nytt i 2.15.0
+
+- Fyra flikar i ordningen **Kalender, Semesterlista, Fordon, Hyra**.
+- Gemensamma färger och avstånd, mörkt tema och **Hög kontrast** under
+  Utseende. Knapprader bryts och flikar får rullning i små fönster.
+- **PDF-utseende…** i Kalender, Semesterlista och Fordon: slå på/av
+  säsongsfärger, välj en lokal bildmapp och en bild för varje årstid.
+  JPEG/PNG används i en separat, storleksbegränsad bildyta – aldrig bakom data.
+  Inställningarna sparas separat per flik. Inga AI-bilder eller bildnedladdningar.
+- PDF har ljus bakgrund oberoende av skärmtemat. **Svartvit/gråskala**
+  omfattar även bilder och logotyper. Hyra har också ett gråskaleval.
+- Den fristående kalendern börjar alltid på måndag och visar ISO-veckonummer
+  samt svenska eller amerikanska helgdagsnamn enligt vald region.
+  Markera vilka månader som ska exporteras. Ett helår blir 12, 6 eller 4 sidor
+  med 1, 2 respektive 3 månader per blad; en månad stående A4, fler liggande.
+  Varningen för text mindre än 6 punkter finns kvar även med säsongsbilder.
 
 ## Funktioner
 

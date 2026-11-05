@@ -1,0 +1,1 @@
+"""Fristående kalender utan semesterdata."""

@@ -113,7 +113,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.14.0"
+    VERSION: str = "2.15.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 
@@ -173,6 +173,9 @@ class Plugin(BasePlugin):
             "start_month": 0,
             "logo_svg": "",
             "logo_scale": 100,
+            "seasonal_pdf": True,
+            "pdf_monochrome": False,
+            "season_images": {},
         }
 
         if self.FIXED_MODE:

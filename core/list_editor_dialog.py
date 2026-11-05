@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.14.0"
+MODULE_VERSION: str = "2.15.0"
 
 
 # ══════════════════════════════════════════════════════════
@@ -109,7 +109,7 @@ class SectionEditor(QWidget):
         # Hjälptext: så skrivs lediga dagar (v2.11.0)
         self.leave_hint = QLabel(i18n.t("roster.leave.hint"))
         self.leave_hint.setWordWrap(True)
-        self.leave_hint.setStyleSheet("color: #666; font-size: 11px;")
+        self.leave_hint.setProperty("role", "muted")
         layout.addWidget(self.leave_hint)
 
         self.list_widget = QListWidget()

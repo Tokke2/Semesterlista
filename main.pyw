@@ -271,7 +271,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.14.0"
+APP_VERSION: str = "2.15.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -619,7 +619,7 @@ class MainWindow(QMainWindow):
         except Exception as exc:  # pragma: no cover – defensivt
             logger.warning(f"Kunde inte sätta fönsterikon: {exc}")
 
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(520, 420)
 
         central     = QWidget()
         self.setCentralWidget(central)
@@ -763,6 +763,7 @@ class MainWindow(QMainWindow):
             ("dark",   "theme.dark"),
             ("light",  "theme.light"),
             ("system", "theme.system"),
+            ("contrast", "theme.contrast"),
         ):
             action = QAction(i18n.t(theme_key), self)
             action.setCheckable(True)
@@ -976,6 +977,8 @@ class MainWindow(QMainWindow):
         if self._tab_widget is None:
             return
 
+        from core.ui_layout import scroll_page
+        widget = scroll_page(widget)
         idx = self._tab_widget.addTab(widget, tab_name)
         self._tab_widgets[plugin_id]   = widget
         self._tab_positions[plugin_id] = idx
@@ -1012,6 +1015,8 @@ class MainWindow(QMainWindow):
             if plugin else plugin_id
         )
 
+        from core.ui_layout import scroll_page
+        widget = scroll_page(widget)
         idx = self._tab_widget.addTab(widget, tab_name)
         self._tab_positions[plugin_id] = idx
 
@@ -1110,6 +1115,7 @@ class MainWindow(QMainWindow):
                 "dark":   "theme.dark.name",
                 "light":  "theme.light.name",
                 "system": "theme.system.name",
+                "contrast": "theme.contrast.name",
             }.get(theme, "theme.system.name")
             self.set_status(
                 i18n.t("status.theme", name=i18n.t(theme_key))

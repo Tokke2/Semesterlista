@@ -75,7 +75,7 @@ from core.pdf_assets import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.14.0"
+MODULE_VERSION: str = "2.15.0"
 
 #: Höjd på förhandsgranskningen (px) – bredden följer fönstret
 PREVIEW_HEIGHT: int = 56
@@ -126,14 +126,15 @@ class LogoPicker(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        row = QHBoxLayout()
+        from core.ui_layout import FlowLayout
+        row = FlowLayout()
         row.setSpacing(6)
 
         self.combo = QComboBox()
         self.combo.setMinimumWidth(220)
         self.combo.setToolTip(t("logo.dialog_hint"))
         self.combo.currentIndexChanged.connect(self._on_combo_changed)
-        row.addWidget(self.combo, 1)
+        row.addWidget(self.combo)
 
         self.insert_button = QPushButton("🖼️ " + t("logo.insert"))
         self.insert_button.setToolTip(t("logo.insert_tooltip"))
@@ -174,7 +175,7 @@ class LogoPicker(QWidget):
         size_row.addWidget(self.size_spin)
 
         self.size_hint = QLabel(t("logo.size_hint"))
-        self.size_hint.setStyleSheet("color: #666; font-size: 10px;")
+        self.size_hint.setProperty("role", "muted")
         size_row.addWidget(self.size_hint, 1)
         layout.addLayout(size_row)
 

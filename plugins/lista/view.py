@@ -1,6 +1,7 @@
 """Semesterlista: view (v2.12.0)."""
 
 from __future__ import annotations
+from core.ui_layout import FlowLayout
 import calendar
 from datetime import date
 from datetime import datetime
@@ -78,7 +79,7 @@ class SettingsDialog(QDialog):
 
     def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(12)
 
         company_row = QHBoxLayout()
@@ -405,26 +406,27 @@ class SemesterlistaView(QWidget):
 
     def _init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(12)
 
         is_vehicle = (self._fixed_mode or "Semesterlista") != "Semesterlista"
         title = QLabel(i18n.t("fordon.title") if is_vehicle else i18n.t("lista.title"))
-        title.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
+        title.setProperty("role", "title")
         main_layout.addWidget(title)
 
         desc = QLabel(
             i18n.t("fordon.description") if is_vehicle else i18n.t("lista.description")
         )
+        desc.setWordWrap(True)
         desc.setFont(QFont("Helvetica", 10))
-        desc.setStyleSheet("color: #666;")
+        desc.setProperty("role", "muted")
         main_layout.addWidget(desc)
         main_layout.addSpacing(8)
 
         main_layout.addWidget(self._create_form_group())
-        main_layout.addLayout(self._create_button_bar())
         main_layout.addWidget(self._create_legend_group())
         main_layout.addStretch()
+        main_layout.addLayout(self._create_button_bar())
 
     def _create_form_group(self) -> QGroupBox:
         """
@@ -555,7 +557,7 @@ class SemesterlistaView(QWidget):
         self.file_label.setFont(QFont("Helvetica", 10))
         form_layout.addWidget(self.file_label, 5, 0)
 
-        file_row = QHBoxLayout()
+        file_row = FlowLayout()
         self.file_edit = QLineEdit()
         self.file_edit.setText(
             self.plugin.settings.get("last_file") or self._default_file
@@ -602,13 +604,18 @@ class SemesterlistaView(QWidget):
 
     def _create_button_bar(self) -> QHBoxLayout:
         """Skapa knappraden."""
-        layout = QHBoxLayout()
+        layout = FlowLayout()
         layout.setSpacing(10)
 
         generate_btn = QPushButton(i18n.t("lista.button.generate"))
-        generate_btn.setMinimumHeight(36)
+        generate_btn.setMinimumHeight(30)
+        generate_btn.setProperty("primary", True)
         generate_btn.clicked.connect(self._generate_pdf)
         layout.addWidget(generate_btn)
+        appearance = QPushButton(i18n.t("season.settings"))
+        appearance.clicked.connect(self._pdf_appearance)
+        layout.addWidget(appearance)
+
 
         if self._fixed_mode == "Semesterlista":
             self.vacation_button = QPushButton(i18n.t("vacation.title"))
@@ -651,7 +658,9 @@ class SemesterlistaView(QWidget):
                 f"background-color: {color_hex}; border: 1px solid #999;"
             )
             row.addWidget(box)
-            row.addWidget(QLabel(text))
+            label = QLabel(text)
+            label.setWordWrap(True)
+            row.addWidget(label)
             row.addStretch()
             legend_layout.addLayout(row)
 
@@ -736,6 +745,11 @@ class SemesterlistaView(QWidget):
             mode = self._fixed_mode or self.mode_combo.currentText()
             name = self._default_file if mode == "Limokörning" else "Anställda.txt"
         return resolve_path(name)
+
+    def _pdf_appearance(self):
+        from core.seasonal_options import edit_seasonal_options
+        if edit_seasonal_options(self.plugin.settings, self):
+            self.plugin._save_settings()
 
     def _manage_vacation(self):
         from core.vacation_dialog import VacationDialog

@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.14.0"
+MODULE_VERSION: str = "2.15.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -164,6 +164,34 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "theme.light":                     "&Ljust tema",
         "theme.system":                    "&System-tema",
         "theme.dark.name":                 "Mörkt",
+        "theme.contrast": "&Hög kontrast",
+        "theme.contrast.name": "Hög kontrast",
+        "calendar.tab": "Kalender",
+        "calendar.title": "Kalender",
+        "calendar.description": "Fristående kalender med helgdagar och lokala bilder. Inga anställda eller semesterperioder. Veckan börjar alltid på måndag.",
+        "calendar.year": "År:",
+        "calendar.per_page": "Månader per PDF-blad:",
+        "calendar.region": "Helgdagsregion:",
+        "calendar.months": "Månader som ska exporteras:",
+        "calendar.export": "Generera PDF",
+        "calendar.all_months": "Markera alla månader",
+        "calendar.select_months": "Välj minst en månad och 1, 2 eller 3 månader per blad.",
+        "calendar.no_holidays": "Inga namngivna helgdagar denna månad.",
+        "calendar.saved": "Kalendern har sparats:\n{path}",
+        "calendar.page": "Sida {page} av {total}",
+        "calendar.week": "Vecka",
+        "season.settings": "PDF-utseende…",
+        "season.enable": "Säsongsfärger och bilder i PDF",
+        "season.monochrome": "Svartvit PDF (gråskala)",
+        "season.folder": "Välj bildmapp…",
+        "season.no_folder": "Ingen bildmapp vald",
+        "season.no_image": "Ingen bild",
+        "season.missing": "Bilden kunde inte läsas – PDF skapas utan den.",
+        "season.winter": "Vinter",
+        "season.spring": "Vår",
+        "season.summer": "Sommar",
+        "season.autumn": "Höst",
+
         "theme.light.name":                "Ljust",
         "theme.system.name":               "System",
 
@@ -629,6 +657,34 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "theme.light":                     "&Light theme",
         "theme.system":                    "&System theme",
         "theme.dark.name":                 "Dark",
+        "theme.contrast": "&High contrast",
+        "theme.contrast.name": "High contrast",
+        "calendar.tab": "Calendar",
+        "calendar.title": "Calendar",
+        "calendar.description": "Standalone calendar with holidays and local images. No employees or vacation periods. Weeks always start on Monday.",
+        "calendar.year": "Year:",
+        "calendar.per_page": "Months per PDF sheet:",
+        "calendar.region": "Holiday region:",
+        "calendar.months": "Months to export:",
+        "calendar.export": "Generate PDF",
+        "calendar.all_months": "Select all months",
+        "calendar.select_months": "Select at least one month and 1, 2 or 3 months per sheet.",
+        "calendar.no_holidays": "No named holidays this month.",
+        "calendar.saved": "Calendar saved:\n{path}",
+        "calendar.page": "Page {page} of {total}",
+        "calendar.week": "Week",
+        "season.settings": "PDF appearance…",
+        "season.enable": "Seasonal colours and images in PDF",
+        "season.monochrome": "Black-and-white PDF (grayscale)",
+        "season.folder": "Choose image folder…",
+        "season.no_folder": "No image folder selected",
+        "season.no_image": "No image",
+        "season.missing": "Image could not be read – PDF created without it.",
+        "season.winter": "Winter",
+        "season.spring": "Spring",
+        "season.summer": "Summer",
+        "season.autumn": "Autumn",
+
         "theme.light.name":                "Light",
         "theme.system.name":               "System",
 
@@ -1087,6 +1143,7 @@ PLUGIN_NAME_KEYS: Dict[str, str] = {
     "Semesterlista":               "lista.tab_name",
     "Hyra":                        "hyra.tab_name",
     "Fordon":                      "fordon.tab_name",
+    "Kalender":                    "calendar.tab",
 }
 
 # Mappnamn i plugins/ → internt plugin-namn
@@ -1094,6 +1151,7 @@ PLUGIN_FOLDER_NAMES: Dict[str, str] = {
     "lista":   "Semesterlista",
     "hyra":    "Hyra",
     "fordon":  "Fordon",
+    "kalender": "Kalender",
 }
 
 

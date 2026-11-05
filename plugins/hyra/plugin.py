@@ -41,6 +41,7 @@ copyright Rickard Längkvist 2025 – dynamiskt år
 """
 
 from __future__ import annotations
+from core.ui_layout import FlowLayout
 
 import os
 import platform
@@ -60,6 +61,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QSpinBox,
     QFrame,
+    QCheckBox,
     QMessageBox,
     QSizePolicy,
 )
@@ -78,6 +80,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 
+from core.seasonal_pdf import print_canvas
 from core import i18n
 from core.pdf_assets import (
     AssetError,
@@ -102,7 +105,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.14.0",
+    "version":     "2.15.0",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -403,7 +406,7 @@ class HyraMainView(QWidget):
         layout = QHBoxLayout()
 
         title = QLabel(i18n.t("hyra.title"))
-        title.setFont(QFont("Helvetica", 18, QFont.Weight.Bold))
+        title.setProperty("role", "title")
         layout.addWidget(title)
         layout.addStretch()
 
@@ -422,7 +425,7 @@ class HyraMainView(QWidget):
 
     def _create_file_info_row(self) -> QHBoxLayout:
         """Skapa rad med fil-info, Redigera-knapp och Ladda om-knapp."""
-        layout = QHBoxLayout()
+        layout = FlowLayout()
 
         file_label = QLabel(f"📁 Fil: {DEFAULT_TENANT_FILE}")
         file_label.setFont(QFont("Helvetica", 9))
@@ -488,71 +491,42 @@ class HyraMainView(QWidget):
         quarters_info = get_all_quarter_invoice_info(year)
 
         for i, info in enumerate(quarters_info):
-            match info["status"]:
-                case "passerad":
-                    bg, fg = "#E0E0E0", "#666666"
-                case "idag":
-                    bg, fg = "#FF6666", "#FFFFFF"
-                case "brådskande":
-                    bg, fg = "#FFCCCC", "#000000"
-                case "snart":
-                    bg, fg = "#FFFFCC", "#000000"
-                case _:
-                    bg, fg = "#CCFFCC", "#000000"
-
             card = QFrame()
-            card.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
-            card.setStyleSheet(
-                f"background-color: {bg}; "
-                f"border: 1px solid #CCC; "
-                f"border-radius: 4px;"
-            )
+            card.setProperty("status", info["status"])
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(8, 8, 8, 8)
             card_layout.setSpacing(2)
 
             q_label = QLabel(f"Q{info['quarter']}")
             q_label.setFont(QFont("Helvetica", 14, QFont.Weight.Bold))
-            q_label.setStyleSheet(
-                f"color: {fg}; background: transparent; border: none;"
-            )
             q_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(q_label)
 
             period_label = QLabel(info["period"])
             period_label.setFont(QFont("Helvetica", 8))
-            period_label.setStyleSheet(
-                f"color: {fg}; background: transparent; border: none;"
-            )
             period_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(period_label)
 
             send_label = QLabel(i18n.t("hyra.quarter.send_by", date=info["send_date"].isoformat()))
             send_label.setWordWrap(True)
             send_label.setFont(QFont("Helvetica", 10, QFont.Weight.Bold))
-            send_label.setStyleSheet(
-                f"color: {fg}; background: transparent; border: none;"
-            )
             send_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(send_label)
             paid = QLabel(i18n.t("hyra.quarter.paid_by", date=info["paid_by"].isoformat()))
             paid.setWordWrap(True)
             paid.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            paid.setStyleSheet(f"color: {fg}; background: transparent; border: none;")
+
             card_layout.addWidget(paid)
 
 
             status_label = QLabel(info["status_text"])
-            status_label.setFont(QFont("Helvetica", 9))
-            status_label.setStyleSheet(
-                f"color: {fg}; background: transparent; border: none;"
-            )
+            status_label.setProperty("role", "status")
             status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             card_layout.addWidget(status_label)
 
-            group_layout.addWidget(card, 0, i)
+            group_layout.addWidget(card, i // 2, i % 2)
 
-        for col in range(4):
+        for col in range(2):
             group_layout.setColumnStretch(col, 1)
 
         return group
@@ -591,20 +565,15 @@ class HyraMainView(QWidget):
 
         if tenants:
             for i, name in enumerate(tenants):
-                bg  = "#F5F5F5" if i % 2 == 0 else "#FFFFFF"
                 lbl = QLabel(f"• {name}")
                 lbl.setFont(QFont("Helvetica", 10))
-                lbl.setStyleSheet(
-                    f"background-color: {bg}; "
-                    f"padding: 4px 8px; "
-                    f"border-radius: 2px;"
-                )
+                lbl.setProperty("role", "row")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
                 group_layout.addWidget(lbl)
         else:
             empty = QLabel(i18n.t("hyra.tenants.empty", file=DEFAULT_TENANT_FILE))
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty.setStyleSheet("color: #888; padding: 20px;")
+            empty.setProperty("role", "muted")
             group_layout.addWidget(empty)
 
         group_layout.addStretch()
@@ -617,14 +586,23 @@ class HyraMainView(QWidget):
 
     def _create_button_bar(self) -> QHBoxLayout:
         """Skapa knapprad längst ner."""
-        layout = QHBoxLayout()
+        layout = FlowLayout()
         layout.setSpacing(8)
 
         pdf_btn = QPushButton(i18n.t("hyra.button.generate"))
-        pdf_btn.setMinimumHeight(36)
+        pdf_btn.setMinimumHeight(30)
+        pdf_btn.setProperty("primary", True)
         pdf_btn.clicked.connect(self.plugin._generate_pdf)
         pdf_btn.setToolTip(i18n.t("hyra.tooltip.generate"))
         layout.addWidget(pdf_btn)
+        monochrome = QCheckBox(i18n.t("season.monochrome"))
+        monochrome.setChecked(bool(self.plugin.settings.get("pdf_monochrome", False)))
+        def set_monochrome(value):
+            self.plugin.settings["pdf_monochrome"] = value
+            self.plugin._save_settings()
+        monochrome.toggled.connect(set_monochrome)
+        layout.addWidget(monochrome)
+
 
         edit_btn = QPushButton("📝 " + i18n.t("hyra.manage_tenants"))
         edit_btn.setMinimumHeight(36)
@@ -749,8 +727,7 @@ class PDFGenerator:
                 self._page_logo(), margin_mm=8.0, corner="right"
             )
             build_kwargs: Dict[str, Any] = {}
-            if logo_canvas is not None:
-                build_kwargs["canvasmaker"] = logo_canvas
+            build_kwargs["canvasmaker"] = print_canvas(logo_canvas, self.plugin.settings.get("pdf_monochrome", False))
 
             doc = SimpleDocTemplate(
                 filename,
@@ -995,12 +972,12 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.14.0"
+    VERSION:     str = "2.15.0"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 
     #: Ordning bland flikarna i huvudfönstret (lägst = längst till vänster)
-    TAB_ORDER:   int = 10
+    TAB_ORDER:   int = 40
 
     def __init__(
         self,

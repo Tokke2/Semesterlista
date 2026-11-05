@@ -75,10 +75,10 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.14.0"
+MODULE_VERSION: str = "2.15.0"
 
 #: Temanycklar i den ordning de visas
-THEME_ORDER: tuple = ("system", "light", "dark")
+THEME_ORDER: tuple = ("system", "light", "dark", "contrast")
 
 #: Helgdagsregioner
 HOLIDAY_REGIONS: tuple = ("sv", "us")
@@ -181,7 +181,7 @@ class SettingsDialog(QDialog):
             f"{i18n.t('settings.data_path')} {self._data_path()}"
         )
         data_label.setWordWrap(True)
-        data_label.setStyleSheet("color: #777; font-size: 11px;")
+        data_label.setProperty("role", "muted")
         data_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(data_label)
 
@@ -244,7 +244,7 @@ class SettingsDialog(QDialog):
 
         help_label = QLabel(i18n.t("settings.holiday_region.help"))
         help_label.setWordWrap(True)
-        help_label.setStyleSheet("color: #777;")
+        help_label.setProperty("role", "muted")
         holiday_form.addRow("", help_label)
 
         layout.addWidget(holidays)
@@ -304,7 +304,7 @@ class SettingsDialog(QDialog):
 
         hint = QLabel(i18n.t("settings.plugin_restart_hint"))
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #777;")
+        hint.setProperty("role", "muted")
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -316,7 +316,7 @@ class SettingsDialog(QDialog):
         names = self._plugin_names()
         if not names:
             empty = QLabel(i18n.t("settings.no_plugins"))
-            empty.setStyleSheet("color: #777;")
+            empty.setProperty("role", "muted")
             self._plugin_layout.addWidget(empty)
         else:
             for name in names:
@@ -365,13 +365,13 @@ class SettingsDialog(QDialog):
         self.cache_size_label = QLabel(
             i18n.t("settings.cache_size", size=self._cache_size_text())
         )
-        self.cache_size_label.setStyleSheet("color: #777; font-size: 11px;")
+        self.cache_size_label.setProperty("role", "muted")
         inner.addWidget(self.cache_size_label)
 
         log_info = log_summary()
         log_path = log_info.get("log_file") or str(get_log_file() or "—")
         self.log_path_label = QLabel(f"{i18n.t('settings.log_file')} {log_path}")
-        self.log_path_label.setStyleSheet("color: #777; font-size: 11px;")
+        self.log_path_label.setProperty("role", "muted")
         self.log_path_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
@@ -400,7 +400,7 @@ class SettingsDialog(QDialog):
                 count=log_info.get("error_lines", 0),
             )
         )
-        self.error_log_label.setStyleSheet("color: #777; font-size: 11px;")
+        self.error_log_label.setProperty("role", "muted")
         self.error_log_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
@@ -455,7 +455,7 @@ class SettingsDialog(QDialog):
         self.update_version_label = QLabel(
             i18n.t("update.current", version=self._app_version or "—")
         )
-        self.update_version_label.setStyleSheet("color: #777; font-size: 11px;")
+        self.update_version_label.setProperty("role", "muted")
         inner.addWidget(self.update_version_label)
 
         self.update_status_label = QLabel("")

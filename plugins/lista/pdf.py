@@ -3,6 +3,7 @@
 from __future__ import annotations
 import os
 from io import BytesIO
+from xml.sax.saxutils import escape
 import calendar
 import webbrowser
 from datetime import date
@@ -27,6 +28,9 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
+from core.calendar_data import year_days
+from core.seasonal_pdf import seasonal_header, print_canvas
+from core.pdf_readability import confirm_readability
 from core import holidays
 from core import i18n
 from core.pdf_assets import AssetError
@@ -162,21 +166,7 @@ class PDFGenerator(ListReader):
 
     @staticmethod
     def _confirm_readability(font_sizes: List[float], months_per_page: int) -> bool:
-        """Warn once if any sheet's calendar text is below 6 points."""
-        small_pages = [str(index + 1) for index, size in enumerate(font_sizes)
-                       if size < 6.0 - 0.01]
-        if not small_pages:
-            return True
-        answer = QMessageBox.question(
-            None,
-            i18n.t("lista.pdf.small_text.title"),
-            i18n.t("lista.pdf.small_text.message",
-                   size=f"{min(font_sizes):.1f}", pages=", ".join(small_pages),
-                   months=months_per_page),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        return answer == QMessageBox.StandardButton.Yes
+        return confirm_readability(font_sizes, months_per_page)
 
     def _page_logo(self) -> Optional[PdfLogo]:
         """
@@ -248,7 +238,13 @@ class PDFGenerator(ListReader):
             textColor=colors.black,
         )
 
-        labels = [i18n.t(key) for _, key in LEGEND_ITEMS]
+        keys = [key for _, key in LEGEND_ITEMS]
+        if self._holiday_region() == "us":
+            keys[0] += "_us"
+            keys[2] += "_us"
+        labels = [i18n.t(key) for key in keys]
+        if self.plugin.settings.get("pdf_monochrome", False):
+            labels = [text.split("=", 1)[-1].strip() for text in labels]
         total_label_width = table_width_pt - swatch_width * len(LEGEND_ITEMS)
         weights = [max(len(text), 1) for text in labels]
         label_widths = [
@@ -632,8 +628,7 @@ class PDFGenerator(ListReader):
         # stöds av alla reportlab-versioner.
         logo_canvas = make_logo_canvas(self._page_logo(), margin_mm=6.0)
         build_kwargs: Dict[str, Any] = {}
-        if logo_canvas is not None:
-            build_kwargs["canvasmaker"] = logo_canvas
+        build_kwargs["canvasmaker"] = print_canvas(logo_canvas, self.plugin.settings.get("pdf_monochrome", False))
 
         doc = SimpleDocTemplate(
             filename,
@@ -661,6 +656,9 @@ class PDFGenerator(ListReader):
             month_year: get_half_days(month_year, region)
             for month_year in years_in_sequence
         }
+
+        calendar_years = {year: year_days(year, region, official_holidays_by_year[year], half_days_by_year[year])
+                          for year in years_in_sequence}
 
         # Färger
         light_coral = colors.Color(0.94, 0.5, 0.5)
@@ -701,8 +699,8 @@ class PDFGenerator(ListReader):
                 day_label_size = FONT_SIZE if day_w >= 18 else FONT_SIZE - 1
                 smallest_font = min(smallest_font, day_label_size)
 
-                official_holidays = official_holidays_by_year[month_year]
-                half_days = half_days_by_year[month_year]
+                month_days = calendar_years[month_year]
+                page_elements.extend(seasonal_header(month_num, self.plugin.settings, table_width_pt))
 
                 week_numbers: List[str] = []
                 for day_num in range(1, days_in_month + 1):
@@ -767,9 +765,9 @@ class PDFGenerator(ListReader):
                 for day_num in range(1, days_in_month + 1):
                     current_date = date(month_year, month_num, day_num)
                     col_idx = day_num
-                    weekday = current_date.weekday()
+                    kind = month_days[current_date].kind
 
-                    if current_date in official_holidays or weekday == 6:
+                    if kind in ("holiday", "sunday"):
                         style.add(
                             "BACKGROUND",
                             (col_idx, 3), (col_idx, len(table_data) - 1),
@@ -790,7 +788,7 @@ class PDFGenerator(ListReader):
                             (col_idx, 1), (col_idx, 2),
                             colors.red,
                         )
-                    elif current_date in half_days:
+                    elif kind == "halfday":
                         style.add(
                             "BACKGROUND",
                             (col_idx, 3), (col_idx, len(table_data) - 1),
@@ -811,7 +809,7 @@ class PDFGenerator(ListReader):
                             (col_idx, 1), (col_idx, 2),
                             colors.green,
                         )
-                    elif weekday == 5:
+                    elif kind == "saturday":
                         style.add(
                             "BACKGROUND",
                             (col_idx, 3), (col_idx, len(table_data) - 1),
@@ -879,6 +877,13 @@ class PDFGenerator(ListReader):
                 self._apply_table_scaling(table, table_width_pt)
 
                 page_elements.append(table)
+                # Text names make holiday information independent of colour.
+                notes = [f"{day.day}: {i18n.holiday_name(info.holiday_key)}"
+                         for day, info in month_days.items()
+                         if day.month == month_num and info.holiday_key]
+                if notes:
+                    page_elements.append(Paragraph(escape(" / ".join(notes)),
+                        ParagraphStyle("holiday-notes", fontSize=7, leading=8.5, spaceBefore=3)))
                 if (month_year, month_num) != page_months[-1]:
                     page_elements.append(Spacer(1, month_gap))
 
