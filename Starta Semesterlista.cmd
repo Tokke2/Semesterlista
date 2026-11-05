@@ -1,3 +1,3 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\start_semesterlista.ps1"
-if errorlevel 1 pause
+rem Compatibility entry point. Use the VBS file directly to avoid CMD flashing.
+start "" "%SystemRoot%\System32\wscript.exe" //NoLogo "%~dp0Starta Semesterlista.vbs"

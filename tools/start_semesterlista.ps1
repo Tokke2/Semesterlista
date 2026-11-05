@@ -117,12 +117,13 @@ function Register-WeeklyMaintenance {
     # Current user, no elevation. If registration is denied, startup catch-up
     # still works. Never stop a running app to update its loaded libraries.
     try {
-        $scriptPath = Join-Path $PSScriptRoot 'start_semesterlista.ps1'
-        $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $scriptPath + '" -MaintenanceOnly'
+        $scriptPath = Join-Path $Root 'Starta Semesterlista.vbs'
+        $arguments = '//NoLogo "' + $scriptPath + '" /maintenance'
+        $hostPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
         $name = 'Semesterlista - veckounderhall'
         $existing = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
-        if ($existing -and $existing.Actions.Arguments -eq $arguments) { return }
-        $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
+        if ($existing -and $existing.Actions.Arguments -eq $arguments -and $existing.Actions.Execute -eq $hostPath) { return }
+        $action = New-ScheduledTaskAction -Execute $hostPath -Argument $arguments
         $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '08:00'
         $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
         $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name

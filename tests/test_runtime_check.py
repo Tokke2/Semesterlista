@@ -65,3 +65,9 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(runtime.main(), 0)
             prepare.assert_called_once()
             launch.assert_not_called()
+
+    def test_package_commands_do_not_open_windows_console(self):
+        with patch.object(runtime.subprocess, "CREATE_NO_WINDOW", 0x08000000, create=True), \
+             patch.object(runtime.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "ok", "")) as command:
+            self.assertEqual(runtime.run(["python", "-m", "pip", "check"]), "ok")
+            self.assertEqual(command.call_args.kwargs["creationflags"], 0x08000000)

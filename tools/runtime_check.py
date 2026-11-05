@@ -26,7 +26,8 @@ logger = logging.getLogger("semesterlista.runtime")
 
 def run(command, timeout=240):
     result = subprocess.run(command, capture_output=True, text=True,
-                            errors="replace", timeout=timeout)
+                            errors="replace", timeout=timeout,
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     logger.info("%s\n%s\n%s", command, result.stdout, result.stderr)
     if result.returncode:
         raise RuntimeError(f"Kommandot misslyckades ({result.returncode}): {command}")

@@ -129,15 +129,16 @@ from typing import Dict, List, Any, Optional, TYPE_CHECKING
 # ──────────────────────────────────────────────────────────
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
 
-# A .pyw file cannot bootstrap a missing interpreter; the CMD launcher can.
+# A .pyw file cannot bootstrap a missing interpreter; the Windows launcher can.
 # Direct Windows starts are also routed through maintenance before Qt imports.
 if __name__ == "__main__" and sys.platform == "win32":
     if os.environ.pop("SEMESTERLISTA_RUNTIME_READY", "") != "1":
         import subprocess
         subprocess.Popen([
-            "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
+            "-ExecutionPolicy", "Bypass", "-File",
             str(PROJECT_ROOT / "tools" / "start_semesterlista.ps1"),
-        ], cwd=PROJECT_ROOT)
+        ], cwd=PROJECT_ROOT, creationflags=subprocess.CREATE_NO_WINDOW)
         raise SystemExit(0)
 
 if str(PROJECT_ROOT) not in sys.path:
@@ -271,7 +272,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.15.1"
+APP_VERSION: str = "2.15.2"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt

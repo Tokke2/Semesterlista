@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.15.1"
+MODULE_VERSION: str = "2.15.2"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"

@@ -104,8 +104,12 @@ Kräver **Python 3.10+** och beroendena i [`requirements.txt`](requirements.txt)
 
 ### Veckokontroll av Python och tillägg på Windows
 
-Starta med **`Starta Semesterlista.cmd`**. Direktstart av `main.pyw` fungerar
-också när Python finns. Appen använder **befintlig Python och dess vanliga
+Dubbelklicka på **`Starta Semesterlista.vbs`** för att starta **utan terminalfönster**.
+Skapa gärna en skrivbordsgenväg till den filen. Även veckounderhållet körs dolt.
+Den äldre `.cmd`-filen vidarebefordrar starten, men själva CMD-fönstret kan
+blinka till; använd därför `.vbs` direkt. Windows Script Host/VBScript måste
+vara tillgängligt för denna startfil. Direktstart av `main.pyw` fungerar också
+när Python finns och `.pyw` är kopplad till `pythonw.exe`. Appen använder **befintlig Python och dess vanliga
 paketmiljö** – ingen egen `.venv` skapas eller används. En gammal `.venv`
 från tidigare version lämnas orörd men används inte längre.
 

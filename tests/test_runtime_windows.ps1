@@ -46,3 +46,45 @@ try {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
 Write-Host 'Weekly schedule tests passed'
+
+# Exercise the real GUI launcher using a harmless fake bootstrap in a path
+# with spaces and non-ASCII characters. Never update the runner's packages.
+$temp = Join-Path ([System.IO.Path]::GetTempPath()) ('Semesterlista start å ' + [guid]::NewGuid())
+try {
+    New-Item (Join-Path $temp 'tools') -ItemType Directory -Force | Out-Null
+    Copy-Item "$PSScriptRoot/../Starta Semesterlista.vbs" $temp
+    @'
+param([switch]$MaintenanceOnly)
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class WindowProbe {
+    [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+}
+"@
+@{ maintenance = [bool]$MaintenanceOnly;
+   visible = [WindowProbe]::IsWindowVisible([WindowProbe]::GetConsoleWindow()) } |
+   ConvertTo-Json | Set-Content (Join-Path $PSScriptRoot '../result.json') -Encoding UTF8
+if ($MaintenanceOnly) { exit 0 }
+exit 23
+'@ | Set-Content (Join-Path $temp 'tools/start_semesterlista.ps1') -Encoding UTF8
+    foreach ($maintenance in @($false, $true)) {
+        $arguments = '//NoLogo "' + (Join-Path $temp 'Starta Semesterlista.vbs') + '"'
+        if ($maintenance) { $arguments += ' /maintenance' }
+        $process = Start-Process -FilePath "$env:SystemRoot/System32/wscript.exe" -ArgumentList $arguments -PassThru
+        $null = $process.Handle  # Keep the handle available for ExitCode.
+        if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw 'Hidden launcher did not finish'
+        }
+        $expected = if ($maintenance) { 0 } else { 23 }
+        if ($process.ExitCode -ne $expected) { throw "Launcher exit code: $($process.ExitCode), expected $expected" }
+        $result = Get-Content (Join-Path $temp 'result.json') -Raw | ConvertFrom-Json
+        if ($result.visible) { throw 'Bootstrap console is visible' }
+        if ($result.maintenance -ne $maintenance) { throw 'Maintenance flag not forwarded' }
+    }
+} finally {
+    Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Host 'Hidden Windows launcher tests passed'

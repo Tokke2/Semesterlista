@@ -3035,3 +3035,17 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Semesterlista och Fordon behåller stående A4 för en månad och liggande för flera.
 - PDF-regressioner verifierar orientering, sidantal, tabellernas bredd/höjd,
   sista sidan och skillnaden i tillgängligt utrymme med/utan faktisk bild.
+
+
+## 37. Start utan terminalfönster (v2.15.2)
+
+- Rekommenderad Windows-start: `Starta Semesterlista.vbs`, via GUI-värden wscript.
+  PowerShell startas dolt från början och felkoder vidarebefordras.
+- `.cmd` finns kvar för kompatibilitet men kan blinka till; använd VBS direkt.
+- Direkt `.pyw`-start använder CREATE_NO_WINDOW för PowerShell-bootstrap.
+- Veckoschemat uppdateras till den dolda startfilen, med /maintenance.
+  Värden väntar på underhållet så Schemaläggaren kan följa avslutningsstatus.
+- Pip-/kontrollprocesser använder CREATE_NO_WINDOW på Windows.
+- Befintlig Python, samma paketmiljö, veckointervall och loggplacering ändras inte.
+- Windows-CI provar verklig VBS-start med dold konsol, blanksteg/svenska tecken
+  i sökvägen, vidarebefordrad underhållsflagga och felkod, utan paketinstallation.
