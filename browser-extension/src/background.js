@@ -11,6 +11,12 @@
 import { getSettings, addHistory } from './lib/settings.js';
 import { matchesUrl, originPatternFor, isPrintableUrl } from './lib/sites.js';
 import { buildFilename } from './lib/filename.js';
+import {
+  buildPrintParams,
+  paperWidthCssPx,
+  autoFitScale,
+  DARK_PRINT_CSS
+} from './lib/print.js';
 import { resolveLang, t } from './lib/i18n.js';
 
 const CONTENT_SCRIPT_ID = 'site-pdf-button';
@@ -89,53 +95,67 @@ async function sendToast(tabId, payload) {
 /* PDF-generering                                                      */
 /* ------------------------------------------------------------------ */
 
-const PAPER_SIZES = {
-  A4: [8.27, 11.69],
-  Letter: [8.5, 11],
-  Legal: [8.5, 14],
-  A3: [11.69, 16.54]
-};
-
-function printParams(settings) {
-  const pdf = settings.pdf;
-  const mmToInch = (mm) => Number((mm / 25.4).toFixed(4));
-  const margin = mmToInch(pdf.marginMm);
-  const [width, height] = PAPER_SIZES[pdf.format] || PAPER_SIZES.A4;
-
-  const params = {
-    landscape: false,
-    displayHeaderFooter: pdf.headerFooter,
-    printBackground: pdf.printBackground,
-    scale: pdf.scale,
-    marginTop: margin,
-    marginBottom: margin,
-    marginLeft: margin,
-    marginRight: margin,
-    preferCSSPageSize: pdf.preferCssPageSize,
-    transferMode: 'ReturnAsBase64'
-  };
-
-  if (!pdf.preferCssPageSize) {
-    params.paperWidth = width;
-    params.paperHeight = height;
-  }
-
-  if (pdf.headerFooter) {
-    params.headerTemplate = '<span></span>';
-    params.footerTemplate = `
-      <div style="width:100%; padding:0 10mm; font-family:system-ui, sans-serif;
-                  font-size:9px; color:#666; text-align:right;">
-        <span class="pageNumber"></span> / <span class="totalPages"></span>
-      </div>`;
-  }
-
-  return params;
+/** Skickar ett DevTools-kommando till en flik. */
+function sendCommand(target, method, params) {
+  return chrome.debugger.sendCommand(target, method, params);
 }
 
 /**
- * Väntar på att teckensnitt, bilder och lazy-laddat innehåll ska bli klart.
- * Fel här ska aldrig stoppa utskriften.
+ * Mäter hur bred sidan blir när den layouter mot pappersbredden.
+ * Ger 0 när mätningen inte går att göra – då används användarens skala.
  */
+async function measurePrintWidth(target, settings) {
+  const usable = paperWidthCssPx(settings.pdf);
+  try {
+    await sendCommand(target, 'Emulation.setDeviceMetricsOverride', {
+      width: Math.round(usable),
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    const result = await sendCommand(target, 'Runtime.evaluate', {
+      expression:
+        'Math.max(document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth || 0 : 0)',
+      returnByValue: true
+    });
+    return Number(result?.result?.value) || 0;
+  } catch {
+    return 0;
+  } finally {
+    try {
+      await sendCommand(target, 'Emulation.clearDeviceMetricsOverride');
+    } catch {
+      /* ignoreras */
+    }
+  }
+}
+
+/** Lägger in mörk utskrift i sidan och returnerar en städare. */
+async function applyDarkPrint(target) {
+  const expression = `(() => {
+    const id = '__page-to-pdf-dark';
+    document.getElementById(id)?.remove();
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = ${JSON.stringify(DARK_PRINT_CSS)};
+    (document.head || document.documentElement).appendChild(style);
+    return true;
+  })()`;
+
+  await sendCommand(target, 'Runtime.evaluate', { expression, returnByValue: true });
+
+  return async () => {
+    try {
+      await sendCommand(target, 'Runtime.evaluate', {
+        expression: "document.getElementById('__page-to-pdf-dark')?.remove()",
+        returnByValue: true
+      });
+    } catch {
+      /* fliken kan ha stängts under utskriften */
+    }
+  };
+}
+
 async function waitForPageReady(target, waitMs) {
   const delay = Math.max(0, Math.min(5000, Number(waitMs) || 0));
   const expression = `(async () => {
@@ -185,8 +205,10 @@ function mapError(error, stage) {
   return new PdfError(stage, message);
 }
 
-async function printTabToPdf(tabId, settings) {
+async function printTabToPdf(tabId, settings, tab = {}, { forceBackground = false } = {}) {
   const target = { tabId };
+  let cleanupDark = null;
+
   try {
     await chrome.debugger.attach(target, '1.3');
   } catch (error) {
@@ -196,7 +218,23 @@ async function printTabToPdf(tabId, settings) {
   try {
     await chrome.debugger.sendCommand(target, 'Page.enable');
     await waitForPageReady(target, settings.pdf.waitMs);
-    const result = await chrome.debugger.sendCommand(target, 'Page.printToPDF', printParams(settings));
+
+    if (settings.pdf.darkMode) cleanupDark = await applyDarkPrint(target);
+
+    let scale = settings.pdf.scale;
+    if (settings.pdf.autoScale) {
+      const contentWidth = await measurePrintWidth(target, settings);
+      scale = autoFitScale({
+        contentWidth,
+        usableWidth: paperWidthCssPx(settings.pdf),
+        scale: settings.pdf.scale
+      });
+    }
+
+    const params = buildPrintParams({ settings, tab, scale });
+    if (forceBackground) params.printBackground = true;
+
+    const result = await chrome.debugger.sendCommand(target, 'Page.printToPDF', params);
     if (!result || typeof result.data !== 'string' || !result.data) {
       throw new PdfError('print', 'Tomt svar från Page.printToPDF');
     }
@@ -204,7 +242,229 @@ async function printTabToPdf(tabId, settings) {
   } catch (error) {
     throw mapError(error, 'print');
   } finally {
+    if (cleanupDark) await cleanupDark();
     chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Artikelläge                                                         */
+/* ------------------------------------------------------------------ */
+
+const READER_KEY = 'readerDoc';
+const READER_PAGE = 'src/reader.html';
+
+/**
+ * Hämtar huvudinnehållet från sidan. Funktionen serialiseras och körs i
+ * fliken, så den får inte använda något utanför sin egen kropp.
+ */
+function articleExtractor() {
+  const absolute = (value) => {
+    try {
+      return new URL(value, location.href).href;
+    } catch (error) {
+      return value;
+    }
+  };
+
+  const textLength = (element) => (element.innerText || '').trim().length;
+
+  const linkDensity = (element) => {
+    const total = textLength(element);
+    if (!total) return 1;
+    const links = Array.from(element.querySelectorAll('a')).reduce(
+      (sum, link) => sum + (link.innerText || '').trim().length,
+      0
+    );
+    return links / total;
+  };
+
+  const junkToken = /(^|[-_ ])(ad|ads|advert|banner|cookie|consent|gdpr|newsletter|subscribe|related|share|social|promo|popup|modal|sidebar|comment|paywall|nav|menu|breadcrumb|toolbar)([-_ ]|$)/i;
+
+  const clean = (root) => {
+    root
+      .querySelectorAll(
+        'script,style,noscript,nav,aside,footer,header,form,iframe,object,embed,button,input,select,textarea,[hidden],[aria-hidden="true"],[role="navigation"],[role="banner"],[role="complementary"],[role="dialog"]'
+      )
+      .forEach((element) => element.remove());
+
+    root.querySelectorAll('div,section,ul,ol,aside').forEach((element) => {
+      const token = `${element.className || ''} ${element.id || ''}`;
+      if (junkToken.test(token)) element.remove();
+    });
+
+    root.querySelectorAll('img').forEach((image) => {
+      const source =
+        image.getAttribute('src') ||
+        image.getAttribute('data-src') ||
+        image.getAttribute('data-original') ||
+        '';
+      if (source) image.setAttribute('src', absolute(source));
+      image.removeAttribute('srcset');
+      image.removeAttribute('loading');
+      image.removeAttribute('decoding');
+      image.removeAttribute('data-src');
+    });
+
+    root.querySelectorAll('a[href]').forEach((link) => {
+      link.setAttribute('href', absolute(link.getAttribute('href')));
+      link.removeAttribute('target');
+    });
+  };
+
+  const selectors = [
+    'article',
+    'main',
+    '[role="main"]',
+    '#content',
+    '.content',
+    '.article',
+    '.article-body',
+    '.post',
+    '.entry-content',
+    '.post-content'
+  ];
+
+  let candidates = Array.from(document.querySelectorAll(selectors.join(',')));
+  if (!candidates.length) candidates = Array.from(document.querySelectorAll('div, section'));
+
+  let best = null;
+  let bestScore = 0;
+  for (const candidate of candidates.slice(0, 400)) {
+    const length = textLength(candidate);
+    if (length < 300) continue;
+    const weight = candidate.tagName === 'ARTICLE' ? 1.3 : 1;
+    const score = length * (1 - Math.min(0.9, linkDensity(candidate))) * weight;
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  if (!best) best = document.body;
+  if (!best) return null;
+
+  const container = document.createElement('div');
+  container.appendChild(best.cloneNode(true));
+  clean(container);
+
+  const heading = document.querySelector('h1');
+  const title =
+    (heading && heading.innerText ? heading.innerText : document.title || '').trim() || '';
+
+  return {
+    title,
+    url: location.href,
+    html: container.innerHTML,
+    words: textLength(container)
+  };
+}
+
+/** Kör artikellägets extrahering i fliken och kopplar loss debuggern. */
+async function extractArticle(tabId, waitMs) {
+  const target = { tabId };
+  try {
+    await chrome.debugger.attach(target, '1.3');
+  } catch (error) {
+    throw mapError(error, 'attach');
+  }
+
+  try {
+    await chrome.debugger.sendCommand(target, 'Page.enable');
+    await waitForPageReady(target, Math.min(Number(waitMs) || 0, 1200));
+    const result = await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+      expression: `(${articleExtractor.toString()})()`,
+      awaitPromise: true,
+      returnByValue: true
+    });
+    return result?.result?.value || null;
+  } finally {
+    chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+/** Artikelsidor som just nu väntar på att bli färdigritade. */
+const readerWaiters = new Map();
+
+function waitForReaderSignal(tabId, timeout) {
+  return new Promise((resolve) => {
+    const finish = (value) => {
+      clearTimeout(timer);
+      readerWaiters.delete(tabId);
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(false), timeout);
+    readerWaiters.set(tabId, () => finish(true));
+  });
+}
+
+/**
+ * Väntar tills den tillfälliga artikelsidan är färdigritad. Sidan skickar
+ * READER_READY när bilderna är klara; som reserv fortsätter vi efter en
+ * kort stund även om signalen uteblir (Page.printToPDF väntar ändå på
+ * teckensnitt och bilder).
+ */
+async function waitForReader(tabId, timeout = 6000) {
+  const signal = waitForReaderSignal(tabId, timeout);
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab) return false;
+    if (tab.status === 'complete') break;
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  const ready = await Promise.race([
+    signal,
+    new Promise((resolve) => setTimeout(() => resolve(true), 2000))
+  ]);
+  return ready;
+}
+
+/**
+ * Skriver ut bara artikelns innehåll via en tillfällig sida i tillägget.
+ * Returnerar null när ingen artikel hittas – då skrivs hela sidan ut i stället.
+ */
+async function printReaderPdf(tab, settings) {
+  let article = null;
+  try {
+    article = await extractArticle(tab.id, settings.pdf.waitMs);
+  } catch (error) {
+    console.warn('Artikelläget kunde inte läsa sidan', error);
+    return null;
+  }
+
+  if (!article || !article.html || (article.words || 0) < 300) return null;
+
+  try {
+    await chrome.storage.session.set({ [READER_KEY]: article });
+  } catch {
+    return null;
+  }
+
+  let readerTab = null;
+  try {
+    readerTab = await chrome.tabs.create({
+      url: chrome.runtime.getURL(READER_PAGE),
+      active: false
+    });
+    if (!readerTab?.id) return null;
+    if (!(await waitForReader(readerTab.id))) return null;
+
+    // Artikelsidan har egen, läsanpassad bredd – autoskalan behövs inte där.
+    const readerSettings = { ...settings, pdf: { ...settings.pdf, autoScale: false } };
+
+    return await printTabToPdf(
+      readerTab.id,
+      readerSettings,
+      { ...tab, title: article.title || tab.title },
+      { forceBackground: true }
+    );
+  } catch (error) {
+    console.warn('Artikelläget misslyckades', error);
+    return null;
+  } finally {
+    if (readerTab?.id) chrome.tabs.remove(readerTab.id).catch(() => {});
+    chrome.storage.session.remove(READER_KEY).catch(() => {});
   }
 }
 
@@ -335,10 +595,18 @@ function makeFilename(tab, settings) {
 /* Spara-flödet                                                         */
 /* ------------------------------------------------------------------ */
 
-async function runSave(tab) {
+async function runSave(tab, options = {}) {
   const settings = await getSettings();
   const lang = currentLang(settings);
   const tabId = tab.id;
+
+  // Snabbkommandot utan dialog (eller Alt-klick på sidknappen) överstyr
+  // inställningen för just den här sparningen.
+  const forceSaveAs = typeof options.forceSaveAs === 'boolean' ? options.forceSaveAs : null;
+  const effective =
+    forceSaveAs === null
+      ? settings
+      : { ...settings, file: { ...settings.file, saveAs: forceSaveAs } };
 
   if (!isPrintableUrl(tab.url)) {
     const message = errorText(lang, 'restricted');
@@ -360,9 +628,17 @@ async function runSave(tab) {
   await sendToast(tabId, { state: 'saving', text: t(lang, 'toast.saving') });
 
   try {
-    const base64 = await printTabToPdf(tabId, settings);
+    let base64 = null;
+    let readerFallback = false;
+
+    if (settings.pdf.reader) {
+      base64 = await printReaderPdf(tab, settings);
+      readerFallback = !base64;
+    }
+    if (!base64) base64 = await printTabToPdf(tabId, settings, tab);
+
     const filename = makeFilename(tab, settings);
-    const downloadId = await downloadPdf(base64, filename, settings);
+    const downloadId = await downloadPdf(base64, filename, effective);
     const item = await getDownloadItem(downloadId);
     const filePath = item?.filename || '';
 
@@ -380,7 +656,7 @@ async function runSave(tab) {
       text: t(lang, 'toast.saved', { file: filename.split('/').pop() })
     });
     clearBadgeLater(tabId);
-    return { ok: true, filename, downloadId, filePath };
+    return { ok: true, filename, downloadId, filePath, readerFallback };
   } catch (error) {
     const mapped = mapError(error, 'unexpected');
     const message = errorText(lang, mapped.code);
@@ -400,7 +676,7 @@ async function runSave(tab) {
   }
 }
 
-async function handleSaveRequest(tab) {
+async function handleSaveRequest(tab, options = {}) {
   if (!tab || typeof tab.id !== 'number') {
     return { ok: false, error: 'noTab', message: t('en', 'errors.noTab') };
   }
@@ -408,7 +684,7 @@ async function handleSaveRequest(tab) {
     const settings = await getSettings();
     return { ok: false, error: 'busy', message: errorText(currentLang(settings), 'busy') };
   }
-  const task = runSave(tab).finally(() => inFlight.delete(tab.id));
+  const task = runSave(tab, options).finally(() => inFlight.delete(tab.id));
   inFlight.set(tab.id, task);
   return task;
 }
@@ -547,9 +823,11 @@ async function buildPageContext(url) {
     show: settings.button.show,
     position: settings.button.position,
     lang,
+    theme: settings.theme,
     strings: {
       button: t(lang, 'content.button'),
       buttonShort: t(lang, 'content.buttonShort'),
+      altHint: t(lang, 'content.altHint'),
       saving: t(lang, 'toast.saving'),
       saved: t(lang, 'toast.saved'),
       failed: t(lang, 'errors.unexpected')
@@ -602,11 +880,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.commands.onCommand.addListener((command) => {
-  if (command !== 'save-pdf') return;
+  if (command !== 'save-pdf' && command !== 'save-pdf-quiet') return;
+  // save-pdf-quiet hoppar över spar-dialogen och lägger filen direkt i
+  // webbläsarens hämtningsmapp.
+  const options = command === 'save-pdf-quiet' ? { forceSaveAs: false } : {};
   void (async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
-    const result = await handleSaveRequest(tab);
+    const result = await handleSaveRequest(tab, options);
     if (!result.ok && result.error === 'notAllowed') {
       // Visa panelen så att användaren kan lägga till webbplatsen.
       try {
@@ -661,7 +942,9 @@ async function handleMessage(message, sender) {
       if (!tab.url && typeof message.url === 'string') {
         tab = { ...tab, url: message.url };
       }
-      return handleSaveRequest(tab);
+      return handleSaveRequest(tab, {
+        forceSaveAs: typeof message.forceSaveAs === 'boolean' ? message.forceSaveAs : undefined
+      });
     }
 
     case 'OPEN_DOWNLOAD':
@@ -674,6 +957,13 @@ async function handleMessage(message, sender) {
       } catch {
         return { ok: false, error: 'download' };
       }
+    }
+
+    case 'READER_READY': {
+      if (sender?.id && sender.id !== chrome.runtime.id) return { ok: false, error: 'unexpected' };
+      const waiter = readerWaiters.get(sender?.tab?.id);
+      if (waiter) waiter();
+      return { ok: true };
     }
 
     case 'SYNC_CONTENT_SCRIPTS': {

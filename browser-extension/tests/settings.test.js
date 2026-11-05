@@ -5,14 +5,15 @@ import {
   DEFAULT_SETTINGS,
   mergeSettings,
   normalizeSite,
+  normalizeTheme,
   createId
 } from '../src/lib/settings.js';
 
 test('standardmallen döper filen efter sidtiteln', () => {
   assert.equal(DEFAULT_SETTINGS.file.template, '{title}');
-  assert.equal(DEFAULT_SETTINGS.version, 3);
+  assert.equal(DEFAULT_SETTINGS.version, 4);
   assert.equal(mergeSettings({}).file.template, '{title}');
-  assert.equal(mergeSettings({}).version, 3);
+  assert.equal(mergeSettings({}).version, 4);
 });
 
 test('spara-dialogen är på som standard och slås på vid migrering', () => {
@@ -83,4 +84,31 @@ test('normalizeSite och createId ger användbara objekt', () => {
   assert.equal(site.pattern, 'example.com');
   assert.equal(site.enabled, true);
   assert.match(createId(), /^s_[a-z0-9]+_[a-z0-9]+$/);
+});
+
+test('nya PDF-val har sansade standardvärden', () => {
+  const settings = mergeSettings({});
+  assert.equal(settings.pdf.autoScale, true);
+  assert.equal(settings.pdf.darkMode, false);
+  assert.equal(settings.pdf.reader, false);
+  assert.equal(settings.pdf.footerTitle, false);
+  assert.equal(settings.pdf.footerUrl, false);
+  assert.equal(settings.pdf.footerDate, false);
+
+  // Gamla installationer får autoskala på, men inget annat påslaget.
+  const old = mergeSettings({ version: 3, pdf: { format: 'A4' } });
+  assert.equal(old.pdf.autoScale, true);
+  assert.equal(old.pdf.darkMode, false);
+  assert.equal(old.pdf.reader, false);
+});
+
+test('temat normaliseras till auto, light eller dark', () => {
+  assert.equal(DEFAULT_SETTINGS.theme, 'auto');
+  assert.equal(mergeSettings({}).theme, 'auto');
+  assert.equal(mergeSettings({ theme: 'dark' }).theme, 'dark');
+  assert.equal(mergeSettings({ theme: 'light' }).theme, 'light');
+  assert.equal(mergeSettings({ theme: 'sepia' }).theme, 'auto');
+  assert.equal(mergeSettings({ theme: 42 }).theme, 'auto');
+  assert.equal(normalizeTheme('dark'), 'dark');
+  assert.equal(normalizeTheme(undefined), 'auto');
 });

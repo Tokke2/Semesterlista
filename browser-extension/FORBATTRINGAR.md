@@ -4,32 +4,36 @@ Idébank för app, design, tema, typografi och kod. Insats: **S** = under en tim
 **M** = en halv dag, **L** = en dag eller mer. Alla förslag utgår från den kod som
 finns i `src/` i dag.
 
+> **Klart i 1.4.0:** #1 artikelläge, #2 mörk PDF, #3 autoskala, #7 källrad i sidfoten,
+> #9 två snabbkommandon, #16 tema, #19 inbäddad font, #20 typografisk skala och
+> #22 språkmedveten textjustering. Övriga förslag är öppna.
+
 ## Översikt
 
 | # | Förslag | Kategori | Insats |
 | --- | --- | --- | --- |
-| 1 | Artikelläge – rensa bort nav, banners och reklam före utskrift | App | L |
-| 2 | Mörk PDF (nattutskrift) | App | M |
-| 3 | Autoskala för breda sidor | App | S |
+| 1 | ✅ Artikelläge – rensa bort nav, banners och reklam före utskrift | App | L |
+| 2 | ✅ Mörk PDF (nattutskrift) | App | M |
+| 3 | ✅ Autoskala för breda sidor | App | S |
 | 4 | Per-sajt-profiler (mall, marginaler, knappläge) | App | M |
 | 5 | Spara flera flikar samtidigt | App | M |
 | 6 | Schemalagd arkivering | App | L |
-| 7 | Källrad i sidfoten: titel, URL och datum | App | S |
+| 7 | ✅ Källrad i sidfoten: titel, URL och datum | App | S |
 | 8 | Historiksida med miniatyrer och "spara igen" | App | M |
-| 9 | Två snabbkommandon: med och utan spar-dialog | App | S |
+| 9 | ✅ Två snabbkommandon: med och utan spar-dialog | App | S |
 | 10 | Onboarding i tre steg | Design | M |
 | 11 | Stegvis progress med avbryt | Design | M |
 | 12 | Åtgärdbara felkort | Design | S |
 | 13 | Badge och utökad högerklicksmeny | Design | S |
 | 14 | Sajtlistan: sök, sortering och bokmärkesimport | Design | M |
 | 15 | Mikroanimationer med motion-säkerhet | Design | S |
-| 16 | Tema: Auto / Ljust / Mörkt | Tema | S |
+| 16 | ✅ Tema: Auto / Ljust / Mörkt | Tema | S |
 | 17 | Fyra accentpaletter med matchande appikon | Tema | M |
 | 18 | Högkontrastläge | Tema | S |
-| 19 | Bädda in variabel font lokalt | Font | M |
-| 20 | Typografisk skala i rem | Font | S |
+| 19 | ✅ Bädda in variabel font lokalt | Font | M |
+| 20 | ✅ Typografisk skala i rem | Font | S |
 | 21 | Siffror, filnamn och monospace | Font | S |
-| 22 | Språkmedveten textjustering | Font | S |
+| 22 | ✅ Språkmedveten textjustering | Font | S |
 | 23 | Dela upp `background.js` i moduler med JSDoc | Kod | M |
 | 24 | Tester och CI i repot (chrome-mock, Actions, zip) | Kod | M |
 | 25 | Lint/format, säkrare meddelanden och färre behörigheter | Kod | M |
@@ -51,7 +55,7 @@ i en `about:blank`-flik. Alternativt: injicera `@media print`-regler som döljer
 utanför artikeln innan `Page.printToPDF`.
 **Filer:** ny `src/lib/reader.js` + val i `popup.js`/`options.js`.
 
-### 2. Mörk PDF (nattutskrift)
+### 2. ✅ Mörk PDF (nattutskrift)
 **Vad:** En kryssruta "Mörk utskrift" som ger ljus text på mörk bakgrund.
 **Varför:** För kvällsläsning på skärm och för att spara bläck när man skriver ut
 mörka sidor.
@@ -61,7 +65,7 @@ plus `printBackground: true` och vit text; bilder kan undantas med
 `settings.pdf` och nollställs i `finally` efter utskrift.
 **Filer:** `src/lib/settings.js`, `src/background.js`, `src/options.html`.
 
-### 3. Autoskala för breda sidor
+### 3. ✅ Autoskala för breda sidor
 **Vad:** Om sidan är bredare än pappersformatet beräknas skalan automatiskt så att
 ingen tabell eller kolumn klipps av.
 **Varför:** Dashboards och tabeller (ekonomisystem, Alldata) skrivs ofta ut med
@@ -116,7 +120,7 @@ panelen. En lista gör den användbar.
 `chrome.tabs.captureVisibleTab` eller hoppas över i första versionen.
 **Filer:** ny sida, `src/lib/settings.js` (historik-API).
 
-### 9. Två snabbkommandon: med och utan spar-dialog
+### 9. ✅ Två snabbkommandon: med och utan spar-dialog
 **Vad:** `Alt+Shift+P` (fråga var filen ska sparas) och `Alt+Shift+O` (spara tyst i
 Hämtade filer), plus `Alt`-klick på den flytande knappen för att hoppa över dialogen.
 **Varför:** Dialogen är rätt som standard men i vägen när man sparar tio PDF:er i rad.
@@ -183,7 +187,7 @@ befintliga reduced-motion-regler byggs ut till alla nya komponenter.
 
 ## C. Tema
 
-### 16. Tema: Auto / Ljust / Mörkt
+### 16. ✅ Tema: Auto / Ljust / Mörkt
 **Vad:** Egen temaväxlare i inställningarna i stället för att bara följa systemet.
 **Varför:** Många kör mörkt system men vill ha ljust tillägg (eller tvärtom), och det
 går inte att styra i dag.
@@ -215,7 +219,7 @@ styrt av `prefers-contrast: more` och en manuell växel.
 
 ## D. Typografi (font)
 
-### 19. Bädda in variabel font lokalt
+### 19. ✅ Bädda in variabel font lokalt
 **Vad:** Byt från `"Segoe UI", system-ui …` till en inbäddad variabel font:
 **Source Sans 3** (neutral, bra på små storlekar), **Inter** (skärmoptimerad) eller
 **Atkinson Hyperlegible** (läsbarhet). Tecknen ligger som `woff2` i `fonts/`.
@@ -227,7 +231,7 @@ Externa fonter skulle dessutom innebära ett nätverksanrop vid varje start – 
 därför in filen i paketet och undvik tredjepartsanrop helt.
 **Filer:** ny `fonts/`, `src/ui.css`.
 
-### 20. Typografisk skala i rem
+### 20. ✅ Typografisk skala i rem
 **Vad:** Definiera en skala – `--text-xs: .6875rem`, `--text-sm: .8125rem`,
 `--text-base: .875rem`, `--text-lg: 1rem`, `--text-xl: 1.375rem` – med radhöjd 1,45
 och `letter-spacing: -0.01em` på rubriker. Ersätt alla lösa px-värden.
@@ -247,7 +251,7 @@ datum – det hoppar när värden byts.
 konsekvent (`"JetBrains Mono"` om den bäddas in, annars systemets).
 **Filer:** `src/*.css`.
 
-### 22. Språkmedveten textjustering
+### 22. ✅ Språkmedveten textjustering
 **Vad:** `text-wrap: balance` på rubriker, `text-wrap: pretty` i brödtexter,
 `hyphens: auto` med `:lang(sv)`-regler och korrekt citattecken/typografi per språk.
 **Varför:** Korta svenska och engelska rubriker radbryts ofta fult ("PDF-

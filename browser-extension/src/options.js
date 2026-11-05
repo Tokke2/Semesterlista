@@ -9,12 +9,14 @@ import {
   createId,
   onSettingsChanged,
   DEFAULT_SETTINGS,
-  mergeSettings
+  mergeSettings,
+  normalizeTheme
 } from './lib/settings.js';
 import { normalizePattern, isValidPattern, originPatternFor } from './lib/sites.js';
 import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { buildFilename } from './lib/filename.js';
 import { releaseUnusedOrigin } from './lib/access.js';
+import { applyTheme, watchSystemTheme } from './lib/theme.js';
 
 const els = {
   banner: document.getElementById('banner'),
@@ -34,6 +36,12 @@ const els = {
   pdfBackground: document.getElementById('pdf-background'),
   pdfHeader: document.getElementById('pdf-header'),
   pdfCssPage: document.getElementById('pdf-css-page'),
+  pdfReader: document.getElementById('pdf-reader'),
+  pdfAutoScale: document.getElementById('pdf-auto-scale'),
+  pdfDark: document.getElementById('pdf-dark'),
+  pdfFooterTitle: document.getElementById('pdf-footer-title'),
+  pdfFooterUrl: document.getElementById('pdf-footer-url'),
+  pdfFooterDate: document.getElementById('pdf-footer-date'),
   resetPdf: document.getElementById('reset-pdf'),
   fileFolder: document.getElementById('file-folder'),
   fileTemplate: document.getElementById('file-template'),
@@ -41,6 +49,7 @@ const els = {
   filePerSite: document.getElementById('file-per-site'),
   fileSaveAs: document.getElementById('file-save-as'),
   saveAsHint: document.getElementById('save-as-hint'),
+  theme: document.getElementById('theme'),
   language: document.getElementById('language'),
   allowAll: document.getElementById('allow-all'),
   shortcutValue: document.getElementById('shortcut-value'),
@@ -171,6 +180,12 @@ function renderAll() {
   els.pdfBackground.checked = settings.pdf.printBackground;
   els.pdfHeader.checked = settings.pdf.headerFooter;
   els.pdfCssPage.checked = settings.pdf.preferCssPageSize;
+  els.pdfReader.checked = settings.pdf.reader;
+  els.pdfAutoScale.checked = settings.pdf.autoScale;
+  els.pdfDark.checked = settings.pdf.darkMode;
+  els.pdfFooterTitle.checked = settings.pdf.footerTitle;
+  els.pdfFooterUrl.checked = settings.pdf.footerUrl;
+  els.pdfFooterDate.checked = settings.pdf.footerDate;
 
   els.fileFolder.value = settings.file.folder;
   els.fileTemplate.value = settings.file.template;
@@ -180,6 +195,9 @@ function renderAll() {
     state.lang,
     settings.file.saveAs ? 'options.file.saveAsHintOn' : 'options.file.saveAsHint'
   );
+
+  els.theme.value = normalizeTheme(settings.theme);
+  applyTheme(settings.theme);
 
   els.language.value = settings.language;
   els.allowAll.checked = settings.allowAll;
@@ -304,11 +322,21 @@ function renderPreview() {
 async function renderShortcut() {
   try {
     const commands = await chrome.commands.getAll();
-    const command = commands.find((item) => item.name === 'save-pdf');
-    const value = command?.shortcut;
-    els.shortcutValue.textContent = value
-      ? t(state.lang, 'options.general.shortcutValue', { shortcut: value })
-      : t(state.lang, 'popup.noShortcut');
+    const main = commands.find((item) => item.name === 'save-pdf')?.shortcut;
+    const quiet = commands.find((item) => item.name === 'save-pdf-quiet')?.shortcut;
+
+    if (main && quiet) {
+      els.shortcutValue.textContent = t(state.lang, 'options.general.shortcutValueBoth', {
+        main,
+        quiet
+      });
+    } else if (main) {
+      els.shortcutValue.textContent = t(state.lang, 'options.general.shortcutValue', {
+        shortcut: main
+      });
+    } else {
+      els.shortcutValue.textContent = t(state.lang, 'popup.noShortcut');
+    }
   } catch {
     els.shortcutValue.textContent = '';
   }
@@ -449,6 +477,42 @@ els.pdfCssPage.addEventListener('change', () => {
   });
 });
 
+els.pdfReader.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.reader = els.pdfReader.checked;
+  });
+});
+
+els.pdfAutoScale.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.autoScale = els.pdfAutoScale.checked;
+  });
+});
+
+els.pdfDark.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.darkMode = els.pdfDark.checked;
+  });
+});
+
+els.pdfFooterTitle.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.footerTitle = els.pdfFooterTitle.checked;
+  });
+});
+
+els.pdfFooterUrl.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.footerUrl = els.pdfFooterUrl.checked;
+  });
+});
+
+els.pdfFooterDate.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.footerDate = els.pdfFooterDate.checked;
+  });
+});
+
 els.resetPdf.addEventListener('click', () => {
   void persist((draft) => {
     draft.pdf = structuredClone(DEFAULT_SETTINGS.pdf);
@@ -477,6 +541,18 @@ els.fileSaveAs.addEventListener('change', () => {
   void persist((draft) => {
     draft.file.saveAs = els.fileSaveAs.checked;
   });
+});
+
+els.theme.addEventListener('change', () => {
+  applyTheme(els.theme.value);
+  void persist((draft) => {
+    draft.theme = els.theme.value;
+  });
+});
+
+// Följer systemet när temat är "automatiskt".
+watchSystemTheme(() => {
+  if (normalizeTheme(state.settings?.theme) === 'auto') applyTheme('auto');
 });
 
 els.language.addEventListener('change', async () => {

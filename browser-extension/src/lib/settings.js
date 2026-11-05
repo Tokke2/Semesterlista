@@ -9,8 +9,9 @@ export const HISTORY_KEY = 'history';
 const HISTORY_LIMIT = 15;
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  version: 3,
+  version: 4,
   language: 'auto', // 'auto' | 'sv' | 'en'
+  theme: 'auto', // 'auto' | 'light' | 'dark'
   allowAll: false,
   sites: [], // { id, pattern, enabled }
   button: {
@@ -24,6 +25,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
     printBackground: false,
     headerFooter: false,
     preferCssPageSize: false,
+    autoScale: true,
+    darkMode: false,
+    reader: false,
+    footerTitle: false,
+    footerUrl: false,
+    footerDate: false,
     waitMs: 400
   },
   file: {
@@ -37,6 +44,12 @@ export const DEFAULT_SETTINGS = Object.freeze({
 const POSITIONS = ['br', 'bl', 'tr', 'tl'];
 const FORMATS = ['A4', 'Letter', 'Legal', 'A3'];
 const LANGUAGES = ['auto', 'sv', 'en'];
+export const THEMES = ['auto', 'light', 'dark'];
+
+/** Normaliserar temavärdet ('auto' när något annat skickas in). */
+export function normalizeTheme(value) {
+  return THEMES.includes(value) ? value : DEFAULT_SETTINGS.theme;
+}
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -95,6 +108,7 @@ export function mergeSettings(raw) {
   return {
     version: DEFAULT_SETTINGS.version,
     language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_SETTINGS.language,
+    theme: normalizeTheme(source.theme),
     allowAll: source.allowAll === true,
     sites,
     button: {
@@ -108,6 +122,13 @@ export function mergeSettings(raw) {
       printBackground: pdf.printBackground === true,
       headerFooter: pdf.headerFooter === true,
       preferCssPageSize: pdf.preferCssPageSize === true,
+      // Från och med version 4: autoskala, mörk utskrift, artikelläge och källrad.
+      autoScale: pdf.autoScale !== false,
+      darkMode: pdf.darkMode === true,
+      reader: pdf.reader === true,
+      footerTitle: pdf.footerTitle === true,
+      footerUrl: pdf.footerUrl === true,
+      footerDate: pdf.footerDate === true,
       waitMs: Math.round(clampNumber(pdf.waitMs, 0, 5000, DEFAULT_SETTINGS.pdf.waitMs))
     },
     file: {

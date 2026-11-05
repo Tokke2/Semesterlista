@@ -206,6 +206,12 @@ ${FILE_ICON}
     document.documentElement.appendChild(host);
   }
 
+  function buttonTitle() {
+    const base = context?.strings?.button || 'Save as PDF';
+    const alt = context?.strings?.altHint;
+    return alt ? `${base} · ${alt}` : base;
+  }
+
   function positionUi(position) {
     if (!shadow) return;
     const wrap = shadow.querySelector('.wrap');
@@ -250,6 +256,7 @@ ${FILE_ICON}
       'aria-label',
       context?.strings?.button || 'Save as PDF'
     );
+    button.title = buttonTitle();
     const existingSpinner = button.querySelector('.spinner');
     if (value && !existingSpinner) {
       const spinner = document.createElement('span');
@@ -259,7 +266,7 @@ ${FILE_ICON}
       button.innerHTML = `${FILE_ICON}<span class="label"></span>`;
       label = button.querySelector('.label');
       label.textContent = context?.strings?.buttonShort || 'PDF';
-      button.title = context?.strings?.button || 'Save as PDF';
+      button.title = buttonTitle();
     }
   }
 
@@ -269,7 +276,12 @@ ${FILE_ICON}
     if (busy) return;
     setBusy(true);
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'SAVE_PDF' });
+      // Alt+klick hoppar över spar-dialogen och lägger filen direkt i
+      // webbläsarens hämtningsmapp.
+      const response = await chrome.runtime.sendMessage({
+        type: 'SAVE_PDF',
+        forceSaveAs: event.altKey ? false : undefined
+      });
       if (response && response.ok === false) {
         const text = response.message || context?.strings?.failed || 'Error';
         if (!toast?.classList.contains('visible')) showToast({ state: 'error', text });
@@ -290,7 +302,7 @@ ${FILE_ICON}
     positionUi(context.position);
     if (label) label.textContent = context.strings?.buttonShort || 'PDF';
     if (button) {
-      button.title = context.strings?.button || 'Save as PDF';
+      button.title = buttonTitle();
       button.setAttribute('aria-label', context.strings?.button || 'Save as PDF');
     }
   }

@@ -2,7 +2,14 @@
  * Popup – visar status för aktuell flik och sparar sidan som PDF.
  */
 
-import { getSettings, updateSettings, getHistory, createId, onSettingsChanged } from './lib/settings.js';
+import {
+  getSettings,
+  updateSettings,
+  getHistory,
+  createId,
+  onSettingsChanged,
+  normalizeTheme
+} from './lib/settings.js';
 import {
   matchesUrl,
   suggestPatternFromUrl,
@@ -13,6 +20,7 @@ import {
 import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
+import { applyTheme, watchSystemTheme } from './lib/theme.js';
 
 const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
   <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
@@ -288,6 +296,7 @@ async function renderShortcut() {
 async function load({ initial = false } = {}) {
   state.settings = await getSettings();
   state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
+  applyTheme(state.settings.theme);
   applyI18n(document, state.lang);
 
   if (initial) {
@@ -318,7 +327,11 @@ async function savePdf() {
     });
 
     if (response?.ok) {
-      setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
+      if (response.readerFallback) {
+        setBanner('info', t(state.lang, 'popup.readerFallback'));
+      } else {
+        setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
+      }
       setBannerActions(response.downloadId);
       await renderHistory();
     } else if (response?.error === 'canceled') {
@@ -448,10 +461,15 @@ onSettingsChanged(() => {
   void (async () => {
     state.settings = await getSettings();
     state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
+    applyTheme(state.settings.theme);
     applyI18n(document, state.lang);
     render();
     await renderHistory();
   })();
+});
+
+watchSystemTheme(() => {
+  if (normalizeTheme(state.settings?.theme) === 'auto') applyTheme('auto');
 });
 
 void load({ initial: true });

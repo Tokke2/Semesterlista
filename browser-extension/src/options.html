@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="theme-init.js"></script>
     <title>Sida till PDF – Inställningar</title>
     <link rel="stylesheet" href="ui.css" />
     <link rel="stylesheet" href="options.css" />
@@ -178,6 +179,75 @@
           </label>
         </div>
 
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.reader">Artikelläge – spara bara artikelns text</span>
+            <span class="field-note" data-i18n="options.pdf.readerHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-reader" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.reader"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.autoScale">Autoskala breda sidor</span>
+            <span class="field-note" data-i18n="options.pdf.autoScaleHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-auto-scale" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.autoScale"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.dark">Mörk utskrift (ljus text på mörk bakgrund)</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-dark" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.dark"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerTitle">Sidfot: sidans titel</span>
+            <span class="field-note" data-i18n="options.pdf.footerHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-title" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerTitle"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerUrl">Sidfot: webbadress</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-url" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerUrl"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerDate">Sidfot: datum</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-date" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerDate"></span>
+          </label>
+        </div>
+
         <div class="card-actions">
           <button id="reset-pdf" class="btn btn-ghost btn-sm" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -254,6 +324,17 @@
             </span>
             <h2 id="general-title" data-i18n="options.general.title">Allmänt</h2>
           </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="theme" data-i18n="options.general.theme">Tema</label>
+          </div>
+          <select id="theme" class="select select-sm">
+            <option value="auto" data-i18n="options.general.themeAuto">Automatiskt</option>
+            <option value="light" data-i18n="options.general.themeLight">Ljust</option>
+            <option value="dark" data-i18n="options.general.themeDark">Mörkt</option>
+          </select>
         </div>
 
         <div class="field">
@@ -335,7 +416,7 @@
         <p class="muted" data-i18n="options.footer.note">
           PDF:er skapas lokalt i webbläsaren. Inga sidor skickas någonstans.
         </p>
-        <p class="muted">Sida till PDF · v1.3.0</p>
+        <p class="muted">Sida till PDF · v1.4.0</p>
       </footer>
     </div>
 
