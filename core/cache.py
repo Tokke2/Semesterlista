@@ -47,7 +47,7 @@ from typing import Iterable, List, Sequence
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.17.0"
+MODULE_VERSION: str = "2.17.1"
 
 #: Mappen under %TEMP% som appen äger
 APP_DIR_NAME: str = "Semesterlista"

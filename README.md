@@ -141,6 +141,24 @@ python main.pyw
 Kräver **Python 3.10+** och beroendena i [`requirements.txt`](requirements.txt)
 (PySide6, reportlab).
 
+### Saknade tillägg: erbjud reparation (från 2.17.1)
+
+Om PySide6/reportlab saknas eller inte kan importeras erbjuder startprogrammet
+**Installera/reparera tillägg och försök igen** i en vanlig Windows-dialog.
+Dialogen kräver inte Qt. Standardval är **Nej**.
+
+- Ja installerar om/uppdaterar kraven i **samma Python** med dess egen pip.
+  Saknas pip används `ensurepip` i den befintliga installationen.
+- Ingen ny Python, separat miljö eller automatisk installationsloop skapas.
+- Tilläggen verifieras före ett enda nytt startförsök. Misslyckande visas som
+  meddelande med sökväg till `data/loggar/fel.log` och loggas beständigt.
+- Normal start gör inga extra pip-/uppdateringskontroller. Det ordinarie
+  veckounderhållet är oförändrat; interaktiv reparation är ett separat undantag.
+- Reparation tillåts inte medan en annan start/app äger underhållslåset.
+  Schemalagt underhåll visar ingen reparationsfråga.
+- Paket delas med andra program som använder samma Python. Stäng sådana
+  program innan du godkänner reparationen.
+
 ### Veckokontroll av Python och tillägg på Windows
 
 Dubbelklicka på **`Starta Semesterlista.vbs`** för att starta **utan terminalfönster**.

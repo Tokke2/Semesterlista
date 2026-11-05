@@ -3082,3 +3082,22 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   Röd markering på exempelvis mors dag/advent beror på att det är söndag.
 - Tester täcker 2020–2035, rörliga datum, ordinarie arbetsdagar, Lucia/julafton,
   UI-färg samt faktiska PDF-fyllningar och fullständiga sv/en-exporter med bilder.
+
+
+## 40. Erbjud reparation när tillägg saknas (v2.17.1)
+
+- Tidig import av Qt och reportlab.pdfgen.canvas ger särskild avslutningskod 42
+  vid fel; andra appfel startar inte någon paketinstallation.
+- Runtime-värden visar en Win32-dialog utan Qt, Ja/Nej med Nej som standard.
+  Godkänt val kör pip install --upgrade --force-reinstall -r requirements.txt
+  med sys.executable, följt av pip check och verifierad import i separat process.
+  Saknas pip används befintlig Pythons ensurepip. Ingen extra Python/venv skapas.
+- Ett nytt startförsök görs; ingen loop vid fortsatt importfel. Fel visas och
+  skrivs till beständig fellogg. PowerShell undviker dubbla felrutor (kod 43).
+- Veckofel vid interaktiv start kan erbjuda samma reparation. Schemalagt
+  underhåll är icke-interaktivt. Normal start gör inga nya pip-/nätkontroller.
+- Underhållslåset skyddar även reparationen. Om en annan instans äger låset
+  körs --no-repair; omstart får två sekunder att lämna över låset.
+- Regressioner testar verklig main-start med blockerad import, Ja/Nej,
+  installationsfel, fortsatt importfel, ensurepip, delad Python, låsbegränsning,
+  schemalagt underhåll och standardval i dialogen. Körs även på Windows-CI.

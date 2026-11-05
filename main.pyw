@@ -200,6 +200,7 @@ if _LOGGING_ERROR is not None:
 # PySide6 – Modern GUI
 # ──────────────────────────────────────────────────────────
 try:
+    importlib.import_module("reportlab.pdfgen.canvas")
     from PySide6.QtWidgets import (
         QApplication,
         QMainWindow,
@@ -227,14 +228,15 @@ try:
                                 QKeySequence,
                 )
 except Exception as _qt_error:  # pragma: no cover – miljö utan PySide6
-    logger.critical("PySide6 kunde inte importeras", exc_info=_qt_error)
+    logger.critical("Nödvändiga tillägg kunde inte importeras", exc_info=_qt_error)
     print(
-        "PySide6 saknas. Installera beroendena med:\n"
+        "Nödvändiga tillägg saknas eller kunde inte laddas. Installera beroendena med:\n"
         "    pip install PySide6 reportlab\n"
         f"Loggfil: {LOG_FILE or 'kunde inte skapas'}",
         file=sys.stderr,
     )
-    raise SystemExit(1)
+    from tools.runtime_check import DEPENDENCY_EXIT_CODE
+    raise SystemExit(DEPENDENCY_EXIT_CODE)
 
 # ──────────────────────────────────────────────────────────
 # Kärnmoduler
@@ -272,7 +274,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.17.0"
+APP_VERSION: str = "2.17.1"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt

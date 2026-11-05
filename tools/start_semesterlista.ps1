@@ -138,13 +138,16 @@ $mutex = New-Object System.Threading.Mutex($false, 'Local\SemesterlistaRuntimeMa
 $owned = $false
 try {
     try { $owned = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $owned = $true }
+    # Allow an updating/restarting app a moment to release its old mutex.
+    if (-not $owned -and -not $MaintenanceOnly) {
+        try { $owned = $mutex.WaitOne(2000) } catch [System.Threading.AbandonedMutexException] { $owned = $true }
+    }
     $python = Find-Python
     if (-not $owned) {
         if ($MaintenanceOnly) { exit 0 }
         if (-not $python) { throw 'En startkontroll pågår redan. Försök igen när den är klar.' }
-        $env:SEMESTERLISTA_RUNTIME_READY = '1'
-        & $python.executable (Join-Path $Root 'main.pyw')
-        exit 0
+        & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py') --no-repair
+        exit $LASTEXITCODE
     }
     # A first installation is only needed when Python is genuinely missing.
     if (-not $python) { $python = Update-Python $null }
@@ -160,6 +163,7 @@ try {
     } else {
         & $python.executable (Join-Path $PSScriptRoot 'runtime_check.py')
     }
+    if ($LASTEXITCODE -eq 43) { exit 1 } # Python already displayed the error.
     if ($LASTEXITCODE -ne 0) { throw 'Semesterlista kunde inte startas/uppdateras. Se data/loggar/app.log.' }
 } catch {
     Write-Host "Startfel: $_" -ForegroundColor Red
