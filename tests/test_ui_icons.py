@@ -46,7 +46,7 @@ class UiIconTests(PdfLayoutTestBase):
         self.assertFalse(button.icon().isNull())
         for color in ('#ffffff', '#000000', '#ffff00'):
             palette = button.palette()
-            palette.setColor(QPalette.ColorRole.WindowText, QColor(color))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor(color))
             button.setPalette(palette)
             controller.decorate(button)
             signature = button.property('semesterlistaIconSignature')

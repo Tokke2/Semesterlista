@@ -80,7 +80,9 @@ class IconController(QObject):
 
     def decorate(self, obj):
         palette = obj.palette() if isinstance(obj, QWidget) else QApplication.palette()
-        color = palette.color(QPalette.ColorRole.WindowText).name()
+        role = (QPalette.ColorRole.ButtonText if isinstance(obj, (QPushButton, QToolButton))
+                else QPalette.ColorRole.WindowText)
+        color = palette.color(role).name()
         if isinstance(obj, QTabWidget):
             for index in range(obj.count()):
                 page = obj.widget(index)
@@ -104,6 +106,8 @@ class IconController(QObject):
         # Mark before setIcon, which can itself emit ActionChanged/LayoutRequest.
         obj.setProperty('semesterlistaIconSignature', signature)
         obj.setIcon(icon(name, color))
+        if isinstance(obj, QAction):
+            obj.setIconVisibleInMenu(True)
         if clean_label(text) != text:
             obj.setText(clean_label(text))
 
