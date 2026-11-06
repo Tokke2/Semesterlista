@@ -6,7 +6,7 @@ import sys
 import unittest
 import uuid
 from unittest.mock import patch
-from PySide6.QtCore import QCoreApplication, QEventLoop, QTimer
+from PySide6.QtCore import QCoreApplication, QEventLoop, QTimer, QProcess
 from core.single_instance import SingleInstanceLock
 
 
@@ -35,10 +35,25 @@ sent = lock.send_to_existing() if secondary else False
 lock.release()
 sys.exit(0 if secondary and sent else 2)
 '''
-        result = subprocess.run([sys.executable, '-c', code, self.name, str(fallback)],
-                                cwd=Path(__file__).resolve().parent.parent,
-                                capture_output=True, text=True, timeout=20)
-        self.assertEqual(result.returncode, 0, result.stderr)
+        # Windows named-pipe handshakes require the primary Qt event loop to
+        # run while the secondary connects. Blocking subprocess.run would
+        # deadlock the test rather than model an already-running application.
+        process = QProcess()
+        process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        loop = QEventLoop()
+        process.finished.connect(lambda *_: loop.quit())
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(loop.quit)
+        timer.start(20000)
+        process.start(sys.executable, ['-c', code, self.name, str(fallback)])
+        loop.exec()
+        timer.stop()
+        if process.state() != QProcess.ProcessState.NotRunning:
+            process.kill()
+            process.waitForFinished(5000)
+            self.fail('Secondary process did not finish')
+        self.assertEqual(process.exitCode(), 0, bytes(process.readAllStandardError()).decode(errors='replace'))
 
     def test_multiple_launches_signal_same_owner_and_keep_lock_file(self):
         primary = SingleInstanceLock(self.name)

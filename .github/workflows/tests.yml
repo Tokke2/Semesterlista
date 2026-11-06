@@ -62,5 +62,11 @@ jobs:
         run: |
           python -m pip install PySide6-Essentials
           if ($LASTEXITCODE -ne 0) { throw 'Qt install for tests failed' }
-          python -m unittest discover -s tests -p test_single_instance.py -v
-          if ($LASTEXITCODE -ne 0) { throw 'Single-instance tests failed' }
+          cmd /c "python -m unittest discover -s tests -p test_single_instance.py -v > single-instance-tests.log 2>&1"
+          $testCode = $LASTEXITCODE
+          $text = Get-Content single-instance-tests.log -Raw
+          Write-Output $text
+          if ($testCode -ne 0) {
+            Write-Output ('::error::' + $text.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A'))
+            throw 'Single-instance tests failed'
+          }
