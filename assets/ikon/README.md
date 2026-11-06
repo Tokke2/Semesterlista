@@ -22,7 +22,7 @@ PNG-filerna samt `.ico`-filen.
 
 ## Design
 
-- Mörkblå platta `#14507d`, vit kalender, gul rubrik och blå bock `#f2b705`.
+- Mörkblå platta `#16324f`, vit kalender, mintgrön rubrik och blå bock; mintgrön accent `#36d6be`.
 - Inga tunna detaljer – ska vara läsbar i 16 × 16 px (systemfält).
 - Färgerna finns som konstanter i `core/app_icon.py` (`ICON_BLUE`,
   `ICON_YELLOW`) och används även av reservikonen som ritas
@@ -55,3 +55,16 @@ Python-genväg lossas och den nya genvägen fästs igen.
 Ett fullständigt byte av processens EXE-ikon kräver en egen programfil med
 ikonresurs. AppUserModelID och Qt-ikoner ändrar inte Python-installationens
 binärfil. Denna version paketerar inte en separat Python-miljö.
+
+## Logotyp och gränssnittsikoner (2.20.0)
+
+- `assets/brand/logotyp.svg`: ordmärke och kalender för GitHub README.
+- `assets/ui/*.svg`: 18 egenritade linjeikoner, gemensamt 24 × 24-rutnät.
+- `core/ui_icons.py`: färgar ikoner efter Qt-paletten och använder dem i
+  knappar, menyer, flikar och systemfältsmeny. Textetiketter behålls.
+- Huvudfönstret visar kalender och ordmärke; fönster/dialoger och systemfält
+  använder samma appikon. Inga AI-genererade bilder eller externa ikontjänster.
+- Appens `ikon`, `ui` och `brand`-mappar visas inte som kundlogotyper i PDF-väljaren.
+- Gamla fästa genvägar kan behöva ersättas. På macOS behöver tidigare skapad
+  Semesterlista.app skapas om för att få den nya ikonen. Pythonprocessens
+  egen binärikon ändras fortfarande inte.

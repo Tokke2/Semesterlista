@@ -39,7 +39,7 @@ from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.19.0"
+MODULE_VERSION: str = "2.20.0"
 
 #: Filnamn (utan ändelse) för ikonen i assets/ikon/
 APP_ICON_STEM: str = "appikon"
@@ -55,8 +55,8 @@ APP_ICON_SIZES: tuple = (16, 24, 32, 48, 64, 128, 256)
 WINDOWS_APP_ID: str = "Tokke2.Semesterlista"
 
 #: Färger (samma som assets/ikon/appikon.svg)
-ICON_BLUE: str = "#14507d"
-ICON_YELLOW: str = "#f2b705"
+ICON_BLUE: str = "#16324f"
+ICON_YELLOW: str = "#36d6be"
 ICON_WHITE: str = "#ffffff"
 
 _cache: Optional[Any] = None

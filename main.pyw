@@ -278,7 +278,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.19.0"
+APP_VERSION: str = "2.20.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -634,6 +634,20 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(0)
 
+        # Compact wordmark; Qt text stays readable in dark/high-contrast themes.
+        from PySide6.QtWidgets import QHBoxLayout
+        brand = QHBoxLayout()
+        brand.setContentsMargins(12, 8, 12, 8)
+        mark = QLabel()
+        mark.setPixmap(app_icon().pixmap(28, 28))
+        mark.setAccessibleName("Semesterlista")
+        wordmark = QLabel(self._app_name())
+        wordmark.setProperty("role", "title")
+        brand.addWidget(mark)
+        brand.addWidget(wordmark)
+        brand.addStretch()
+        main_layout.addLayout(brand)
+
         # ── TabWidget ────────────────────────────────────
         self._tab_widget = QTabWidget()
         self._tab_widget.setMovable(True)
@@ -824,6 +838,8 @@ class MainWindow(QMainWindow):
             # escape_mnemonics: annars göms & i menyn (v2.3.0)
             display_name = i18n.plugin_display_name_qt(plugin.get_name())
             action = QAction(display_name, self)
+            from core.ui_icons import TAB_ICONS
+            action.setProperty("semesterlistaIcon", TAB_ICONS.get(plugin_id))
             action.setCheckable(True)
             action.setChecked(self._tab_index(plugin_id) >= 0)
             action.setData(plugin_id)
@@ -986,6 +1002,8 @@ class MainWindow(QMainWindow):
 
         from core.ui_layout import scroll_page
         widget = scroll_page(widget)
+        from core.ui_icons import TAB_ICONS
+        widget.setProperty("semesterlistaIcon", TAB_ICONS.get(plugin_id))
         idx = self._tab_widget.addTab(widget, tab_name)
         self._tab_widgets[plugin_id]   = widget
         self._tab_positions[plugin_id] = idx
@@ -1024,6 +1042,8 @@ class MainWindow(QMainWindow):
 
         from core.ui_layout import scroll_page
         widget = scroll_page(widget)
+        from core.ui_icons import TAB_ICONS
+        widget.setProperty("semesterlistaIcon", TAB_ICONS.get(plugin_id))
         idx = self._tab_widget.addTab(widget, tab_name)
         self._tab_positions[plugin_id] = idx
 
@@ -1500,6 +1520,13 @@ class SystrayManager:
         # Visa/Dölj speglar fönstrets läge när menyn öppnas
         self._tray_menu.aboutToShow.connect(self._sync_actions)
 
+        for action, name in (
+            (self._show_action, "open"), (self._hide_action, "close"),
+            (self._settings_action, "settings"), (self._update_action, "refresh"),
+            (self._about_action, "info"), (self._quit_action, "close"),
+        ):
+            action.setProperty("semesterlistaIcon", name)
+
         self._tray_icon.setContextMenu(self._tray_menu)
         self._tray_icon.activated.connect(self._on_tray_activated)
         self._tray_icon.show()
@@ -1686,6 +1713,8 @@ def main() -> None:
     # Appikon överallt (v2.7.0): aktivitetshanterare/fält, tray, fönster.
     # AppUserModelID måste sättas innan fönstret skapas (Windows).
     apply_app_icon(app)
+    from core.ui_icons import install_ui_icons
+    install_ui_icons(app)
 
     step("3", "QApplication, appikon, Qt-loggning")
 

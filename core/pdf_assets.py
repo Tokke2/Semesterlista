@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.19.0"
+MODULE_VERSION: str = "2.20.0"
 
 #: Mapp (relativt appens rot) där bilder letas upp
 ASSET_DIR_NAME: str = "assets"
@@ -95,7 +95,7 @@ LOGO_SCALE_DEFAULT: int = 100
 
 #: Undermappar som aldrig ska dyka upp i logotypväljaren (v2.7.0).
 #: "ikon" innehåller appens egen ikon – den är ingen logotyp.
-EXCLUDED_DIR_NAMES: Tuple[str, ...] = ("ikon",)
+EXCLUDED_DIR_NAMES: Tuple[str, ...] = ("ikon", "ui", "brand")
 
 #: 1 mm i punkter (samma som reportlab.lib.units.mm)
 MM: float = 72.0 / 25.4

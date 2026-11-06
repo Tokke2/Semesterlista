@@ -3199,3 +3199,19 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - CI utökad med macOS Python 3.12, native appkompilering och regressionstester.
 - Linux-systempaket/PEP 668 respekteras; saknad Python/systembibliotek installeras
   manuellt på macOS/Linux. Inga signerade eller bundlade binärdistributioner.
+
+## 47. Enkel README och gemensam visuell identitet (v2.20.0)
+
+- Kort GitHub README med logotyp, fyra funktionsikoner, OS-specifik snabbstart,
+  PDF-arkiv, uppdatering och felsökning. Detaljer/historik flyttas till docs/guide.md.
+- Kalenderikon i mörkblått #16324f och mint #36d6be; SVG, PNG 16–256 och ICO.
+  Samma färger i Qt-reservikonen; befintliga integrationer för fönster/tray/genvägar.
+- Egenritat ordmärke i assets/brand samt 18 enhetliga SVG-linjeikoner i assets/ui.
+- Gemensam IconController färgar ikoner enligt Qt-palett och dekorerar knappar,
+  QAction-menyer och tabbar, även sena dialoger och språk-/temabyten.
+  Text och tangentbordsgenvägar behålls; kontroller får inte bli ikon-only.
+- Kompakt kalender/ordmärke i huvudfönstret. Explicit ikonroll för tabbar och tray.
+- Interna brand/ui-mappar undantas från PDF-logotypväljaren; användares egna
+  logotyper och PDF-layout ändras inte. Inga AI-genererade bilder.
+- Tester för SVG-filer, README-bilder/längd, logotypurval, temabyte, sena kontroller
+  och oförändrade textetiketter. Manuellt gamla startgenvägar kan behöva ersättas.
