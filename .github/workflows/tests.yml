@@ -70,3 +70,11 @@ jobs:
             Write-Output ('::error::' + $text.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A'))
             throw 'Single-instance tests failed'
           }
+
+      - name: Testa PDF-arkivering på Windows
+        shell: powershell
+        run: |
+          python -m pip install reportlab
+          if ($LASTEXITCODE -ne 0) { throw 'ReportLab install failed' }
+          python -m unittest discover -s tests -p test_pdf_archive.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'PDF archive tests failed' }

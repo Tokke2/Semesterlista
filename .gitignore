@@ -35,3 +35,6 @@ data/runtime-weekly.json
 
 # Generated Windows app shortcut
 /Semesterlista.lnk
+
+# Generated PDF archive
+/export/

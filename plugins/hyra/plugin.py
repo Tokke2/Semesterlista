@@ -45,7 +45,6 @@ from core.ui_layout import FlowLayout
 
 import os
 import platform
-import webbrowser
 import logging
 from datetime import date, datetime
 from pathlib import Path
@@ -81,6 +80,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 
 from core.seasonal_pdf import print_canvas
+from core.pdf_export import get_export_folder, save_document, open_pdf
 from core import i18n
 from core.pdf_assets import (
     AssetError,
@@ -105,7 +105,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO = {
     "id":          "hyresfakturering",
     "name":        "Hyresfakturering",
-    "version":     "2.18.1",
+    "version":     "2.18.2",
     "author":      "Din Organisation",
     "description": "Generera hyreslistor med tomma kryssrutor",
 }
@@ -150,10 +150,8 @@ QUARTER_INFO: Dict[int, dict] = {
 # ══════════════════════════════════════════════════════════
 
 def get_documents_folder() -> str:
-    """Returnerar sökvägen till användarens Dokument-mapp."""
-    path = Path.home() / "Documents"
-    path.mkdir(parents=True, exist_ok=True)
-    return str(path)
+    """Compatibility helper: the app-local rent export archive."""
+    return get_export_folder("Hyra")
 
 
 def get_app_folder() -> str:
@@ -706,10 +704,6 @@ class PDFGenerator:
     def generate(self) -> bool:
         """Generera PDF och öppna den automatiskt."""
         year           = self.tm.get_year()
-        documents_path = get_documents_folder()
-        filename       = os.path.join(
-            documents_path, f"hyreslista_{year}.pdf"
-        )
         monthly    = self.tm.get_monthly_tenants()
         quarterly  = self.tm.get_quarterly_tenants()
 
@@ -722,6 +716,8 @@ class PDFGenerator:
             return False
 
         try:
+            documents_path = get_export_folder("Hyra")
+            filename = os.path.join(documents_path, f"hyreslista_{year}.pdf")
             # Logotyp (v2.4.0) – ritas i övre högra hörnet på varje sida
             logo_canvas = make_logo_canvas(
                 self._page_logo(), margin_mm=8.0, corner="right"
@@ -795,14 +791,14 @@ class PDFGenerator:
                 footer_style,
             ))
 
-            doc.build(elements, **build_kwargs)
+            filename = save_document(doc, elements, filename, **build_kwargs)
+            open_pdf(filename)
 
             QMessageBox.information(
                 None,
                 "Klart",
                 f"PDF genererad!\n\n{filename}",
             )
-            webbrowser.open(filename)
 
             self.plugin.emit("hyresfakturering:pdf_generated", {
                 "filename":        filename,
@@ -972,7 +968,7 @@ class Plugin(BasePlugin):
     """
 
     NAME:        str = PLUGIN_INFO["name"]
-    VERSION:     str = "2.18.1"
+    VERSION:     str = "2.18.2"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR:      str = PLUGIN_INFO["author"]
 

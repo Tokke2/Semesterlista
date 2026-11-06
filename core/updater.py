@@ -56,7 +56,7 @@ from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.18.1"
+MODULE_VERSION: str = "2.18.2"
 
 #: GitHub-repot som uppdateringen hämtas från
 GITHUB_OWNER: str = "Tokke2"
@@ -78,6 +78,7 @@ SKIP_DIRS: Tuple[str, ...] = (
     ".git",
     ".github",
     "data",
+    "export",
     "__pycache__",
     ".venv",
     "venv",

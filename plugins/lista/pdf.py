@@ -5,7 +5,6 @@ import os
 from io import BytesIO
 from xml.sax.saxutils import escape
 import calendar
-import webbrowser
 from datetime import date
 from datetime import datetime
 from pathlib import Path
@@ -59,7 +58,7 @@ from .common import MONTHS_PER_PAGE_OPTIONS
 from .common import DEFAULT_MONTHS_PER_PAGE
 from .common import normalize_orientation
 from .common import page_geometry
-from .common import get_documents_folder
+from core.pdf_export import get_export_folder, save_document, open_pdf
 from .common import get_half_days
 from .common import holidays_for
 from .list_io import ListReader
@@ -568,7 +567,7 @@ class PDFGenerator(ListReader):
                 → första sida kan innehålla dec 2026 / jan 2027
         """
         leave_calendar = leave if leave is not None else self._leave_calendar
-        documents_path = get_documents_folder()
+        documents_path = get_export_folder("Semesterlista" if mode == "Semesterlista" else "Fordon")
         month_sequence = self._build_month_sequence(year, start_month)
         range_label = self._format_range_label(month_sequence)
         filename = self._build_output_filename(documents_path, mode, month_sequence)
@@ -926,7 +925,7 @@ class PDFGenerator(ListReader):
             )
             canvas.restoreState()
 
-        doc.build(elements, onFirstPage=page_details, onLaterPages=page_details, **build_kwargs)
+        filename = save_document(doc, elements, filename, onFirstPage=page_details, onLaterPages=page_details, **build_kwargs)
 
         selected_start_value = 0 if start_month is None else start_month
         start_text = (
@@ -949,6 +948,7 @@ class PDFGenerator(ListReader):
             f"{(perf_counter() - started) * 1000:.0f} ms"
         )
 
+        open_pdf(filename)
         QMessageBox.information(
             None,
             "Klart",
@@ -960,8 +960,6 @@ class PDFGenerator(ListReader):
             f"Sidlayout: {orientation}",
         )
 
-        if self.plugin.settings.get("auto_open_pdf", True):
-            webbrowser.open(filename)
 
         self.plugin.emit("semesterlista:pdf_generated", {
             "filename": filename,

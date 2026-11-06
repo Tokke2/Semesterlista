@@ -3165,3 +3165,18 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Starta minimerad är fast aktiverat i inställningar och äldre False ignoreras.
 - Qt-tester verifierar vanlig/maximerad föregående session, inga tidiga show-anrop,
   senare återöppning och minimerad fallback när systemfält saknas.
+
+## 45. Typindelat PDF-arkiv (v2.18.2)
+
+- Alla fyra UI-exporter använder app_root()/export/{Kalender,Semesterlista,Fordon,Hyra}.
+- Kalenderns sparadialog tas bort; tidigare auto_open_pdf=False ignoreras.
+- Gemensam render_to_archive bygger i temporär fil, reserverar unikt slutnamn
+  exklusivt och publicerar atomärt. Befintliga filer skrivs aldrig över.
+- Upprepade exporter får datum-/tidstillägg, med räknare vid tidsstämpelkollision.
+- Standardprogram öppnas via QDesktopServices och lokal QUrl före framgångsdialog.
+  Misslyckad öppning visar sparad sökväg; exporterad fil behålls.
+- Öppna exportmapp går till listtypens arkiv, auto-open-val fast aktiverat.
+- Git och updater undantar export. Äldre Dokument-exporter lämnas orörda.
+- Layout/preflight oförändrade. Tester täcker samtliga exportörer, gamla False,
+  typmappar, arbetskatalogoberoende, Unicode, kolliderande filnamn, avbrott,
+  render-/skrivfel, temporärfilsstädning och fel från standardprogram.

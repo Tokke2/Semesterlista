@@ -141,6 +141,26 @@ märkesdagar**, utöver federala helgdagar. Välj USA som helgdagsregion.
   `pythonw.exe`. Det går inte att garantera ett fullständigt ikonbyte där utan
   en egen programfil. Ingen ny/bundlad Python har införts.
 
+## PDF-arkiv i appmappen (2.18.2)
+
+Alla nya PDF-exporter sparas automatiskt under appmappens `export`:
+
+- `Kalender` – fristående kalendrar
+- `Semesterlista` – anställdas semesterlistor
+- `Fordon` – körlistor
+- `Hyra` – hyreslistor
+
+Äldre exporter behålls. Om filnamnet redan finns får den nya filen ett
+unikt datum-/tidstillägg. Avbruten eller misslyckad rendering lämnar ingen
+halvfärdig PDF i arkivet. Exportmappen skyddas vid appuppdateringar.
+
+Varje färdig PDF öppnas direkt med datorns standardprogram, även om automatisk
+öppning tidigare varit avstängd. Om öppningen misslyckas visas den sparade filens
+sökväg. Knappen **Öppna exportmapp** går till respektive listtyps arkiv.
+Kalendern frågar inte längre efter en annan sparplats. Appmappen måste vara
+skrivbar; ingen export omdirigeras till Dokument. Befintliga filer i Dokument
+flyttas inte automatiskt.
+
 ## Alltid minimerad start (2.18.1)
 
 Appen startar alltid dold i systemfältet, även om fönstret var maximerat vid

@@ -169,8 +169,9 @@ def orientation_label(orientation: Any) -> str:
 
 
 def get_documents_folder() -> str:
-    """Returnerar sökvägen till användarens Dokument-mapp."""
-    path = Path.home() / "Documents"
+    """Compatibility helper: root of the app-local export archive."""
+    from core.roster import app_root
+    path = app_root() / "export"
     path.mkdir(parents=True, exist_ok=True)
     return str(path)
 

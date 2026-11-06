@@ -50,7 +50,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.18.1"
+MODULE_VERSION: str = "2.18.2"
 
 #: Avskiljare som alltid delar raden – de förekommer inte i namn.
 STRICT_SEPARATORS: Tuple[str, ...] = (";", "|")

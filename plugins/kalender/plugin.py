@@ -5,17 +5,18 @@ from PySide6.QtCore import QDate, Qt, QLocale
 from PySide6.QtGui import QColor, QTextCharFormat, QPalette
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QFormLayout, QLabel, QSpinBox, QComboBox,
-    QCalendarWidget, QListWidget, QListWidgetItem, QPushButton, QFileDialog, QMessageBox,
+    QCalendarWidget, QListWidget, QListWidgetItem, QPushButton, QMessageBox,
 )
 from core import i18n
 from core.calendar_data import year_days, day_labels, calendar_background
 from core.calendar_pdf import export_calendar
+from core.pdf_export import get_export_folder, render_to_archive, open_pdf
 from core.holidays import get_region_from_settings, describe_region
 from core.seasonal_options import edit_seasonal_options
 from core.ui_layout import FlowLayout
 from plugins.base_plugin import BasePlugin
 
-PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.18.1", "author": "Rickard Längkvist"}
+PLUGIN_INFO = {"id": "kalender", "name": "Kalender", "version": "2.18.2", "author": "Rickard Längkvist"}
 
 
 class CalendarView(QWidget):
@@ -174,15 +175,13 @@ class CalendarView(QWidget):
         if not months:
             QMessageBox.information(self, i18n.t("calendar.title"), i18n.t("calendar.select_months"))
             return
-        filename, _ = QFileDialog.getSaveFileName(self, i18n.t("calendar.export"),
-                str(Path.home() / f"kalender_{self.year.value()}.pdf"), "PDF (*.pdf)")
-        if not filename:
-            return
-        if not filename.lower().endswith(".pdf"):
-            filename += ".pdf"
         try:
-            if export_calendar(filename, self.year.value(), months, int(self.per_page.currentText()),
-                               get_region_from_settings(self.plugin._settings_manager), self.plugin.settings):
+            target = Path(get_export_folder("Kalender")) / f"kalender_{self.year.value()}.pdf"
+            filename = render_to_archive(target, lambda temporary: export_calendar(
+                temporary, self.year.value(), months, int(self.per_page.currentText()),
+                get_region_from_settings(self.plugin._settings_manager), self.plugin.settings))
+            if filename:
+                open_pdf(filename, self)
                 QMessageBox.information(self, i18n.t("calendar.title"), i18n.t("calendar.saved", path=filename))
         except Exception as exc:
             QMessageBox.warning(self, i18n.t("calendar.title"), str(exc))
@@ -190,7 +189,7 @@ class CalendarView(QWidget):
 
 class Plugin(BasePlugin):
     NAME = "Kalender"
-    VERSION: str = "2.18.1"
+    VERSION: str = "2.18.2"
     AUTHOR = "Rickard Längkvist"
     TAB_ORDER = 0
 

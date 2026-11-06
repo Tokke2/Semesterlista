@@ -113,7 +113,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.18.1"
+    VERSION: str = "2.18.2"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 
@@ -289,8 +289,9 @@ class Plugin(BasePlugin):
             self.emit("semesterlista:settings_changed", self.settings)
 
     def _open_documents_folder(self) -> None:
-        path = get_documents_folder()
+        from core.pdf_export import get_export_folder
         try:
+            path = get_export_folder("Fordon" if self.FIXED_MODE != "Semesterlista" else "Semesterlista")
             if platform.system() == "Windows":
                 os.startfile(path)
             elif platform.system() == "Darwin":

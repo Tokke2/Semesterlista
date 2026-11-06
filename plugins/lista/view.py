@@ -172,9 +172,8 @@ class SettingsDialog(QDialog):
         main_layout.addWidget(button_box)
 
     def _load_settings(self) -> None:
-        self.auto_open_check.setChecked(
-            self.plugin.settings.get("auto_open_pdf", True)
-        )
+        self.auto_open_check.setChecked(True)
+        self.auto_open_check.setEnabled(False)
 
         default_mode = self.plugin.settings.get("default_mode", "Semesterlista")
         idx = self.mode_combo.findText(default_mode)
@@ -204,7 +203,7 @@ class SettingsDialog(QDialog):
 
     def _save(self) -> None:
         self.plugin.settings["company_name"] = self.company_edit.text().strip()
-        self.plugin.settings["auto_open_pdf"] = self.auto_open_check.isChecked()
+        self.plugin.settings["auto_open_pdf"] = True
         self.plugin.settings["default_mode"] = self.mode_combo.currentText()
         self.plugin.settings["months_per_page"] = int(
             self.months_per_page_combo.currentText()

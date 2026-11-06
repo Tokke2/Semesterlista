@@ -78,8 +78,8 @@ class LeaveInPdfTests(unittest.TestCase):
             "information": cls.module.QMessageBox.information,
             "critical": cls.module.QMessageBox.critical,
             "warning": cls.module.QMessageBox.warning,
-            "open": cls.module.webbrowser.open,
-            "docs": cls.pdf_module.get_documents_folder,
+            "open": cls.pdf_module.open_pdf,
+            "docs": cls.pdf_module.get_export_folder,
             "table": cls.pdf_module.Table,
         }
         cls.messages = []
@@ -92,16 +92,16 @@ class LeaveInPdfTests(unittest.TestCase):
         cls.module.QMessageBox.warning = staticmethod(
             lambda *args, **kwargs: cls.messages.append(("warning", args))
         )
-        cls.module.webbrowser.open = lambda *args, **kwargs: True
-        cls.pdf_module.get_documents_folder = lambda: str(cls.outdir)
+        cls.pdf_module.open_pdf = lambda *args, **kwargs: True
+        cls.pdf_module.get_export_folder = lambda kind: str(cls.outdir)
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls.module.QMessageBox.information = cls._orig["information"]
         cls.module.QMessageBox.critical = cls._orig["critical"]
         cls.module.QMessageBox.warning = cls._orig["warning"]
-        cls.module.webbrowser.open = cls._orig["open"]
-        cls.pdf_module.get_documents_folder = cls._orig["docs"]
+        cls.pdf_module.open_pdf = cls._orig["open"]
+        cls.pdf_module.get_export_folder = cls._orig["docs"]
         cls.pdf_module.Table = cls._orig["table"]
         cls._tmp.cleanup()
 

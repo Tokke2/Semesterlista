@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.18.1"
+MODULE_VERSION: str = "2.18.2"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -486,9 +486,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "lista.file.browse_tooltip":       "Välj textfil med namn eller fordon",
         "lista.button.generate":           "🖨️ Generera PDF",
         "lista.button.tests":              "🧪 Kör tester",
-        "lista.button.open_documents":     "📁 Öppna Dokument",
+        "lista.button.open_documents":     "📁 Öppna exportmapp",
         "lista.button.browse":             "Bläddra...",
-        "lista.settings.auto_open":        "Öppna PDF automatiskt:",
+        "lista.settings.auto_open":        "Öppna alltid PDF automatiskt:",
         "lista.settings.default_mode":     "Standardläge:",
         "lista.settings.months_per_page":  "Månader per blad:",
         "lista.settings.start_month":      "Standardstartmånad:",
@@ -688,6 +688,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "holiday.sv.advent_2": "Andra advent",
         "holiday.sv.advent_3": "Tredje advent",
         "holiday.sv.advent_4": "Fjärde advent",
+        "pdf.open.title": "PDF sparad",
+        "pdf.open.failed": "PDF-filen är sparad men kunde inte öppnas automatiskt. Kontrollera standardprogram för PDF.\n\n{path}",
         "calendar.observance_note_sv": "* Högtid/temadag eller afton, inte egen allmän helgdag. Rött visar allmän helgdag, inklusive söndag. Semestersummor ändras inte.",
         "calendar.observed_label": "{name} – ersättningsdag",
         "calendar.observance_note": "* Högtid/temadag, inte federal helgdag. Markeringen ändrar inte arbetsdagar. Ersättningsdagar anges separat.",
@@ -1042,9 +1044,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "lista.file.browse_tooltip":       "Select a text file with names or vehicles",
         "lista.button.generate":           "🖨️ Generate PDF",
         "lista.button.tests":              "🧪 Run tests",
-        "lista.button.open_documents":     "📁 Open Documents folder",
+        "lista.button.open_documents":     "📁 Open export folder",
         "lista.button.browse":             "Browse...",
-        "lista.settings.auto_open":        "Open PDF automatically:",
+        "lista.settings.auto_open":        "Always open PDF automatically:",
         "lista.settings.default_mode":     "Default mode:",
         "lista.settings.months_per_page":  "Months per page:",
         "lista.settings.start_month":      "Default start month:",
@@ -1244,6 +1246,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "holiday.sv.advent_2": "Second Sunday of Advent",
         "holiday.sv.advent_3": "Third Sunday of Advent",
         "holiday.sv.advent_4": "Fourth Sunday of Advent",
+        "pdf.open.title": "PDF saved",
+        "pdf.open.failed": "The PDF was saved but could not be opened automatically. Check your default PDF application.\n\n{path}",
         "calendar.observance_note_sv": "* Observance or holiday eve, not a public holiday in its own right. Red marks public holidays, including Sundays. Vacation totals are unchanged.",
         "calendar.observed_label": "{name} – observed day",
         "calendar.observance_note": "* Observance, not a federal holiday. This marker does not change working days. Observed holidays are labelled separately.",

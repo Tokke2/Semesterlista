@@ -21,7 +21,7 @@ Konfiguration (data/plugins.json → "Fordon"):
 
     {
       "Fordon": {
-        "version": "2.18.1",
+        "version": "2.18.2",
         "enabled": true,
         "settings": {
           "default_mode": "Limokörning",
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_INFO: Dict[str, str] = {
     "id": "fordon",
     "name": "Fordon",
-    "version": "2.18.1",
+    "version": "2.18.2",
     "author": "Din Organisation",
     "description": "Genererar limokörningsscheman per fordon i PDF-format",
 }
