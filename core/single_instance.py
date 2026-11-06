@@ -49,10 +49,11 @@ import socket
 import hashlib
 import platform
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 # QSharedMemory – cross-platform
@@ -65,7 +66,7 @@ except ImportError:
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.2.0"
+MODULE_VERSION: str = "2.18.0"
 
 # ──────────────────────────────────────────────────────────
 # Autostart-konstanter
@@ -570,6 +571,9 @@ class SingleInstanceLock(QObject):
         # Primärt lås: QSharedMemory
         self._shared_memory: Optional[QSharedMemory] = None
         self._is_primary:    bool                    = False
+        self._pending_show = False
+        self._activation_ready = False
+        self._socket_timer = None
 
         # IPC: QLocalServer
         self._local_server: Optional[QLocalServer] = None
@@ -610,7 +614,15 @@ class SingleInstanceLock(QObject):
         else:
             error = self._shared_memory.error()
             if error == QSharedMemory.SharedMemoryError.AlreadyExists:
-                self._is_primary = False
+                probe = QSharedMemory(self._app_key)
+                if probe.attach():
+                    probe.detach()  # Reap a stale Unix segment; live owners keep it attached.
+                if self._shared_memory.create(1):
+                    self._is_primary = True
+                    self._start_local_server()
+                    self._write_lock_file()
+                else:
+                    self._is_primary = False
             else:
                 try:
                     self._shared_memory.attach()
@@ -628,12 +640,17 @@ class SingleInstanceLock(QObject):
         """Sätt upp socket-baserat lås (fallback)."""
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
             self._socket.bind(("127.0.0.1", self._socket_port))
             self._socket.listen(1)
             self._socket.setblocking(False)
             self._is_primary = True
             self._write_lock_file()
+            self._start_local_server()
+            self._socket_timer = QTimer(self)
+            self._socket_timer.timeout.connect(self._poll_socket)
+            self._socket_timer.start(100)
         except OSError:
             self._is_primary = False
             if self._socket:
@@ -651,6 +668,7 @@ class SingleInstanceLock(QObject):
         """Starta QLocalServer för bring-to-front IPC."""
         QLocalServer.removeServer(self._server_name)
         self._local_server = QLocalServer(self)
+        self._local_server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self._local_server.newConnection.connect(self._on_new_connection)
 
         if not self._local_server.listen(self._server_name):
@@ -659,24 +677,55 @@ class SingleInstanceLock(QObject):
             if self._local_server.listen(alt_name):
                 self._server_name = alt_name
 
+    def set_activation_handler(self, callback):
+        """Do not lose a second launch while the first UI is still loading."""
+        self.instance_started.connect(callback)
+        self._activation_ready = True
+        if self._pending_show:
+            self._pending_show = False
+            QTimer.singleShot(0, callback)
+
+    def _request_show(self):
+        if self._activation_ready:
+            self.instance_started.emit()
+        else:
+            self._pending_show = True
+
     @Slot()
-    def _on_new_connection(self) -> None:
-        """Hantera inkommande anslutning och emittera signal."""
+    def _on_new_connection(self):
         if self._local_server is None:
             return
+        while self._local_server.hasPendingConnections():
+            client = self._local_server.nextPendingConnection()
+            buffer = bytearray()
 
-        client_socket = self._local_server.nextPendingConnection()
-        if client_socket is None:
+            def receive(client=client, buffer=buffer):
+                buffer.extend(bytes(client.readAll()))
+                if bytes(buffer) == b"show":
+                    self._request_show()
+                    client.disconnectFromServer()
+                elif len(buffer) >= 4:
+                    client.disconnectFromServer()
+
+            client.readyRead.connect(receive)
+            client.disconnected.connect(client.deleteLater)
+            if client.bytesAvailable():
+                receive()
+
+    def _poll_socket(self):
+        if self._socket is None:
             return
-
-        if client_socket.waitForReadyRead(500):
-            data = client_socket.readAll()
-            message = bytes(data).decode("utf-8", errors="ignore")
-            if message == "show":
-                self.instance_started.emit()
-
-        client_socket.disconnectFromServer()
-        client_socket.deleteLater()
+        try:
+            client, _ = self._socket.accept()
+        except OSError:
+            return
+        with client:
+            client.settimeout(.1)
+            try:
+                if client.recv(16) == b"show":
+                    self._request_show()
+            except OSError:
+                pass
 
     # ──────────────────────────────────────────────────────────
     # Lock-fil
@@ -721,27 +770,41 @@ class SingleInstanceLock(QObject):
         Returns:
             bool: True om meddelandet skickades.
         """
-        if self._try_qlocal_socket():
-            return True
-        if self._try_tcp_socket():
-            return True
+        self._allow_existing_foreground()
+        for attempt in range(10):
+            if self._try_qlocal_socket() or self._try_tcp_socket():
+                return True
+            if attempt < 9:
+                time.sleep(.1)
         self._cleanup_stale_lock()
         return False
 
     def _try_qlocal_socket(self) -> bool:
         """Försök skicka via QLocalSocket."""
-        socket_conn = QLocalSocket()
-        socket_conn.connectToServer(self._server_name)
-
-        if socket_conn.waitForConnected(1000):
-            socket_conn.write(b"show")
-            if socket_conn.waitForBytesWritten(1000):
+        for name in (self._server_name, self._server_name + "_alt"):
+            socket_conn = QLocalSocket()
+            socket_conn.connectToServer(name)
+            if socket_conn.waitForConnected(200):
+                socket_conn.write(b"show")
+                socket_conn.flush()
+                sent = socket_conn.bytesToWrite() == 0 or socket_conn.waitForBytesWritten(1000)
                 socket_conn.disconnectFromServer()
                 socket_conn.deleteLater()
-                return True
-
-        socket_conn.deleteLater()
+                if sent:
+                    return True
+            else:
+                socket_conn.deleteLater()
         return False
+
+    def _allow_existing_foreground(self):
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            pid = int(self._lock_file.read_text().strip())
+            ctypes.windll.user32.AllowSetForegroundWindow(pid)
+        except (OSError, ValueError, AttributeError):
+            pass
 
     def _try_tcp_socket(self) -> bool:
         """Försök skicka via TCP-socket (fallback)."""
@@ -779,8 +842,28 @@ class SingleInstanceLock(QObject):
     @staticmethod
     def _is_pid_alive(pid: int) -> bool:
         """Kolla om en process lever."""
+        if pid <= 0:
+            return False
+        if sys.platform == "win32":
+            # os.kill(pid, 0) is NOT a safe existence probe on Windows.
+            import ctypes
+            kernel = ctypes.windll.kernel32
+            kernel.OpenProcess.argtypes = [ctypes.c_uint, ctypes.c_int, ctypes.c_uint]
+            kernel.OpenProcess.restype = ctypes.c_void_p
+            kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+            kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+            handle = kernel.OpenProcess(0x1000, False, pid)
+            if not handle:
+                return kernel.GetLastError() == 5  # Access denied is not proof of death.
+            try:
+                code = ctypes.c_ulong()
+                return not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value == 259
+            finally:
+                kernel.CloseHandle(handle)
         try:
             os.kill(pid, 0)
+            return True
+        except PermissionError:
             return True
         except (OSError, ProcessLookupError):
             return False
@@ -883,6 +966,9 @@ class SingleInstanceLock(QObject):
         Ska anropas vid normal avslutning av applikationen.
         OBS: Påverkar INTE autostart-inställningen.
         """
+        was_primary = self._is_primary
+        if self._socket_timer is not None:
+            self._socket_timer.stop()
         if self._local_server is not None:
             self._local_server.close()
             QLocalServer.removeServer(self._server_name)
@@ -902,7 +988,8 @@ class SingleInstanceLock(QObject):
                 pass
             self._socket = None
 
-        self._remove_lock_file()
+        if was_primary:
+            self._remove_lock_file()
         self._is_primary = False
 
     def __del__(self) -> None:
@@ -944,11 +1031,9 @@ def check_single_instance(app_name: str) -> bool:
         try:
             pid_str = lock_file.read_text().strip()
             pid = int(pid_str)
-            try:
-                os.kill(pid, 0)
+            if SingleInstanceLock._is_pid_alive(pid):
                 return True
-            except OSError:
-                lock_file.unlink(missing_ok=True)
+            lock_file.unlink(missing_ok=True)
         except (OSError, ValueError):
             lock_file.unlink(missing_ok=True)
 

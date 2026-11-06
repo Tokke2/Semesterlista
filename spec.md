@@ -3135,3 +3135,20 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   Python är fortfarande tillåten. Ingen separat miljö.
 - Windows-tester verifierar borttagning av båda gamla formaten, saknat schema,
   annan målsökväg, behörighetsfel, neutraliserat underhåll och normalstart.
+
+
+## 43. Gemensam ikon och robust återöppning (v2.18.0)
+
+- Samma uppdaterade vektor-/PNG-/ICO-kalenderikon i appens alla Qt-ytor och
+  genererad Semesterlista.lnk i programmappen. Ingen AI-bildgenerering.
+- AppUserModelID före QApplication; HWND aktiveras efter återställning från
+  minimerat läge. Processdetaljer för pythonw.exe kan fortfarande visa Python;
+  helt eget EXE-utseende kräver en separat programfil, inte bara Qt-ikon.
+- Instanslåset skapas efter QApplication. Aktiveringsförfrågningar under
+  uppstart buffras och levereras när fönstret är klart. IPC läses asynkront.
+- Sekundära instanser tar inte bort primärinstansens låsfil. TCP-fallback
+  har exklusiv bindning och en lyssnare; alternativ lokal IPC-adress provas.
+- Windows PID-kontroll använder OpenProcess/GetExitCodeProcess, inte os.kill.
+  Den andra processen försöker tillåta förgrundsaktivering av den första.
+- Tester med separata processer: upprepade starter, uppstartsrace, frigivet lås,
+  TCP-fallback, säker PID-kontroll, minimerad vy och Windows-genvägens ikon.

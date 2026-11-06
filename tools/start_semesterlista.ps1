@@ -93,6 +93,21 @@ function Remove-LegacyMaintenance {
     }
 }
 
+function Ensure-AppShortcut {
+    try {
+        $icon = Join-Path $Root 'assets\ikon\appikon.ico'
+        if (-not (Test-Path $icon)) { return }
+        $shell = New-Object -ComObject WScript.Shell
+        $link = $shell.CreateShortcut((Join-Path $Root 'Semesterlista.lnk'))
+        $link.TargetPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
+        $link.Arguments = '//NoLogo "' + (Join-Path $Root 'Starta Semesterlista.vbs') + '"'
+        $link.WorkingDirectory = $Root
+        $link.IconLocation = "$icon,0"
+        $link.Description = 'Semesterlista'
+        $link.Save()
+    } catch { Write-Warning "Appgenvägen kunde inte skapas: $_" }
+}
+
 function Invoke-RuntimeCheck($Python, [string[]]$Arguments = @()) {
     & $Python.executable (Join-Path $PSScriptRoot 'runtime_check.py') @Arguments | Out-Host
     return $LASTEXITCODE
@@ -111,6 +126,7 @@ function Start-Runtime($Python, [switch]$Maintenance) {
 if ($FunctionsOnly) { return }
 $removed = Remove-LegacyMaintenance
 if ($MaintenanceOnly) { exit 0 }
+Ensure-AppShortcut
 if (-not $removed) {
     try {
         Add-Type -AssemblyName System.Windows.Forms

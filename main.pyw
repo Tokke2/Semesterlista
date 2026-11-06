@@ -274,7 +274,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.17.3"
+APP_VERSION: str = "2.18.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1229,9 +1229,15 @@ class MainWindow(QMainWindow):
 
     def show_application(self) -> None:
         """Visa och aktivera fönstret."""
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
         self.show()
         self.raise_()
         self.activateWindow()
+        if sys.platform == "win32":
+            try:
+                ctypes.windll.user32.SetForegroundWindow(ctypes.c_void_p(int(self.winId())))
+            except Exception:
+                logger.debug("Windows nekade förgrundsaktivering", exc_info=True)
         self._event_bus.emit("window:shown", None)
         self.window_shown.emit()
 
@@ -1596,19 +1602,8 @@ def main() -> None:
     hide_console_window()
     step("1", "Dölj terminalfönster")
 
-    # 2. Single-instance
     app_name = "Semesterlista"
-    lock     = SingleInstanceLock(app_name)
-
-    if lock.is_running():
-        logger.warning(
-            "En instans körs redan – skickar 'visa fönster' till den och avslutar"
-        )
-        lock.send_to_existing()
-        print(f"{app_name} körs redan. Visar befintlig instans.")
-        sys.exit(0)
-    step("2", "Single-instance-lås", f"pid={os.getpid()}")
-
+    set_windows_app_user_model_id()
     # 3. QApplication
     # Hög DPI måste ställas in **innan** QApplication skapas – annars varnar
     # Qt: "setHighDpiScaleFactorRoundingPolicy must be called before creating
@@ -1625,6 +1620,20 @@ def main() -> None:
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Rickard Längkvist")
     app.setApplicationDisplayName(app_name)
+
+    # Single-instance kräver en skapad QApplication/Qt-eventdispatcher.
+    lock     = SingleInstanceLock(app_name)
+
+    if lock.is_running():
+        logger.warning(
+            "En instans körs redan – skickar 'visa fönster' till den och avslutar"
+        )
+        if lock.send_to_existing():
+            print(f"{app_name} körs redan. Visar befintlig instans.")
+        else:
+            logger.error("Kunde inte aktivera den befintliga instansen; ingen ny instans startas")
+        sys.exit(0)
+    step("2", "Single-instance-lås", f"pid={os.getpid()}")
 
     # Qt:s egna meddelanden (varningar, plugin-fel) → loggen
     if install_qt_message_handler is not None:
@@ -1661,7 +1670,6 @@ def main() -> None:
 
     # Appikon överallt (v2.7.0): aktivitetshanterare/fält, tray, fönster.
     # AppUserModelID måste sättas innan fönstret skapas (Windows).
-    set_windows_app_user_model_id()
     apply_app_icon(app)
 
     step("3", "QApplication, appikon, Qt-loggning")
@@ -1766,7 +1774,7 @@ def main() -> None:
     step("9", "Tema applicerat")
 
     # 10. Koppla single-instance-signal → visa fönster
-    lock.instance_started.connect(main_window.show_application)
+    lock.set_activation_handler(main_window.show_application)
     step("10", "Single-instance-signal kopplad")
 
     # 11. SystrayManager

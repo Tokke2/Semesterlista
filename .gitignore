@@ -32,3 +32,6 @@ data/backup/
 
 # Local weekly maintenance state
 data/runtime-weekly.json
+
+# Generated Windows app shortcut
+/Semesterlista.lnk

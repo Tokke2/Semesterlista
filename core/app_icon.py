@@ -9,8 +9,8 @@ används av:
 
     - huvudfönstret               (setWindowIcon)
     - systemfältet / tray         (QSystemTrayIcon)
-    - aktivitetsfältet (Windows)  (AppUserModelID + ikon → rätt ikon i
-                                   aktivitetshanteraren och på aktivitetsfältet)
+    - aktivitetsfältet (Windows)  (AppUserModelID + ikon för aktivitetsfältet;
+                                   processdetaljer kan fortfarande visa Python)
     - dialoger (Listredigeraren, logotypväljaren, inställningar)
     - meddelanderutor             (ärver applikationens ikon)
 
@@ -39,7 +39,7 @@ from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.17.3"
+MODULE_VERSION: str = "2.18.0"
 
 #: Filnamn (utan ändelse) för ikonen i assets/ikon/
 APP_ICON_STEM: str = "appikon"
@@ -51,7 +51,7 @@ APP_ICON_DIR: str = "assets/ikon"
 APP_ICON_SIZES: tuple = (16, 24, 32, 48, 64, 128, 256)
 
 #: Windows AppUserModelID – grupperar fönster och ger rätt ikon i
-#: aktivitetsfältet/aktivitetshanteraren i stället för Python-ikonen.
+#: aktivitetsfältet. Ändrar inte pythonw.exe:s inbyggda processikon.
 WINDOWS_APP_ID: str = "Tokke2.Semesterlista"
 
 #: Färger (samma som assets/ikon/appikon.svg)
@@ -134,19 +134,23 @@ def fallback_icon() -> Any:
 
         # Vit kalender
         painter.setBrush(QColor(ICON_WHITE))
-        painter.drawRoundedRect(QRectF(13, 17, 38, 34), 5, 5)
+        painter.drawRoundedRect(QRectF(12, 15, 40, 39), 6, 6)
 
         # Gul rubrik
         painter.setBrush(QColor(ICON_YELLOW))
-        painter.drawRect(QRectF(13, 22, 38, 4))
+        painter.drawRoundedRect(QRectF(12, 15, 40, 13), 6, 6)
+        painter.drawRect(QRectF(12, 22, 40, 6))
+        painter.setBrush(QColor(ICON_WHITE))
+        painter.drawRoundedRect(QRectF(20, 10, 5, 11), 2.5, 2.5)
+        painter.drawRoundedRect(QRectF(39, 10, 5, 11), 2.5, 2.5)
 
-        # Gul bock
-        pen = QPen(QColor(ICON_YELLOW), 6)
+        # Blå bock
+        pen = QPen(QColor(ICON_BLUE), 6)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.drawPolyline(QPolygonF([
-            QPointF(24, 37), QPointF(30, 43), QPointF(41, 30),
+            QPointF(21, 39), QPointF(29, 47), QPointF(44, 33),
         ]))
         painter.end()
 
@@ -255,7 +259,11 @@ def set_windows_app_user_model_id(app_id: str = WINDOWS_APP_ID) -> bool:
     try:
         import ctypes
 
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        setter = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID
+        setter.argtypes = [ctypes.c_wchar_p]
+        setter.restype = ctypes.c_long
+        if setter(app_id) != 0:
+            return False
         logger.debug(f"AppUserModelID satt till {app_id}")
         return True
     except Exception as exc:  # pragma: no cover – endast Windows

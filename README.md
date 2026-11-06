@@ -129,6 +129,18 @@ märkesdagar**, utöver federala helgdagar. Välj USA som helgdagsregion.
   är åtgärdade) och `arkiv/app-<dag>.log` för tidigare dagar, samt `data/crash.log`.
 - **Teman**: ljust, mörkt eller följ systemet. Svenska och engelska.
 
+## Appikon och en enda instans (2.18.0)
+
+- Gemensam kalenderikon i fönster, dialoger, systemfält och aktivitetsfält.
+  SVG, PNG 16–256 px och ICO har samma utseende.
+- Windows-start skapar **Semesterlista.lnk** i programmappen med appens ikon.
+  Använd den i stället för en Python-genväg; lossa gamla fästa Python-genvägar.
+- En andra start öppnar den redan körande instansen, även om den är minimerad,
+  gömd i systemfältet eller fortfarande håller på att starta.
+- Aktivitetshanterarens **Detaljer** kan fortfarande visa Python för
+  `pythonw.exe`. Det går inte att garantera ett fullständigt ikonbyte där utan
+  en egen programfil. Ingen ny/bundlad Python har införts.
+
 ## Installation
 
 ```bash

@@ -1,4 +1,4 @@
-﻿# Run on Windows CI without upgrading the runner's Python.
+﻿﻿# Run on Windows CI without upgrading the runner's Python.
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/../tools/start_semesterlista.ps1" -FunctionsOnly
 # Exercise real discovery against the runner, without running winget.
@@ -97,3 +97,22 @@ function Disable-ScheduledTask { throw 'Access denied' }
 if (Remove-LegacyMaintenance) { throw 'Permission error hidden' }
 if ($script:deleted -ne 2) { throw 'Deletion attempted after disable failed' }
 Write-Host 'Retired scheduler and safe cleanup tests passed'
+
+# The generated shortcut must carry the app icon, not a Python/WSH icon.
+$temp = Join-Path ([System.IO.Path]::GetTempPath()) ('Semesterlista icon ' + [guid]::NewGuid())
+$originalRoot = $Root
+try {
+    New-Item (Join-Path $temp 'assets/ikon') -ItemType Directory -Force | Out-Null
+    Copy-Item (Join-Path $Root 'assets/ikon/appikon.ico') (Join-Path $temp 'assets/ikon/appikon.ico')
+    $Root = $temp
+    Ensure-AppShortcut
+    $shell = New-Object -ComObject WScript.Shell
+    $link = $shell.CreateShortcut((Join-Path $temp 'Semesterlista.lnk'))
+    if ($link.IconLocation -ne ((Join-Path $temp 'assets/ikon/appikon.ico') + ',0')) { throw 'Shortcut icon missing' }
+    if ($link.Arguments -notlike '*Starta Semesterlista.vbs*') { throw 'Wrong shortcut target' }
+    if ($link.WorkingDirectory -ne $temp) { throw 'Wrong shortcut working directory' }
+} finally {
+    $Root = $originalRoot
+    Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Host 'App shortcut icon tests passed'
