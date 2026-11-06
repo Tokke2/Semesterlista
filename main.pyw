@@ -274,7 +274,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.18.0"
+APP_VERSION: str = "2.18.1"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1173,7 +1173,9 @@ class MainWindow(QMainWindow):
         x, y, w, h = clamp_geometry(x, y, w, h, self._screen_rects())
         self.setGeometry(x, y, w, h)
         if maximized:
-            self.showMaximized()
+            # Restore the state, not visibility: showMaximized() opens the UI
+            # during construction and breaks an always-minimized startup.
+            self.setWindowState(Qt.WindowState.WindowMaximized)
 
     # ──────────────────────────────────────────────────────
     # Event-filter (mushjul på tabbar)
@@ -1226,6 +1228,14 @@ class MainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────
     # Publika metoder
     # ──────────────────────────────────────────────────────
+
+    def initialize_start_visibility(self) -> None:
+        """Always start in the tray; use a minimized taskbar window if no tray exists."""
+        self.setWindowState(self.windowState() | Qt.WindowState.WindowMinimized)
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.hide()
+        else:
+            self.showMinimized()
 
     def show_application(self) -> None:
         """Visa och aktivera fönstret."""
@@ -1616,6 +1626,7 @@ def main() -> None:
         logger.debug("Kunde inte ställa in hög DPI-policy", exc_info=True)
 
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     app.setApplicationName(app_name)
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Rickard Längkvist")
@@ -1773,13 +1784,13 @@ def main() -> None:
     _apply_theme()  # Applicera direkt vid start
     step("9", "Tema applicerat")
 
-    # 10. Koppla single-instance-signal → visa fönster
-    lock.set_activation_handler(main_window.show_application)
-    step("10", "Single-instance-signal kopplad")
-
     # 11. SystrayManager
     systray = SystrayManager(app, main_window)
     main_window.attach_tray(systray)   # så att språkbytet når systemfältet
+    main_window.initialize_start_visibility()
+    # Connect only after initial minimization, so a queued second launch wins.
+    lock.set_activation_handler(main_window.show_application)
+    step("10", "Single-instance-signal kopplad")
     step("11", "Systray", f"visas={systray._tray_icon.isVisible()}")
 
     # Synka autostart från sparad inställning
@@ -1834,7 +1845,7 @@ def main() -> None:
     logger.info("Fellogg: %s", get_error_log_file() or "—")
 
     # 13. Event-loop
-    # OBS: main_window.show() anropas EJ → startar minimerat!
+    # Initial visibility was set explicitly; only user/second-launch activation opens it.
     exit_code = 0
     try:
         exit_code = app.exec()

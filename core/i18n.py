@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.18.0"
+MODULE_VERSION: str = "2.18.1"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -307,7 +307,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         ),
         "settings.group.window":           "Fönster och systemfält",
         "settings.autostart":              "Starta automatiskt vid inloggning",
-        "settings.start_minimized":        "Starta minimerad i systemfältet",
+        "settings.start_minimized":        "Starta alltid minimerad i systemfältet",
         "settings.minimize_to_tray":       "Minimera till systemfältet",
         "settings.close_to_tray":          "Stäng (X) minimerar till systemfältet",
         "settings.notifications":          "Visa aviseringar",
@@ -863,7 +863,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         ),
         "settings.group.window":           "Window and system tray",
         "settings.autostart":              "Start automatically at login",
-        "settings.start_minimized":        "Start minimized in the system tray",
+        "settings.start_minimized":        "Always start minimized in the system tray",
         "settings.minimize_to_tray":       "Minimize to the system tray",
         "settings.close_to_tray":          "Closing (X) minimizes to the system tray",
         "settings.notifications":          "Show notifications",

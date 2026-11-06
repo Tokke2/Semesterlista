@@ -141,6 +141,16 @@ märkesdagar**, utöver federala helgdagar. Välj USA som helgdagsregion.
   `pythonw.exe`. Det går inte att garantera ett fullständigt ikonbyte där utan
   en egen programfil. Ingen ny/bundlad Python har införts.
 
+## Alltid minimerad start (2.18.1)
+
+Appen startar alltid dold i systemfältet, även om fönstret var maximerat vid
+förra avslutningen eller en äldre inställning säger annat. Inställningen
+”Starta alltid minimerad” är fast aktiverad. Om systemfält saknas används ett
+minimerat fönster i aktivitetsfältet så att appen går att nå.
+
+Klick på systemfältsikonen eller ett nytt startförsök visar den befintliga
+instansen. Tidigare maximerat läge återställs först när du öppnar fönstret.
+
 ## Installation
 
 ```bash

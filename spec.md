@@ -3152,3 +3152,16 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   Den andra processen försöker tillåta förgrundsaktivering av den första.
 - Tester med separata processer: upprepade starter, uppstartsrace, frigivet lås,
   TCP-fallback, säker PID-kontroll, minimerad vy och Windows-genvägens ikon.
+
+
+## 44. Alltid minimerad start (v2.18.1)
+
+- Geometriåterställning använder setWindowState i stället för showMaximized:
+  sparat maximerat läge får inte visa fönstret under konstruktionen.
+- Initial synlighet sätts explicit: dolt/minimerat i systemfältet, alternativt
+  minimerat aktivitetsfältsfönster om systemfält saknas. QuitOnLastWindowClosed=False.
+- Aktiveringshanteraren kopplas efter initial minimering så en andra start
+  fortfarande visar befintlig instans, även om den väntat under uppstarten.
+- Starta minimerad är fast aktiverat i inställningar och äldre False ignoreras.
+- Qt-tester verifierar vanlig/maximerad föregående session, inga tidiga show-anrop,
+  senare återöppning och minimerad fallback när systemfält saknas.
