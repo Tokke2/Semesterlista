@@ -116,7 +116,7 @@ sys.exit(0 if secondary and sent else 2)
         from types import SimpleNamespace
         from unittest.mock import Mock
         from PySide6.QtCore import Qt
-        source = (Path(__file__).resolve().parent.parent / 'main.pyw').read_text()
+        source = (Path(__file__).resolve().parent.parent / 'main.pyw').read_text(encoding='utf-8')
         cls = next(n for n in ast.parse(source).body if isinstance(n, ast.ClassDef) and n.name == 'MainWindow')
         method = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == 'show_application')
         tree = ast.Module(body=[method], type_ignores=[])
