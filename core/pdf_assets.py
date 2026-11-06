@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.18.2"
+MODULE_VERSION: str = "2.19.0"
 
 #: Mapp (relativt appens rot) där bilder letas upp
 ASSET_DIR_NAME: str = "assets"

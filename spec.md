@@ -3180,3 +3180,22 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Layout/preflight oförändrade. Tester täcker samtliga exportörer, gamla False,
   typmappar, arbetskatalogoberoende, Unicode, kolliderande filnamn, avbrott,
   render-/skrivfel, temporärfilsstädning och fel från standardprogram.
+
+## 46. Windows/macOS/Linux (v2.19.0)
+
+- Befintlig Python används, inga nya appmiljöer eller Pythonuppdateringar.
+- tools/install_launcher.py skapar XDG-programikon eller lokal macOS .app
+  med osacompile och gemensam kalenderikon konverterad med sips/iconutil.
+- Startikoner kör runtime_check utan terminal. Direkta main.pyw-starter och
+  omstarter passerar återhämtningskontrollen även på POSIX, med engångsmarkör.
+- Qt-oberoende reparationsdialog: Windows MessageBox, macOS osascript,
+  Linux Zenity/KDialog/Tkinter. Standard Nej, inget samtycke vid dialogfel.
+- POSIX flock skyddar delade paket under applivstiden; andra starter kan
+  aktivera befintlig instans men inte reparera parallellt.
+- macOS LaunchAgent använder separata ProgramArguments och plistlib-escaping;
+  misslyckad registrering återställer tidigare plist. Linux Exec får korrekt
+  desktop-escaping, inte shell-escaping; procentfält och kontrolltecken säkras.
+- Genererad .app skyddas av updater och ignoreras av Git.
+- CI utökad med macOS Python 3.12, native appkompilering och regressionstester.
+- Linux-systempaket/PEP 668 respekteras; saknad Python/systembibliotek installeras
+  manuellt på macOS/Linux. Inga signerade eller bundlade binärdistributioner.

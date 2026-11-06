@@ -38,3 +38,7 @@ data/runtime-weekly.json
 
 # Generated PDF archive
 /export/
+
+# Generated native macOS launcher
+/Semesterlista.app/
+/data/runtime.lock

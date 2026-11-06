@@ -1,6 +1,6 @@
 # Semesterlista
 
-En liten Windows-app (PySide6) som skriver ut **kalendrar**, **semesterlistor**, **körscheman** och **hyreslistor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
+En liten skrivbordsapp för **Windows, macOS och Linux** (PySide6) som skriver ut **kalendrar**, **semesterlistor**, **körscheman** och **hyreslistor** som PDF – körs i systemfältet och kommer ihåg allt mellan gångerna.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Licens](https://img.shields.io/badge/licens-MIT-green)
@@ -171,6 +171,54 @@ minimerat fönster i aktivitetsfältet så att appen går att nå.
 Klick på systemfältsikonen eller ett nytt startförsök visar den befintliga
 instansen. Tidigare maximerat läge återställs först när du öppnar fönstret.
 
+## Windows, macOS och Linux (2.19.0)
+
+| Plattform | Start utan terminal |
+|-----------|---------------------|
+| Windows | `Starta Semesterlista.vbs` eller `Semesterlista.lnk` |
+| macOS | `Semesterlista.app`, skapad med kommandot nedan |
+| Linux | Semesterlista i skrivbordets programmeny, skapad med kommandot nedan |
+
+### Första starten på macOS/Linux
+
+Använd en redan installerad, gemensam **Python 3.10+** som stöder PySide6.
+Lägg appmappen på en **skrivbar plats** i hemkatalogen. Kör en gång från den
+mappen (terminal behövs bara för att skapa startikonen):
+
+```sh
+python3 tools/install_launcher.py
+```
+
+Det installerar **inte** Python eller tillägg, skapar ingen separat Pythonmiljö
+eller autostart och ändrar inte andra appar. macOS får en lokal `.app` med
+kalenderikonen; Linux får en `.desktop`-fil i `$XDG_DATA_HOME/applications`
+(normalt `~/.local/share/applications`). Startikonen använder den befintliga
+Python-installationens absoluta sökväg. Flyttas appen eller Python behöver
+ikonen skapas om; ta först bort den gamla `Semesterlista.app` på macOS.
+
+Starta sedan med ikonen. Saknade Qt/reportlab-tillägg ger ett erbjudande om
+reparation i samma Python. macOS använder sin inbyggda dialogfunktion;
+Linux använder **Zenity**, **KDialog** eller **Tkinter**. Nej/stängd dialog ger
+ingen installation. Om inget dialogstöd finns loggas felet i
+`data/loggar/fel.log`; installera dialogstöd eller kraven manuellt med samma Python.
+
+**Systemhanterad Linux-Python:** appen kringgår inte PEP 668, använder inte
+`sudo` och tvingar inte fram `--break-system-packages`. Använd distributionens
+Qt/reportlab-paket eller en befintlig användarhanterad gemensam Python.
+Linux behöver en grafisk session och Qt:s systembibliotek för X11/Wayland.
+macOS-versionen måste stödjas av installerad PySide6. Startappen skapas lokalt,
+är inte en signerad/notariserad installationsfil och innehåller ingen Python.
+
+Samma appfunktioner används på alla tre systemen: PDF-arkiv i `export`,
+standardprogram för PDF, en instans, alltid minimerad start och omstart efter
+uppdatering. Utan systemfält startar appen minimerad i aktivitetsfält/Dock.
+Autostart slås på separat i inställningarna (Windows-registret,
+macOS LaunchAgent eller Linux XDG Autostart). På Wayland kan skrivbordsmiljön
+begränsa hur ett befintligt fönster får ta fokus.
+
+CI kör hela testsviten på Linux och macOS, inklusive faktisk kompilering av
+macOS-startappen, samt start-, eninstans- och PDF-arkivtester på Windows.
+
 ## Installation
 
 ```bash
@@ -186,7 +234,7 @@ Kräver **Python 3.10+** och beroendena i [`requirements.txt`](requirements.txt)
 ### Saknade tillägg: erbjud reparation (från 2.17.1)
 
 Om PySide6/reportlab saknas eller inte kan importeras erbjuder startprogrammet
-**Installera/reparera tillägg och försök igen** i en vanlig Windows-dialog.
+**Installera/reparera tillägg och försök igen** i en plattformsanpassad dialog.
 Dialogen kräver inte Qt. Standardval är **Nej**.
 
 - Ja installerar om/uppdaterar kraven i **samma Python** med dess egen pip.

@@ -49,6 +49,8 @@ import socket
 import hashlib
 import platform
 import subprocess
+import plistlib
+from core.platform_launch import launch_arguments, desktop_entry
 import time
 from pathlib import Path
 from typing import Optional
@@ -66,7 +68,7 @@ except ImportError:
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.18.2"
+MODULE_VERSION: str = "2.19.0"
 
 # ──────────────────────────────────────────────────────────
 # Autostart-konstanter
@@ -395,39 +397,30 @@ class AutostartManager:
         plist_path = self._get_macos_plist_path()
         plist_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Bygg plist-innehåll
-        plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>{AUTOSTART_MACOS_PLIST.replace(".plist", "")}</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>{self._exe_path}</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <false/>
-    <key>StandardOutPath</key>
-    <string>/dev/null</string>
-    <key>StandardErrorPath</key>
-    <string>/dev/null</string>
-</dict>
-</plist>
-"""
+        previous = plist_path.read_bytes() if plist_path.exists() else None
+        plist_content = {
+            'Label': AUTOSTART_MACOS_PLIST.replace('.plist', ''),
+            'ProgramArguments': launch_arguments(),
+            'RunAtLoad': True,
+            'KeepAlive': False,
+            'StandardOutPath': '/dev/null',
+            'StandardErrorPath': '/dev/null',
+        }
         try:
-            plist_path.write_text(plist_content, encoding="utf-8")
+            plist_path.write_bytes(plistlib.dumps(plist_content))
             # Ladda LaunchAgent
             subprocess.run(
                 ["launchctl", "load", str(plist_path)],
+                check=True,
                 capture_output=True,
                 timeout=5,
             )
             return True
         except Exception:
+            if previous is None:
+                plist_path.unlink(missing_ok=True)
+            else:
+                plist_path.write_bytes(previous)
             return False
 
     def _disable_macos(self) -> bool:
@@ -478,18 +471,8 @@ class AutostartManager:
         desktop_path = self._get_linux_desktop_path()
         desktop_path.parent.mkdir(parents=True, exist_ok=True)
 
-        desktop_content = f"""[Desktop Entry]
-Type=Application
-Name={self._app_name}
-Comment=Startar {self._app_name} automatiskt vid inloggning
-Exec={self._exe_path}
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-X-GNOME-Autostart-Delay=5
-StartupNotify=false
-Terminal=false
-"""
+        desktop_content = desktop_entry(name=self._app_name)
+
         try:
             desktop_path.write_text(desktop_content, encoding="utf-8")
             return True

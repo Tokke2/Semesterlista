@@ -4,6 +4,8 @@ from __future__ import annotations
 from importlib import metadata
 import logging
 import os
+import shutil
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -54,10 +56,9 @@ def prepare_environment(root=ROOT):
 
 
 def native_message(text, question=False):
-    """Windows dialog independent of Qt, safe when PySide6 cannot import."""
+    """Platform dialog independent of Qt, safe when PySide6 cannot import."""
     if os.name != "nt":
-        logger.warning("%s", text)
-        return False
+        return posix_message(text, question)
     import ctypes
     dialog = ctypes.windll.user32.MessageBoxW
     dialog.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint]
@@ -65,6 +66,47 @@ def native_message(text, question=False):
     # Yes/No, default No. Never silently consent to changing shared packages.
     flags = (0x04 | 0x20 | 0x100) if question else 0x10
     return dialog(None, text, "Semesterlista – tillägg", flags | 0x10000) == 6
+
+
+def posix_message(text, question=False):
+    """Ask before repairs even when Qt is missing. Closing means no consent."""
+    try:
+        if platform.system() == "Darwin":
+            buttons = '{"Nej", "Ja"}' if question else '{"OK"}'
+            default = '"Nej"' if question else '"OK"'
+            script = ('on run argv\n'
+                      'set answer to display dialog (item 1 of argv) with title "Semesterlista" '
+                      f'buttons {buttons} default button {default}\n'
+                      'return button returned of answer\nend run')
+            result = subprocess.run(['/usr/bin/osascript', '-e', script, text],
+                                    capture_output=True, text=True, check=False)
+            return question and result.returncode == 0 and result.stdout.strip() == 'Ja'
+        if shutil.which('zenity'):
+            command = ['zenity', '--question' if question else '--error',
+                       '--title=Semesterlista', '--no-markup', '--text=' + text]
+            if question:
+                command += ['--default-cancel', '--ok-label=Ja', '--cancel-label=Nej']
+            return subprocess.run(command, check=False).returncode == 0 and question
+        if shutil.which('kdialog'):
+            option = '--warningyesno' if question else '--error'
+            command = ['kdialog', '--title', 'Semesterlista', option, text]
+            if question:
+                command += ['--defaultno']
+            return subprocess.run(command, check=False).returncode == 0 and question
+        import tkinter
+        from tkinter import messagebox
+        window = tkinter.Tk()
+        window.withdraw()
+        try:
+            if question:
+                return bool(messagebox.askyesno('Semesterlista', text, default='no', parent=window))
+            messagebox.showerror('Semesterlista', text, parent=window)
+            return False
+        finally:
+            window.destroy()
+    except Exception:
+        logger.exception('Kunde inte visa startdialog')
+        return False
 
 
 def offer_repair():
@@ -94,14 +136,36 @@ def repair_environment(root=ROOT):
     return Path(executable)
 
 
+def acquire_repair_lock(root=ROOT):
+    """POSIX equivalent of the Windows launcher's lifetime maintenance mutex."""
+    import fcntl
+    path = Path(root) / 'data' / 'runtime.lock'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open('a+b')
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return handle
+    except BlockingIOError:
+        handle.close()
+        return None
+    except BaseException:
+        handle.close()
+        raise
+
+
 def main():
     sys.path.insert(0, str(ROOT))
     from core.logging_setup import setup_logging
     setup_logging(ROOT)
+    repair_lock = None
     try:
         executable = Path(sys.executable)
         maintenance_only = "--maintenance-only" in sys.argv
         repair_allowed = "--no-repair" not in sys.argv and not maintenance_only
+        if os.name != "nt":
+            repair_lock = acquire_repair_lock()
+            if repair_lock is None:
+                repair_allowed = False
         repaired = False
         if "--maintain" in sys.argv or maintenance_only:
             try:
@@ -150,6 +214,8 @@ def main():
             return HANDLED_ERROR_EXIT_CODE
         return 1
     finally:
+        if repair_lock is not None:
+            repair_lock.close()
         logging.shutdown()
 
 
