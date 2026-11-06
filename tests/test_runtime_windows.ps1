@@ -1,4 +1,4 @@
-﻿﻿# Run on Windows CI without upgrading the runner's Python.
+﻿# Run on Windows CI without upgrading the runner's Python.
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/../tools/start_semesterlista.ps1" -FunctionsOnly
 # Exercise real discovery against the runner, without running winget.
