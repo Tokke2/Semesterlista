@@ -3,6 +3,43 @@ param([switch]$FunctionsOnly, [switch]$MaintenanceOnly)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 
+function Select-CompatiblePython($Candidates) {
+    $supported = @($Candidates | Where-Object { $_.major -eq 3 -and $_.minor -ge 10 })
+    $ordered = @($supported | Sort-Object -Property @{ Expression = {
+        if ($_.minor -eq 15) { 300 } elseif ($_.minor -eq 14) { 200 } else { 100 }
+    }; Descending = $true }, @{ Expression = { $_.minor }; Descending = $true })
+    $ready = @($ordered | Where-Object { $_.ready })
+    if ($ready.Count -gt 0) { return $ready[0] }
+    # No healthy installation: prefer repairing 3.14/another fallback over 3.15.
+    $fallback = @($ordered | Where-Object { $_.minor -ne 15 })
+    if ($fallback.Count -gt 0) { return $fallback[0] }
+    if ($ordered.Count -gt 0) { return $ordered[0] }
+    return $null
+}
+
+function Get-PythonInfo([string]$Executable) {
+    # Separate process: a broken ABI must not crash the launcher. No pip/network.
+    $probe = "import json,sys; ready=False; exec('try:\n from PySide6 import QtWidgets\n import reportlab.pdfgen.canvas\n ready=True\nexcept Exception:\n pass'); print(json.dumps(dict(executable=getattr(sys,'_base_executable',sys.executable),major=sys.version_info[0],minor=sys.version_info[1],ready=ready)))"
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = $Executable
+    $info.Arguments = '-c "' + $probe + '"'
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $info
+    try {
+        $null = $process.Start()
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit(15000)) { $process.Kill(); return $null }
+        if ($process.ExitCode -ne 0) { return $null }
+        return ($stdout.Result | ConvertFrom-Json)
+    } catch { return $null }
+    finally { $process.Dispose() }
+}
+
 function Find-Python {
     $candidates = @()
     $storePackages = @(Get-AppxPackage -Name 'PythonSoftwareFoundation.Python.*' -ErrorAction SilentlyContinue)
@@ -11,7 +48,17 @@ function Find-Python {
         if (Test-Path $storePython) { $candidates += ,@($storePython) }
     }
     $launcher = Get-Command py.exe -ErrorAction SilentlyContinue
-    if ($launcher) { $candidates += ,@($launcher.Source, '-3') }
+    if ($launcher) {
+        # Enumerate installed runtimes only; version requests can auto-install
+        # with some Python launchers. Never request a missing version here.
+        try {
+            foreach ($line in @(& $launcher.Source -0p 2>$null)) {
+                if ($line -match '(?i)((?:[A-Z]:\\|\\\\).+?python(?:w)?\.exe)\s*\*?\s*$') {
+                    $candidates += ,@($Matches[1])
+                }
+            }
+        } catch { }
+    }
     foreach ($name in @('python.exe', 'python3.exe')) {
         $command = Get-Command $name -ErrorAction SilentlyContinue
         if ($command -and $command.Source -notlike '*\WindowsApps\*') {
@@ -29,21 +76,30 @@ function Find-Python {
             }
         }
     }
+    $found = @()
+    $seen = @{}
     foreach ($candidate in $candidates) {
-        try {
-            $exe = $candidate[0]
-            $arguments = @($candidate | Select-Object -Skip 1)
-            $json = & $exe @arguments -c "import json,sys; print(json.dumps(dict(executable=getattr(sys,'_base_executable',sys.executable),major=sys.version_info[0],minor=sys.version_info[1])))" 2>$null
-            if ($LASTEXITCODE -eq 0) { return ($json | ConvertFrom-Json) }
-        } catch { }
+        $exe = [string]$candidate[0]
+        if ($seen.ContainsKey($exe)) { continue }
+        $seen[$exe] = $true
+        $metadata = Get-PythonInfo -Executable $exe
+        if ($metadata) {
+            # Probe the base interpreter itself, not a venv whose packages differ.
+            if ($metadata.executable -ne $exe) {
+                $metadata = Get-PythonInfo -Executable $metadata.executable
+            }
+            if ($metadata) { $found += $metadata }
+        }
     }
+    $selected = Select-CompatiblePython -Candidates $found
+    if ($selected) { return $selected }
     $registered = @(Get-ItemProperty -Path @(
         'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
         'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
         'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
     ) -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '^(Python [0-9]|Anaconda|Miniconda)' })
     if ($candidates.Count -gt 0 -or $storePackages.Count -gt 0 -or $registered.Count -gt 0) {
-        throw 'Python hittades men kunde inte startas. Reparera installationen; ingen extra kopia installeras.'
+        throw 'Ingen fungerande Python 3.10 eller senare hittades bland installationerna. Reparera en befintlig installation; ingen extra kopia installeras.'
     }
     return $null
 }

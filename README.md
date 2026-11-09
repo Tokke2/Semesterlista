@@ -24,6 +24,10 @@ Appen har ljust, mörkt och högkontrasttema.
 
 ## Kom igång
 
+**Python-val:** först en fungerande installerad **3.15**, sedan **3.14**, därefter
+en annan installerad **3.10+**. Startprogrammet kontrollerar att Qt/reportlab kan
+laddas. Ingen extra Python installeras för att lösa kompatibilitetsproblem.
+
 **1. Hämta och packa upp** senaste versionens **Source code (zip)** från
 [Releases](https://github.com/Tokke2/Semesterlista/releases/latest).
 Lägg mappen där du har skrivrättigheter, till exempel i din hemkatalog.

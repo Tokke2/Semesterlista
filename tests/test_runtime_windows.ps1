@@ -4,6 +4,21 @@ $ErrorActionPreference = 'Stop'
 # Exercise real discovery against the runner, without running winget.
 $discovered = Find-Python
 if (-not $discovered -or -not (Test-Path $discovered.executable)) { throw 'Could not discover runner Python' }
+# The choice must depend on compatibility, not registry/PATH enumeration order.
+$p315 = [pscustomobject]@{ major=3; minor=15; executable='C:\Python315\python.exe'; ready=$true }
+$p314 = [pscustomobject]@{ major=3; minor=14; executable='C:\Python314\python.exe'; ready=$true }
+$p312 = [pscustomobject]@{ major=3; minor=12; executable='C:\Python312\python.exe'; ready=$true }
+$p39 = [pscustomobject]@{ major=3; minor=9; executable='C:\Python39\python.exe'; ready=$true }
+if ((Select-CompatiblePython @($p312,$p314,$p315)).minor -ne 15) { throw 'Working 3.15 not preferred' }
+$p315.ready = $false
+if ((Select-CompatiblePython @($p315,$p312,$p314)).minor -ne 14) { throw '3.14 fallback broken' }
+$p314.ready = $false
+if ((Select-CompatiblePython @($p315,$p314,$p312)).minor -ne 12) { throw 'Other installed Python fallback broken' }
+$p312.ready = $false
+if ((Select-CompatiblePython @($p315,$p314,$p312)).minor -ne 14) { throw 'Repair should prefer stable existing fallback' }
+if ($null -ne (Select-CompatiblePython @($p39))) { throw 'Unsupported Python 3.9 selected' }
+if ($null -ne (Get-PythonInfo -Executable 'C:\missing-python-for-test\python.exe')) { throw 'Broken executable accepted' }
+Write-Host 'Python 3.15 / 3.14 / system fallback tests passed'
 $script:commands = @()
 function Invoke-Winget([string[]]$Arguments) { $script:commands += ,$Arguments; return 0 }
 function Get-Command { return @{ Source = 'winget.exe' } }

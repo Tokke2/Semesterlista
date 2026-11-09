@@ -13,6 +13,9 @@ class RuntimeTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+        selection = patch.object(runtime, "preferred_python", return_value=sys.executable)
+        selection.start()
+        self.addCleanup(selection.stop)
         optional = patch.object(runtime, "available_optional_packages", return_value=[])
         optional.start()
         self.addCleanup(optional.stop)
@@ -46,7 +49,7 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 runtime.prepare_environment(self.root)
 
-    def test_normal_start_does_not_check_or_update_packages(self):
+    def test_normal_start_does_not_run_pip_or_update_packages(self):
         with patch.object(sys, "argv", ["runtime_check.py"]), \
              patch("core.logging_setup.setup_logging"), \
              patch.object(runtime.logging, "shutdown"), \

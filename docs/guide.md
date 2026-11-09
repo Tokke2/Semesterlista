@@ -337,3 +337,25 @@ Loggfilens sökväg visas i **Inställningar → Avancerat**.
 ## Licens
 
 MIT – se [LICENSE](../LICENSE).
+
+## Kompatibelt Python-val (2.20.2)
+
+Startprogrammet provar lokala systeminstallationer utan pip eller nätverk.
+Ordning: fungerande Python 3.15, sedan fungerande 3.14, sedan högsta övriga
+fungerande Python 3.10+. En fungerande kandidat ska kunna starta och importera
+både PySide6.QtWidgets och reportlab.pdfgen.canvas. Trasiga och hängande
+kandidater hoppas över (15 sekunders tidsgräns per importprov).
+
+Om ingen kandidat har fungerande tillägg erbjuds reparation i en befintlig
+3.14 eller annan kompatibel version före en oförberedd 3.15. Finns endast 3.15
+används den för reparationsfrågan. Installation av tillägg kräver fortfarande Ja.
+Python-installationer uppdateras inte. Windows första installation när Python
+helt saknas är oförändrad (3.14); en trasig befintlig Python leder inte till
+installation av en extra kopia. Provet garanterar inte att alla externa
+Qt-systembibliotek eller varje appfunktion fungerar; andra appfel loggas som tidigare.
+
+Windows söker Store, py-launcherns lista över installerade tolkar, PATH och
+registret. macOS/Linux söker befintlig start-Python, PATH och vanliga
+system-/Framework-/Homebrew-sökvägar. Genvägens Python måste fortfarande kunna
+starta själva startprogrammet; om den har avinstallerats behöver genvägen skapas om.
+En eventuell venv normaliseras till dess bas-Python, som verifieras separat.

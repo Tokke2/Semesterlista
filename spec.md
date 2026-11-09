@@ -3222,3 +3222,17 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Öppnar PROJECT_ROOT via QDesktopServices/QUrl, oberoende av arbetskatalog.
 - Visar inte appfönstret vid lyckad öppning. Vid fel visas sökvägen i en varning.
 - Uppdateras vid språkbyte och fungerar med Windows/macOS/Linux filhanterare.
+
+## 49. Python 3.15 med installerad fallback (v2.20.2)
+
+- Windows Find-Python väljer efter isolerat importprov, inte upptäcktsordning.
+- Prioritet: frisk 3.15, frisk 3.14, högsta övriga friska 3.10+.
+- Importprov körs utan fönster med 15 sekunders timeout och inga pip/nätanrop.
+- py -0p används endast för enumeration; inga versionsanrop som kan autoinstallera.
+- POSIX använder samma prioritet och vidarebefordrar till vald befintlig Python
+  med engångsmarkör, bevarade argument och därefter befintligt reparationslås.
+- Bas-Python verifieras separat så venv-paket inte ger falsk kompatibilitet.
+- Ingen frisk installation: reparera befintlig fallback före oförberedd 3.15,
+  fortfarande endast efter samtycke. Ingen extra Python vid trasiga installationer.
+- Tester verifierar alla prioriteringar, timeout/fel, minversion, bas-Python,
+  ingen installation vid val samt engångsvidarebefordran; motsvarande Windows-test.

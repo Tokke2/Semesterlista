@@ -153,6 +153,11 @@ def acquire_repair_lock(root=ROOT):
         raise
 
 
+def preferred_python():
+    from tools.python_selection import select_python
+    return select_python()
+
+
 def main():
     sys.path.insert(0, str(ROOT))
     from core.logging_setup import setup_logging
@@ -160,6 +165,15 @@ def main():
     repair_lock = None
     try:
         executable = Path(sys.executable)
+        already_selected = os.environ.pop('SEMESTERLISTA_PYTHON_SELECTED', '') == '1'
+        if os.name != 'nt' and not already_selected and not any(
+                arg in sys.argv for arg in ('--maintain', '--maintenance-only')):
+            selected = preferred_python()
+            if os.path.realpath(selected) != os.path.realpath(sys.executable):
+                logger.info('Vald kompatibel system-Python: %s (startad från %s)', selected, sys.executable)
+                return subprocess.run(
+                    [selected, str(ROOT / 'tools' / 'runtime_check.py'), *sys.argv[1:]],
+                    cwd=ROOT, env=dict(os.environ, SEMESTERLISTA_PYTHON_SELECTED='1')).returncode
         maintenance_only = "--maintenance-only" in sys.argv
         repair_allowed = "--no-repair" not in sys.argv and not maintenance_only
         if os.name != "nt":
