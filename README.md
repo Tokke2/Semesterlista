@@ -63,6 +63,9 @@ macOS-startappen är lokalt skapad, inte en signerad installationsfil med inbygg
 > för att öppna fönstret. Saknas systemfält finns appen minimerad i aktivitetsfältet/Dock.
 > Startar du appen igen öppnas den redan körande instansen.
 
+**Hitta appens filer:** högerklicka på kalenderikonen i systemfältet och välj
+**Öppna appmappen**. Då öppnas appens huvudmapp i datorns filhanterare.
+
 ## Var hamnar mina PDF:er?
 
 Klicka på **Generera PDF**. Filen sparas i appmappen och öppnas med datorns standardprogram:

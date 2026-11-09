@@ -82,3 +82,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'ReportLab install failed' }
           python -m unittest discover -s tests -p test_pdf_archive.py -v
           if ($LASTEXITCODE -ne 0) { throw 'PDF archive tests failed' }
+
+      - name: Testa appmappen i systemfältsmenyn
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_tray_folder.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Tray folder tests failed' }

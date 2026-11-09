@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.20.0"
+MODULE_VERSION: str = "2.20.1"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -463,6 +463,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "logo.filter_all":                 "Logotyper",
         "logo.filter_images":              "Bilder",
         "logo.filter_any":                 "Alla filer",
+        "tray.open_app_folder":            "Öppna appmappen",
+        "tray.open_app_folder_error":      "Kunde inte öppna appmappen i filhanteraren.\n\n{path}",
         "tray.settings":                   "Inställningar…",
         "tray.check_updates":              "Sök efter uppdatering…",
         "tray.about":                      "Om {app} v{version}…",
@@ -1021,6 +1023,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "logo.filter_all":                 "Logos",
         "logo.filter_images":              "Images",
         "logo.filter_any":                 "All files",
+        "tray.open_app_folder":            "Open app folder",
+        "tray.open_app_folder_error":      "Could not open the app folder in the file manager.\n\n{path}",
         "tray.settings":                   "Settings…",
         "tray.check_updates":              "Check for updates…",
         "tray.about":                      "About {app} v{version}…",

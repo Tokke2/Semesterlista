@@ -278,7 +278,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.20.0"
+APP_VERSION: str = "2.20.1"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1490,6 +1490,10 @@ class SystrayManager:
 
         self._tray_menu.addSeparator()
 
+        self._folder_action = self._tray_menu.addAction(i18n.t("tray.open_app_folder"))
+        self._folder_action.triggered.connect(self._open_app_folder)
+        self._folder_action.setProperty("semesterlistaIcon", "folder")
+
         # Inställningar och uppdatering direkt från systemfältet (v2.10.0)
         self._settings_action = self._tray_menu.addAction(
             i18n.t("tray.settings")
@@ -1541,12 +1545,29 @@ class SystrayManager:
         self._tray_icon.setToolTip(f"{self._app_name} v{APP_VERSION}")
         self._show_action.setText(i18n.t("tray.show", app=self._app_name))
         self._hide_action.setText(i18n.t("tray.hide"))
+        self._folder_action.setText(i18n.t("tray.open_app_folder"))
         self._settings_action.setText(i18n.t("tray.settings"))
         self._update_action.setText(i18n.t("tray.check_updates"))
         self._about_action.setText(
             i18n.t("tray.about", app=self._app_name, version=APP_VERSION)
         )
         self._quit_action.setText(i18n.t("tray.quit"))
+
+    def _open_app_folder(self) -> None:
+        """Open the installation folder, not CWD or the PDF archive."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        folder = PROJECT_ROOT.resolve()
+        try:
+            if QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder))):
+                return
+        except Exception:
+            logger.exception("Kunde inte öppna appmappen: %s", folder)
+        logger.warning("Filhanteraren kunde inte öppna appmappen: %s", folder)
+        QMessageBox.warning(
+            self._main_window, i18n.t("tray.open_app_folder"),
+            i18n.t("tray.open_app_folder_error", path=str(folder)),
+        )
 
     def _sync_actions(self) -> None:
         """

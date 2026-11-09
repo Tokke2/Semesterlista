@@ -113,7 +113,7 @@ class Plugin(BasePlugin):
     """
 
     NAME: str = PLUGIN_INFO["name"]
-    VERSION: str = "2.20.0"
+    VERSION: str = "2.20.1"
     DESCRIPTION: str = PLUGIN_INFO["description"]
     AUTHOR: str = PLUGIN_INFO["author"]
 

@@ -3215,3 +3215,10 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   logotyper och PDF-layout ändras inte. Inga AI-genererade bilder.
 - Tester för SVG-filer, README-bilder/längd, logotypurval, temabyte, sena kontroller
   och oförändrade textetiketter. Manuellt gamla startgenvägar kan behöva ersättas.
+
+## 48. Öppna appmappen från systemfältet (v2.20.1)
+
+- Ny menypost Öppna appmappen/Open app folder med mappikon i tray-menyn.
+- Öppnar PROJECT_ROOT via QDesktopServices/QUrl, oberoende av arbetskatalog.
+- Visar inte appfönstret vid lyckad öppning. Vid fel visas sökvägen i en varning.
+- Uppdateras vid språkbyte och fungerar med Windows/macOS/Linux filhanterare.
