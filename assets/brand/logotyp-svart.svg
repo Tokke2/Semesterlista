@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="180mm" height="43.636mm" viewBox="0 0 528 128" role="img" aria-label="Semesterlista – Planera. Samla. Skriv ut.">
 <title>Semesterlista</title>
 <g transform="translate(12 16) scale(1.5)">
-  
+
   <rect x="2" y="2" width="60" height="60" rx="17" fill="#000000" stroke="#000000" stroke-width="1.2"/>
   <path d="M19 3h25c8 0 14 6 16 14L4 37V19C4 10 10 3 19 3z" fill="#ffffff"/>
   <g transform="rotate(-8 30 32)">

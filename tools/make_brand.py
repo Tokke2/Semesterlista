@@ -70,6 +70,7 @@ def main():
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="180mm" height="{180*128/width:.3f}mm" '
                f'viewBox="0 0 {width} 128" role="img" aria-label="Semesterlista – Planera. Samla. Skriv ut.">\n'
                '<title>Semesterlista</title>\n' + body + '\n</svg>\n')
+        svg = '\n'.join(line.rstrip() for line in svg.splitlines()) + '\n'
         (folder / name).write_text(svg, encoding='utf-8', newline='\r\n')
 
 
