@@ -1,10 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#16324f"/>
-  <rect x="12" y="15" width="40" height="39" rx="6" fill="#ffffff"/>
-  <rect x="12" y="15" width="40" height="13" rx="6" fill="#36d6be"/>
-  <rect x="12" y="22" width="40" height="6" fill="#36d6be"/>
-  <rect x="20" y="10" width="5" height="11" rx="2.5" fill="#ffffff"/>
-  <rect x="39" y="10" width="5" height="11" rx="2.5" fill="#ffffff"/>
-  <polyline points="21,39 29,47 44,33" fill="none" stroke="#16324f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#16324f"/>
+  <rect x="12" y="16" width="38" height="36" rx="5" fill="#ffffff"/>
+  <path d="M17 16h28a5 5 0 0 1 5 5v6H12v-6a5 5 0 0 1 5-5z" fill="#36d6be"/>
+  <path d="M22 12v9m18-9v9" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <rect x="19" y="33" width="5" height="5" rx="1" fill="#16324f"/>
+  <rect x="28" y="33" width="5" height="5" rx="1" fill="#16324f"/>
+  <rect x="19" y="42" width="5" height="5" rx="1" fill="#16324f"/>
+  <circle cx="45" cy="46" r="13" fill="#ffcb77"/>
+  <path d="M39 46l4 4 8-9" fill="none" stroke="#16324f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

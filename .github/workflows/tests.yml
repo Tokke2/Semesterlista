@@ -88,3 +88,9 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_tray_folder.py -v
           if ($LASTEXITCODE -ne 0) { throw 'Tray folder tests failed' }
+
+      - name: Testa minimera och stäng till systemfältet
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_tray_behavior.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Tray behavior tests failed' }

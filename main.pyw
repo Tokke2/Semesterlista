@@ -221,6 +221,7 @@ try:
     from PySide6.QtCore import (
         Qt,
         QEvent,
+        QTimer,
         QObject,
                 Signal,
         Slot,
@@ -278,7 +279,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.20.2"
+APP_VERSION: str = "2.21.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1236,18 +1237,24 @@ class MainWindow(QMainWindow):
     # ──────────────────────────────────────────────────────
 
     def closeEvent(self, event) -> None:
-        """
-        Fånga stängning (X-knapp).
+        """The close button parks the app; Quit remains an explicit action."""
+        if getattr(self, "_quitting", False):
+            event.accept()
+            return
+        event.ignore()
+        self.hide_application()
 
-        Om close_to_tray=True → minimera till systray.
-        Annars → avsluta.
-        """
-        if self._settings_manager.get("systray.close_to_tray", True):
-            event.ignore()
-            self.hide()
-            self._event_bus.emit("window:hidden", None)
-        else:
-            self._quit_application()
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange and self.isMinimized():
+            # Let the OS finish minimizing, then remove the taskbar window.
+            # Recheck state so a quick restore/second launch cannot be hidden.
+            QTimer.singleShot(0, self._hide_if_minimized)
+
+    def _hide_if_minimized(self) -> None:
+        if (not getattr(self, "_quitting", False) and self.isMinimized()
+                and self.isVisible() and QSystemTrayIcon.isSystemTrayAvailable()):
+            self.hide_application()
 
     # ──────────────────────────────────────────────────────
     # Publika metoder
@@ -1284,7 +1291,11 @@ class MainWindow(QMainWindow):
         fönstret visats igen.
         """
         self._save_window_state()
-        self.hide()
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.hide()
+        else:
+            # Never leave a running app with no reachable window or tray icon.
+            self.showMinimized()
         self._event_bus.emit("window:hidden", None)
 
     def set_status(self, message: str) -> None:
@@ -1298,6 +1309,8 @@ class MainWindow(QMainWindow):
         Sparar tillstånd, stänger plugins, frigör resurser.
         """
         self._save_window_state()
+
+        self._quitting = True
 
         # Smart cache: rensa det som renderats under körningen (v2.11.0)
         if self._settings_manager.get("advanced.clear_cache_on_exit", True):

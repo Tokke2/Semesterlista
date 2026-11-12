@@ -3236,3 +3236,16 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   fortfarande endast efter samtycke. Ingen extra Python vid trasiga installationer.
 - Tester verifierar alla prioriteringar, timeout/fel, minversion, bas-Python,
   ingen installation vid val samt engångsvidarebefordran; motsvarande Windows-test.
+
+## 50. Minimera/stäng till tray, ny ikon och tryck-SVG (v2.21.0)
+
+- closeEvent ignorerar X-stängning och anropar hide_application; Quit flaggar
+  _quitting och avslutar uttryckligen. Äldre False-inställningar ignoreras.
+- changeEvent WindowStateChange köar bevakad minimering via QTimer. Snabb
+  återaktivering vinner. Utan systemfält behålls minimerat synligt OS-fönster.
+- Inställningsrutorna är låsta på True. Qt-regressioner körs även på Windows.
+- Kalender med gul bockmarkering i SVG/PNG/ICO och identisk inbyggd SVG-reserv.
+- Printlogotyper i färg och svart med bokstäver omvandlade till banor, transparent
+  bakgrund och fysisk SVG-storlek. Inga rasterbilder/typsnittsberoenden.
+- Byggverktyg med fontTools och DejaVu-licens, inga nya runtime-beroenden.
+- SVG/RGB är inte PDF-X/CMYK; tryckeriet anpassar profiler/utfall vid behov.

@@ -359,3 +359,15 @@ registret. macOS/Linux söker befintlig start-Python, PATH och vanliga
 system-/Framework-/Homebrew-sökvägar. Genvägens Python måste fortfarande kunna
 starta själva startprogrammet; om den har avinstallerats behöver genvägen skapas om.
 En eventuell venv normaliseras till dess bas-Python, som verifieras separat.
+
+## Minimera/stäng till systemfältet och trycklogotyp (2.21.0)
+
+Minimera och stängknappen döljer nu alltid huvudfönstret i systemfältet,
+oberoende av äldre sparade avstängningar. Välj Avsluta för att stänga programmet.
+Utan systemfält används minimerat aktivitetsfälts-/Dock-fönster så appen förblir
+åtkomlig. En snabb återöppning får inte döljas av en fördröjd minimeringshändelse.
+Beteendet testas med riktiga Qt-fönster på Windows, macOS och Linux.
+
+Ny kalenderikon med gul bockmarkering. Färg- och svartvit trycklogotyp levereras
+som vektor-SVG med konturiserad text och transparent bakgrund i assets/brand.
+Se assets/brand/README.md för format, färgprofil och bygginstruktioner.

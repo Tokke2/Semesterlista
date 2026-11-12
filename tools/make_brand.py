@@ -1,0 +1,60 @@
+"""Build print SVGs with outlined lettering; fontTools is a build-only dependency.
+
+python tools/make_brand.py --font /path/DejaVuSans-Bold.ttf --regular-font /path/DejaVuSans.ttf
+The output contains no text, embedded fonts, raster images or external references.
+"""
+import argparse
+from pathlib import Path
+from fontTools.ttLib import TTFont
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.transformPen import TransformPen
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def outlined(text, font_path, size, x, baseline):
+    with TTFont(font_path) as font:
+        glyphs = font.getGlyphSet()
+        cmap = font.getBestCmap()
+        scale = size / font['head'].unitsPerEm
+        paths = []
+        for char in text:
+            name = cmap[ord(char)]
+            pen = SVGPathPen(glyphs)
+            glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, x, baseline)))
+            commands = pen.getCommands()
+            if commands:
+                paths.append(f'<path d="{commands}"/>')
+            x += glyphs[name].width * scale
+        return '\n'.join(paths), x
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--font', required=True, type=Path)
+    parser.add_argument('--regular-font', required=True, type=Path)
+    args = parser.parse_args()
+    mark = (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8')
+    mark = mark[mark.index('>') + 1:mark.rindex('</svg>')]
+    word, end = outlined('Semesterlista', args.font, 48, 130, 70)
+    tagline, _ = outlined('Planera. Samla. Skriv ut.', args.regular_font, 17, 132, 96)
+    width = round(end + 24)
+    content = (f'<g transform="translate(12 16) scale(1.5)">{mark}</g>'
+               f'<g fill="#16324f">{word}\n{tagline}</g>')
+    folder = ROOT / 'assets/brand'
+    for name, background, black in [('logotyp.svg', True, False),
+                                     ('logotyp-tryck.svg', False, False),
+                                     ('logotyp-svart.svg', False, True)]:
+        body = content
+        if black:
+            body = body.replace('#16324f', '#000000').replace('#36d6be', '#000000').replace('#ffcb77', '#ffffff')
+        if background:
+            body = f'<rect width="{width}" height="128" rx="20" fill="#f3f8fa"/>' + body
+        svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="180mm" height="{180*128/width:.3f}mm" '
+               f'viewBox="0 0 {width} 128" role="img" aria-label="Semesterlista – Planera. Samla. Skriv ut.">\n'
+               '<title>Semesterlista</title>\n' + body + '\n</svg>\n')
+        (folder / name).write_text(svg, encoding='utf-8', newline='\r\n')
+
+
+if __name__ == '__main__':
+    main()

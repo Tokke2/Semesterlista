@@ -68,3 +68,10 @@ binärfil. Denna version paketerar inte en separat Python-miljö.
 - Gamla fästa genvägar kan behöva ersättas. På macOS behöver tidigare skapad
   Semesterlista.app skapas om för att få den nya ikonen. Pythonprocessens
   egen binärikon ändras fortfarande inte.
+
+## Kalender med bockmarkering (2.21.0)
+
+Ny kalenderform med tydliga datumrutor och gul bockmarkering (#ffcb77).
+SVG, PNG, ICO och den inbyggda reservikonen visar samma symbol.
+Trycklogotyperna finns i `../brand/logotyp-tryck.svg` och `../brand/logotyp-svart.svg`.
+Bokstäverna är verkliga banor, inte SVG-text. Läs `../brand/README.md` för tryckinformation.

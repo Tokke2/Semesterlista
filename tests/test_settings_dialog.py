@@ -264,7 +264,9 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(dialog.holiday_combo.currentData(), "us")
         self.assertTrue(dialog.start_minimized_check.isChecked())
         self.assertFalse(dialog.start_minimized_check.isEnabled())
-        self.assertFalse(dialog.close_to_tray_check.isChecked())
+        self.assertTrue(dialog.close_to_tray_check.isChecked())
+        self.assertFalse(dialog.close_to_tray_check.isEnabled())
+        self.assertFalse(dialog.minimize_to_tray_check.isEnabled())
         self.assertFalse(dialog.notifications_check.isChecked())
         self.assertEqual(dialog.duration_spin.value(), 5500)
         self.assertTrue(dialog.debug_check.isChecked())
@@ -297,7 +299,7 @@ class SettingsDialogTests(unittest.TestCase):
 
         self.assertEqual(self.manager.get("theme"), "light")
         self.assertEqual(self.manager.get("holiday_region"), "us")
-        self.assertFalse(self.manager.get("systray.minimize_to_tray"))
+        self.assertTrue(self.manager.get("systray.minimize_to_tray"))
         self.assertEqual(self.manager.get("systray.notification_duration_ms"), 2500)
         self.assertTrue(self.manager.get("advanced.debug_mode"))
 

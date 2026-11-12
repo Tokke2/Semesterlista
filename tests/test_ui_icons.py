@@ -19,6 +19,17 @@ class BrandAssetTests(unittest.TestCase):
                 self.assertNotIn('<script', source)
                 self.assertNotIn('href=', source)
 
+    def test_print_logos_are_outlined_vectors_with_physical_size(self):
+        for name in ('logotyp-tryck.svg', 'logotyp-svart.svg'):
+            root = ET.parse(ROOT / 'assets' / 'brand' / name).getroot()
+            self.assertTrue(root.attrib['width'].endswith('mm'))
+            tags = [node.tag.split('}')[-1] for node in root.iter()]
+            for forbidden in ('text', 'image', 'foreignObject', 'use', 'style'):
+                self.assertNotIn(forbidden, tags)
+            self.assertGreater(tags.count('path'), 20)
+        from core.app_icon import ICON_SVG
+        self.assertEqual(ICON_SVG, (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8'))
+
     def test_readme_is_short_and_local_images_exist(self):
         import re
         readme = (ROOT / 'README.md').read_text(encoding='utf-8')

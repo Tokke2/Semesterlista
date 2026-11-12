@@ -75,7 +75,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.20.2"
+MODULE_VERSION: str = "2.21.0"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark", "contrast")
@@ -265,6 +265,8 @@ class SettingsDialog(QDialog):
         self.start_minimized_check.setEnabled(False)
         self.minimize_to_tray_check = QCheckBox(i18n.t("settings.minimize_to_tray"))
         self.close_to_tray_check = QCheckBox(i18n.t("settings.close_to_tray"))
+        self.minimize_to_tray_check.setEnabled(False)
+        self.close_to_tray_check.setEnabled(False)
         self.notifications_check = QCheckBox(i18n.t("settings.notifications"))
 
         for check in (
@@ -726,8 +728,8 @@ class SettingsDialog(QDialog):
         self.holiday_combo.setCurrentIndex(index if index >= 0 else 0)
 
         self.start_minimized_check.setChecked(True)
-        self.minimize_to_tray_check.setChecked(bool(get("systray.minimize_to_tray", True)))
-        self.close_to_tray_check.setChecked(bool(get("systray.close_to_tray", True)))
+        self.minimize_to_tray_check.setChecked(True)
+        self.close_to_tray_check.setChecked(True)
         self.notifications_check.setChecked(bool(get("systray.show_notifications", True)))
 
         duration = get("systray.notification_duration_ms", 3000)
@@ -785,8 +787,8 @@ class SettingsDialog(QDialog):
             manager.set("holiday_region", region)
 
         manager.set("systray.start_minimized", True)
-        manager.set("systray.minimize_to_tray", self.minimize_to_tray_check.isChecked())
-        manager.set("systray.close_to_tray", self.close_to_tray_check.isChecked())
+        manager.set("systray.minimize_to_tray", True)
+        manager.set("systray.close_to_tray", True)
         manager.set("systray.show_notifications", self.notifications_check.isChecked())
         manager.set("systray.notification_duration_ms", self.duration_spin.value())
 

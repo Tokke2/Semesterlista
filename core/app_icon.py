@@ -39,7 +39,7 @@ from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.20.2"
+MODULE_VERSION: str = "2.21.0"
 
 #: Filnamn (utan ändelse) för ikonen i assets/ikon/
 APP_ICON_STEM: str = "appikon"
@@ -58,6 +58,8 @@ WINDOWS_APP_ID: str = "Tokke2.Semesterlista"
 ICON_BLUE: str = "#16324f"
 ICON_YELLOW: str = "#36d6be"
 ICON_WHITE: str = "#ffffff"
+
+ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\n  <rect x="2" y="2" width="60" height="60" rx="16" fill="#16324f"/>\n  <rect x="12" y="16" width="38" height="36" rx="5" fill="#ffffff"/>\n  <path d="M17 16h28a5 5 0 0 1 5 5v6H12v-6a5 5 0 0 1 5-5z" fill="#36d6be"/>\n  <path d="M22 12v9m18-9v9" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>\n  <rect x="19" y="33" width="5" height="5" rx="1" fill="#16324f"/>\n  <rect x="28" y="33" width="5" height="5" rx="1" fill="#16324f"/>\n  <rect x="19" y="42" width="5" height="5" rx="1" fill="#16324f"/>\n  <circle cx="45" cy="46" r="13" fill="#ffcb77"/>\n  <path d="M39 46l4 4 8-9" fill="none" stroke="#16324f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>\n</svg>\n'
 
 _cache: Optional[Any] = None
 
@@ -111,51 +113,17 @@ def fallback_icon() -> Any:
         QIcon, eller en tom QIcon om Qt inte kan rita (t.ex. utan skärm).
     """
     try:
-        from PySide6.QtCore import QPointF, QRectF, Qt
-        from PySide6.QtGui import (
-            QColor,
-            QIcon,
-            QPainter,
-            QPen,
-            QPixmap,
-            QPolygonF,
-        )
-
+        from PySide6.QtCore import QByteArray, Qt
+        from PySide6.QtGui import QIcon, QPainter, QPixmap
+        from PySide6.QtSvg import QSvgRenderer
         pixmap = QPixmap(64, 64)
         pixmap.fill(Qt.GlobalColor.transparent)
-
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-
-        # Blå platta
-        painter.setBrush(QColor(ICON_BLUE))
-        painter.drawRoundedRect(QRectF(2, 2, 60, 60), 14, 14)
-
-        # Vit kalender
-        painter.setBrush(QColor(ICON_WHITE))
-        painter.drawRoundedRect(QRectF(12, 15, 40, 39), 6, 6)
-
-        # Gul rubrik
-        painter.setBrush(QColor(ICON_YELLOW))
-        painter.drawRoundedRect(QRectF(12, 15, 40, 13), 6, 6)
-        painter.drawRect(QRectF(12, 22, 40, 6))
-        painter.setBrush(QColor(ICON_WHITE))
-        painter.drawRoundedRect(QRectF(20, 10, 5, 11), 2.5, 2.5)
-        painter.drawRoundedRect(QRectF(39, 10, 5, 11), 2.5, 2.5)
-
-        # Blå bock
-        pen = QPen(QColor(ICON_BLUE), 6)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawPolyline(QPolygonF([
-            QPointF(21, 39), QPointF(29, 47), QPointF(44, 33),
-        ]))
-        painter.end()
-
+        try:
+            QSvgRenderer(QByteArray(ICON_SVG.encode('utf-8'))).render(painter)
+        finally:
+            painter.end()
         return QIcon(pixmap)
-
     except Exception as exc:  # pragma: no cover – Qt saknas
         logger.warning(f"Kunde inte rita reservikon: {exc}")
         return _empty_icon()

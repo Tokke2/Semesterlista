@@ -66,6 +66,7 @@ macOS-startappen är lokalt skapad, inte en signerad installationsfil med inbygg
 > **Appen startar alltid minimerad.** Klicka på kalenderikonen i systemfältet
 > för att öppna fönstret. Saknas systemfält finns appen minimerad i aktivitetsfältet/Dock.
 > Startar du appen igen öppnas den redan körande instansen.
+> **Minimera och stäng (X)** gömmer appen i systemfältet. Välj **Avsluta** för att avsluta.
 
 **Hitta appens filer:** högerklicka på kalenderikonen i systemfältet och välj
 **Öppna appmappen**. Då öppnas appens huvudmapp i datorns filhanterare.
@@ -101,7 +102,10 @@ På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskomma
 | En gammal ikon visas | Skapa om startgenvägen och ersätt gamla fästa genvägar. |
 | Ett annat fel uppstår | Öppna **Inställningar → Avancerat**. Felloggen finns i `data/loggar/fel.log`. |
 
-## För utvecklare
+## Logotyp och utveckling
+
+**Trycklogotyp:** [färg-SVG](assets/brand/logotyp-tryck.svg) · [svart SVG](assets/brand/logotyp-svart.svg).
+Helt vektoriserade, med bokstäver som banor och transparent bakgrund.
 
 [Utförlig guide](docs/guide.md) · [Teknisk specifikation](spec.md) · [Ikoner och logotyp](assets/ikon/README.md)
 
