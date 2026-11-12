@@ -4,6 +4,7 @@ python tools/make_brand.py --font /path/DejaVuSans-Bold.ttf --regular-font /path
 The output contains no text, embedded fonts, raster images or external references.
 """
 import argparse
+import re
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
@@ -12,7 +13,7 @@ from fontTools.pens.transformPen import TransformPen
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def outlined(text, font_path, size, x, baseline):
+def outlined(text, font_path, size, x, baseline, spacing=0):
     with TTFont(font_path) as font:
         glyphs = font.getGlyphSet()
         cmap = font.getBestCmap()
@@ -25,7 +26,7 @@ def outlined(text, font_path, size, x, baseline):
             commands = pen.getCommands()
             if commands:
                 paths.append(f'<path d="{commands}"/>')
-            x += glyphs[name].width * scale
+            x += glyphs[name].width * scale + spacing
         return '\n'.join(paths), x
 
 
@@ -36,18 +37,34 @@ def main():
     args = parser.parse_args()
     mark = (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8')
     mark = mark[mark.index('>') + 1:mark.rindex('</svg>')]
-    word, end = outlined('Semesterlista', args.font, 48, 130, 70)
-    tagline, _ = outlined('Planera. Samla. Skriv ut.', args.regular_font, 17, 132, 96)
+    first, join = outlined('Semester', args.font, 48, 130, 68)
+    last, end = outlined('lista', args.font, 48, join, 68)
+    tagline, _ = outlined('PLANERA. SAMLA. SKRIV UT.', args.regular_font, 12, 133, 96, spacing=1.9)
     width = round(end + 24)
     content = (f'<g transform="translate(12 16) scale(1.5)">{mark}</g>'
-               f'<g fill="#16324f">{word}\n{tagline}</g>')
+               '<defs><linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">'
+               '<stop stop-color="#326bea"/><stop offset="1" stop-color="#8654ed"/>'
+               '</linearGradient></defs>'
+               f'<g fill="#16324f">{first}</g><g fill="url(#wordmark)">{last}</g>'
+               f'<g fill="#486175">{tagline}</g>'
+               '<rect x="133" y="108" width="36" height="3" rx="1.5" fill="#36d6be"/>'
+               '<rect x="174" y="108" width="12" height="3" rx="1.5" fill="#6556ed"/>')
     folder = ROOT / 'assets/brand'
     for name, background, black in [('logotyp.svg', True, False),
                                      ('logotyp-tryck.svg', False, False),
                                      ('logotyp-svart.svg', False, True)]:
         body = content
         if black:
-            body = body.replace('#16324f', '#000000').replace('#36d6be', '#000000').replace('#ffcb77', '#ffffff')
+            # One-ink artwork: no gradients, translucency or gray values.
+            body = re.sub(r'<defs>.*?</defs>', '', body, flags=re.S)
+            body = re.sub(r' opacity="[^"]+"', '', body)
+            def monochrome(match):
+                attr, value = match.groups()
+                if value == 'none':
+                    return match.group(0)
+                white = value in ('#ffffff', 'url(#icon-page)', 'url(#icon-badge)')
+                return f'{attr}="{"#ffffff" if white else "#000000"}"'
+            body = re.sub(r'(fill|stroke)="([^"]+)"', monochrome, body)
         if background:
             body = f'<rect width="{width}" height="128" rx="20" fill="#f3f8fa"/>' + body
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="180mm" height="{180*128/width:.3f}mm" '

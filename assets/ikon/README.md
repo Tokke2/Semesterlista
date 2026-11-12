@@ -75,3 +75,9 @@ Ny kalenderform med tydliga datumrutor och gul bockmarkering (#ffcb77).
 SVG, PNG, ICO och den inbyggda reservikonen visar samma symbol.
 Trycklogotyperna finns i `../brand/logotyp-tryck.svg` och `../brand/logotyp-svart.svg`.
 Bokstäverna är verkliga banor, inte SVG-text. Läs `../brand/README.md` för tryckinformation.
+
+## Färgstark ikon (2.21.1)
+
+Blå–lila vektorövertoning, turkos kant/bockmarkering, lutad kalender och gul
+stjärna. Filerna appikon.svg, PNG i sju storlekar och appikon.ico är uppdaterade,
+liksom den inbyggda SVG-reserven. Både appen och README använder den nya grafiken.

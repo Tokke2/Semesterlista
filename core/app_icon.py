@@ -39,7 +39,7 @@ from typing import Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.21.0"
+MODULE_VERSION: str = "2.21.1"
 
 #: Filnamn (utan ändelse) för ikonen i assets/ikon/
 APP_ICON_STEM: str = "appikon"
@@ -59,7 +59,7 @@ ICON_BLUE: str = "#16324f"
 ICON_YELLOW: str = "#36d6be"
 ICON_WHITE: str = "#ffffff"
 
-ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\n  <rect x="2" y="2" width="60" height="60" rx="16" fill="#16324f"/>\n  <rect x="12" y="16" width="38" height="36" rx="5" fill="#ffffff"/>\n  <path d="M17 16h28a5 5 0 0 1 5 5v6H12v-6a5 5 0 0 1 5-5z" fill="#36d6be"/>\n  <path d="M22 12v9m18-9v9" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>\n  <rect x="19" y="33" width="5" height="5" rx="1" fill="#16324f"/>\n  <rect x="28" y="33" width="5" height="5" rx="1" fill="#16324f"/>\n  <rect x="19" y="42" width="5" height="5" rx="1" fill="#16324f"/>\n  <circle cx="45" cy="46" r="13" fill="#ffcb77"/>\n  <path d="M39 46l4 4 8-9" fill="none" stroke="#16324f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>\n</svg>\n'
+ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\n  <defs>\n    <linearGradient id="icon-base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#16324f"/><stop offset="0.55" stop-color="#4231a5"/><stop offset="1" stop-color="#7656ee"/></linearGradient>\n    <linearGradient id="icon-edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#75e8ff"/><stop offset="1" stop-color="#a68aff"/></linearGradient>\n    <linearGradient id="icon-page" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e5f3ff"/></linearGradient>\n    <linearGradient id="icon-header" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#409cff"/><stop offset="1" stop-color="#8561ff"/></linearGradient>\n    <linearGradient id="icon-badge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a5ffe0"/><stop offset="0.5" stop-color="#36d6be"/><stop offset="1" stop-color="#3bd3ff"/></linearGradient>\n  </defs>\n  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#icon-base)" stroke="url(#icon-edge)" stroke-width="1.2"/>\n  <path d="M19 3h25c8 0 14 6 16 14L4 37V19C4 10 10 3 19 3z" fill="#ffffff" opacity="0.12"/>\n  <g transform="rotate(-8 30 32)">\n    <rect x="12" y="17" width="36" height="35" rx="5" fill="#16324f" opacity="0.24"/>\n    <rect x="11" y="14" width="36" height="35" rx="5" fill="url(#icon-page)"/>\n    <path d="M16 14h26a5 5 0 0 1 5 5v7H11v-7a5 5 0 0 1 5-5z" fill="url(#icon-header)"/>\n    <path d="M20 11v8m18-8v8" stroke="#ffffff" stroke-width="3.8" stroke-linecap="round"/>\n    <rect x="18" y="31" width="5" height="5" rx="1.4" fill="#6556ed"/>\n    <rect x="27" y="31" width="5" height="5" rx="1.4" fill="#6556ed"/>\n    <rect x="18" y="40" width="5" height="5" rx="1.4" fill="#16324f"/>\n  </g>\n  <circle cx="46" cy="47" r="12" fill="url(#icon-badge)" stroke="#ffffff" stroke-width="1.3"/>\n  <path d="M40 47l4 4 8-9" fill="none" stroke="#16324f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>\n  <path d="M52 7l1.7 4.3L58 13l-4.3 1.7L52 19l-1.7-4.3L46 13l4.3-1.7z" fill="#ffcb77"/>\n</svg>\n'
 
 _cache: Optional[Any] = None
 

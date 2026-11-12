@@ -27,6 +27,13 @@ class BrandAssetTests(unittest.TestCase):
             for forbidden in ('text', 'image', 'foreignObject', 'use', 'style'):
                 self.assertNotIn(forbidden, tags)
             self.assertGreater(tags.count('path'), 20)
+        black = ET.parse(ROOT / 'assets/brand/logotyp-svart.svg').getroot()
+        for node in black.iter():
+            self.assertNotIn('Gradient', node.tag)
+            self.assertNotIn('opacity', node.attrib)
+            for attribute in ('fill', 'stroke'):
+                if attribute in node.attrib:
+                    self.assertIn(node.attrib[attribute], ('none', '#000000', '#ffffff'))
         from core.app_icon import ICON_SVG
         self.assertEqual(ICON_SVG, (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8'))
 

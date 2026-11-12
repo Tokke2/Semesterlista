@@ -3249,3 +3249,13 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   bakgrund och fysisk SVG-storlek. Inga rasterbilder/typsnittsberoenden.
 - Byggverktyg med fontTools och DejaVu-licens, inga nya runtime-beroenden.
 - SVG/RGB är inte PDF-X/CMYK; tryckeriet anpassar profiler/utfall vid behov.
+
+## 51. Flashigare ikon och vektorlogotyp (v2.21.1)
+
+- Ny blå–lila gradientplatta med ljus kant, lutad kalender, turkos bock och gul stjärna.
+- Ordmärke med blå–lila andra del, versal underrad och färgaccenter.
+- SVG-övertoningar är vektorer, inga bitmappar/filter eller externa resurser.
+- Färg-SVG för webb/tryck och ren svart/vit SVG med konturiserade bokstäver.
+- Byggverktyget avlägsnar övertoningar/opacity i enfärgsvarianten; regressionstest
+  verifierar endast svart/vitt/none. PNG/ICO och inbyggd reservikon synkade.
+- Ingen ändring av tray-beteende, PDF-layout, Python-val eller OS-stöd.
