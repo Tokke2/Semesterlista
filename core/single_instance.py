@@ -68,7 +68,7 @@ except ImportError:
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.21.2"
+MODULE_VERSION: str = "2.22.0"
 
 # ──────────────────────────────────────────────────────────
 # Autostart-konstanter

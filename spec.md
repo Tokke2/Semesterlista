@@ -3274,3 +3274,14 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - macOS-agent uppdateras utan unload/reload av egen process; ny agent laddas.
 - Windows-native tester för registermigration/städning och VBS-flagga, plus
   POSIX-serialisering, tyst dubbelstart och fel i inställningsdialog.
+
+## 53. Ny färgstark identitet i ett releasepaket (v2.22.0)
+
+- Ny kalenderikon med solskiva, stor turkos bock, lila djup och rosa/turkos kant.
+- Nytt ordmärke med sammanhängande lila/korallövertoning, inte per bokstav.
+- Vektor-SVG för färgtryck och enfärg, båda med konturiserade bokstäver.
+- Enfärgsvarianten tar bort dekorativa halvtransparenta former och övertoningar.
+- PNG i sju storlekar, ICO, inbyggd SVG-reserv och README-logotyp uppdaterade.
+- README instruerar att tryckmaterialet ingår i samma release-ZIP som appen.
+- Arkivtest verifierar app, print-SVG, licens och ikoner i Git-baserat releasepaket.
+- Oförändrat autostart-, tray-, OS-, Python- och PDF-beteende.

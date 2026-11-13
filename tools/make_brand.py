@@ -37,18 +37,18 @@ def main():
     args = parser.parse_args()
     mark = (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8')
     mark = mark[mark.index('>') + 1:mark.rindex('</svg>')]
-    first, join = outlined('Semester', args.font, 48, 130, 68)
-    last, end = outlined('lista', args.font, 48, join, 68)
-    tagline, _ = outlined('PLANERA. SAMLA. SKRIV UT.', args.regular_font, 12, 133, 96, spacing=1.9)
+    first, join = outlined('Semester', args.font, 48, 130, 66)
+    last, end = outlined('lista', args.font, 48, join, 66)
+    tagline, _ = outlined('PLANERA. SAMLA. SKRIV UT.', args.regular_font, 12, 133, 98, spacing=1.9)
     width = round(end + 24)
     content = (f'<g transform="translate(12 16) scale(1.5)">{mark}</g>'
-               '<defs><linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">'
-               '<stop stop-color="#326bea"/><stop offset="1" stop-color="#8654ed"/>'
+               f'<defs><linearGradient id="wordmark" gradientUnits="userSpaceOnUse" x1="{join}" y1="0" x2="{end}" y2="0">'
+               '<stop stop-color="#a13ed7"/><stop offset="0.5" stop-color="#ec438e"/><stop offset="1" stop-color="#f28045"/>'
                '</linearGradient></defs>'
-               f'<g fill="#16324f">{first}</g><g fill="url(#wordmark)">{last}</g>'
-               f'<g fill="#486175">{tagline}</g>'
-               '<rect x="133" y="108" width="36" height="3" rx="1.5" fill="#36d6be"/>'
-               '<rect x="174" y="108" width="12" height="3" rx="1.5" fill="#6556ed"/>')
+               f'<g fill="#261653">{first}</g><g fill="url(#wordmark)">{last}</g>'
+               f'<g fill="#665776">{tagline}</g>'
+               '<rect x="133" y="78" width="52" height="3" rx="1.5" fill="#ec438e"/>'
+               '<rect x="190" y="78" width="14" height="3" rx="1.5" fill="#36d6be"/>')
     folder = ROOT / 'assets/brand'
     for name, background, black in [('logotyp.svg', True, False),
                                      ('logotyp-tryck.svg', False, False),
@@ -57,6 +57,7 @@ def main():
         if black:
             # One-ink artwork: no gradients, translucency or gray values.
             body = re.sub(r'<defs>.*?</defs>', '', body, flags=re.S)
+            body = re.sub(r'<(?:path|rect)\b[^>]*\bopacity="[^"]+"[^>]*/>', '', body)
             body = re.sub(r' opacity="[^"]+"', '', body)
             def monochrome(match):
                 attr, value = match.groups()
@@ -66,7 +67,7 @@ def main():
                 return f'{attr}="{"#ffffff" if white else "#000000"}"'
             body = re.sub(r'(fill|stroke)="([^"]+)"', monochrome, body)
         if background:
-            body = f'<rect width="{width}" height="128" rx="20" fill="#f3f8fa"/>' + body
+            body = f'<rect width="{width}" height="128" rx="20" fill="#fbf8ff"/>' + body
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="180mm" height="{180*128/width:.3f}mm" '
                f'viewBox="0 0 {width} 128" role="img" aria-label="Semesterlista – Planera. Samla. Skriv ut.">\n'
                '<title>Semesterlista</title>\n' + body + '\n</svg>\n')

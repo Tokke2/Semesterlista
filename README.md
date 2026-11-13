@@ -105,8 +105,8 @@ På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskomma
 
 ## Logotyp och utveckling
 
-**Trycklogotyp:** [färg-SVG](assets/brand/logotyp-tryck.svg) · [svart SVG](assets/brand/logotyp-svart.svg).
-Helt vektoriserade, med bokstäver som banor och transparent bakgrund.
+**Trycklogotyperna ingår i samma release-ZIP som appen**, i `assets/brand/`.
+Färg och svartvitt, helt vektoriserade med bokstäver som banor. Ingen separat nedladdning.
 
 [Utförlig guide](docs/guide.md) · [Teknisk specifikation](spec.md) · [Ikoner och logotyp](assets/ikon/README.md)
 

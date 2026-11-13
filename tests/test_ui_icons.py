@@ -37,6 +37,28 @@ class BrandAssetTests(unittest.TestCase):
         from core.app_icon import ICON_SVG
         self.assertEqual(ICON_SVG, (ROOT / 'assets/ikon/appikon.svg').read_text(encoding='utf-8'))
 
+    def test_release_archive_includes_print_material_and_app(self):
+        import shutil
+        import subprocess
+        import tempfile
+        import zipfile
+        if not shutil.which('git'):
+            self.skipTest('Git is needed to verify the release archive')
+        status = subprocess.run(['git', 'rev-parse', '--show-toplevel'], cwd=ROOT,
+                                capture_output=True, text=True)
+        if status.returncode or Path(status.stdout.strip()).resolve() != ROOT.resolve():
+            self.skipTest('Source ZIP has no Git checkout')
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / 'release.zip'
+            subprocess.run(['git', 'archive', '--format=zip', 'HEAD', '-o', str(archive)],
+                           cwd=ROOT, check=True, capture_output=True)
+            with zipfile.ZipFile(archive) as bundle:
+                for name in ('main.pyw', 'assets/brand/logotyp-tryck.svg',
+                             'assets/brand/logotyp-svart.svg', 'assets/brand/FONT-LICENSE.txt',
+                             'assets/ikon/appikon.svg', 'assets/ikon/appikon.ico'):
+                    self.assertIn(name, bundle.namelist())
+                    self.assertEqual(bundle.read(name), (ROOT / name).read_bytes())
+
     def test_readme_is_short_and_local_images_exist(self):
         import re
         readme = (ROOT / 'README.md').read_text(encoding='utf-8')

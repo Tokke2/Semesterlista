@@ -9,7 +9,7 @@ hos mottagaren. Filerna innehåller inga rasterbilder, länkade resurser eller
 inbäddade typsnitt och kan skalas utan pixelförlust. Grundbredd: 180 mm;
 behåll proportionerna vid storleksändring. Ikonen finns separat i `../ikon`.
 
-Färgversionen använder SVG/RGB med blå–lila och turkosa vektorövertoningar,
+Färgversionen använder SVG/RGB med lila, korallrosa och turkosa vektorövertoningar,
 mörkblå #16324f, mint #36d6be, gul #ffcb77 och vitt.
 Den är inte en CMYK/PDF-X-fil. Låt tryckeriet konvertera färgerna enligt sin
 ICC-profil och lägga till eventuella skärmärken/utfall efter placering i layouten.
@@ -35,3 +35,14 @@ Lutad kalender, blå–lila platta med ljus kant, turkos bockmarkering och gul
 stjärndetalj. Ordmärket har två färger och en luftig versal underrad.
 Övertoningarna är standard-SVG, inte rastereffekter. Använd en SVG-renderare
 med stöd för linearGradient (t.ex. en modern webbläsare) för förhandsvisning.
+
+## Ny identitet och samlat releasepaket (2.22.0)
+
+Ny kalender med tydlig stor bock, varm solskiva, lila djup och turkos/rosa kant.
+Ordmärket har en sammanhängande färgövergång från lila till korallorange.
+Webblogotypen har ljus bakgrund; tryckversionerna är transparenta.
+
+**Alla dessa filer följer med i samma Source code (zip) som appen i releasen.**
+Ingen separat grafiknedladdning behövs. Efter uppackning finns färg- och
+svartvit tryck-SVG samt licens här i `assets/brand/`. Bokstäverna är banor;
+övertoningarna är vektorer. Ingen AI-generering eller inbäddad rastergrafik.

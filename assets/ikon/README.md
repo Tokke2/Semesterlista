@@ -81,3 +81,9 @@ Bokstäverna är verkliga banor, inte SVG-text. Läs `../brand/README.md` för t
 Blå–lila vektorövertoning, turkos kant/bockmarkering, lutad kalender och gul
 stjärna. Filerna appikon.svg, PNG i sju storlekar och appikon.ico är uppdaterade,
 liksom den inbyggda SVG-reserven. Både appen och README använder den nya grafiken.
+
+## Solkalender (2.22.0)
+
+Ny ikon med varm solskiva, lila/rosa kalender, stor turkos bock och färgad kant.
+Samma SVG-källa används för PNG/ICO och inbyggd reservikon. Ikoner och trycklogotyper
+ingår tillsammans med appen i release-ZIP:en, inte som separata nedladdningar.
