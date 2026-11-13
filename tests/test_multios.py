@@ -99,14 +99,17 @@ class AutostartSerializationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'test.plist'
             manager = AutostartManager()
-            arguments = ['/python path/python3', '/App å & space/tools/runtime_check.py']
+            arguments = ['/python path/python3', '/App å & space/tools/runtime_check.py', '--autostart']
             with patch.object(manager, '_get_macos_plist_path', return_value=path), \
                  patch('core.single_instance.launch_arguments', return_value=arguments), \
                  patch('core.single_instance.subprocess.run') as run:
                 self.assertTrue(manager._enable_macos())
                 self.assertEqual(plistlib.loads(path.read_bytes())['ProgramArguments'], arguments)
                 run.assert_called_once()
-                previous = path.read_bytes()
+                run.reset_mock()
+                self.assertTrue(manager._enable_macos())
+                run.assert_not_called()  # Never unload/restart our own running agent.
+                path.unlink()
                 run.side_effect = OSError('launchctl failed')
                 self.assertFalse(manager._enable_macos())
-                self.assertEqual(path.read_bytes(), previous)
+                self.assertFalse(path.exists())

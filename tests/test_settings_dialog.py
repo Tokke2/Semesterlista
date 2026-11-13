@@ -332,6 +332,18 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(self.lock.calls, [True])
         self.assertTrue(self.manager.get("advanced.autostart"))
 
+    def test_failed_autostart_registration_is_not_saved_as_success(self):
+        from unittest.mock import patch
+        from PySide6.QtWidgets import QMessageBox
+        dialog = self.make_dialog()
+        dialog.autostart_check.setChecked(True)
+        with patch.object(self.lock, 'set_autostart', return_value=False), \
+             patch.object(QMessageBox, 'warning') as warning:
+            dialog.apply_settings()
+        self.assertFalse(self.manager.get('advanced.autostart'))
+        self.assertFalse(dialog.autostart_check.isChecked())
+        warning.assert_called_once()
+
     def test_apply_settings_keeps_autostart_when_unchanged(self) -> None:
         self.lock.autostart = True
         dialog = self.make_dialog()

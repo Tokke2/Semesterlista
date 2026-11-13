@@ -3259,3 +3259,18 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Byggverktyget avlägsnar övertoningar/opacity i enfärgsvarianten; regressionstest
   verifierar endast svart/vitt/none. PNG/ICO och inbyggd reservikon synkade.
 - Ingen ändring av tray-beteende, PDF-layout, Python-val eller OS-stöd.
+
+## 52. Robust autostart, alltid minimerad (v2.21.2)
+
+- Windows Run-post använder absolut wscript/VBS med /autostart, inte sys.argv
+  eller en fast Python-version. CreateKeyEx fungerar även när Run-nyckeln saknas.
+- Markerad autostart vidarebefordras VBS → PowerShell → runtime → main. POSIX
+  autostart använder --autostart. Miljömarkören konsumeras i main och ärvs inte vid manuell omstart.
+- Upprepad inloggningsstart avslutas utan IPC-show. Manuell andra start aktiverar
+  fortfarande befintlig instans. Initial minimering/maximeringsskydd bevarade.
+- needs_refresh upptäcker äldre sökvägar/argument. Startsynk reparerar aktiverade
+  poster och loggar misslyckanden; meny visar verkligt registreringsläge.
+- SettingsDialog kontrollerar returvärde och sparar inte misslyckad aktivering.
+- macOS-agent uppdateras utan unload/reload av egen process; ny agent laddas.
+- Windows-native tester för registermigration/städning och VBS-flagga, plus
+  POSIX-serialisering, tyst dubbelstart och fel i inställningsdialog.

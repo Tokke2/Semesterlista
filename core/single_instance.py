@@ -68,7 +68,7 @@ except ImportError:
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.21.1"
+MODULE_VERSION: str = "2.21.2"
 
 # ──────────────────────────────────────────────────────────
 # Autostart-konstanter
@@ -172,21 +172,15 @@ def _get_executable_path() -> str:
     Returns:
         str: Absolut sökväg till körbara filen, med lämpliga argument.
     """
-    # Fryst applikation (PyInstaller)
     if getattr(sys, "frozen", False):
-        return sys.executable
-
-    # Python-skript
-    script = Path(sys.argv[0]).resolve()
-
+        return subprocess.list2cmdline([sys.executable, "--autostart"])
     if platform.system() == "Windows":
-        # Föredra pythonw.exe för att undvika terminalfönster
-        python_w = Path(sys.executable).parent / "pythonw.exe"
-        if python_w.exists():
-            return f'"{python_w}" "{script}"'
-        return f'"{sys.executable}" "{script}"'
-
-    return f'"{sys.executable}" "{script}"'
+        from core.roster import app_root
+        host = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "wscript.exe"
+        return subprocess.list2cmdline([
+            str(host), "//NoLogo", str(app_root() / "Starta Semesterlista.vbs"), "/autostart",
+        ])
+    return subprocess.list2cmdline(launch_arguments(autostart=True))
 
 
 # ══════════════════════════════════════════════════════════
@@ -280,6 +274,22 @@ class AutostartManager:
             return self.enable()
         return self.disable()
 
+    def needs_refresh(self) -> bool:
+        """Detect stale paths/commands, not merely the presence of an entry."""
+        try:
+            if self._system == "Windows":
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_WIN_REG_KEY) as key:
+                    return winreg.QueryValueEx(key, self._app_name)[0] != self._exe_path
+            if self._system == "Darwin":
+                data = plistlib.loads(self._get_macos_plist_path().read_bytes())
+                return (data.get('ProgramArguments') != launch_arguments(autostart=True)
+                        or data.get('RunAtLoad') is not True)
+            return self._get_linux_desktop_path().read_text(encoding='utf-8') != desktop_entry(
+                name=self._app_name, autostart=True)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return True
+
     def get_status_text(self) -> str:
         """
         Returnera läsbar status för autostart.
@@ -338,7 +348,7 @@ class AutostartManager:
         """Lägg till autostart i Windows-registret."""
         try:
             import winreg
-            key = winreg.OpenKey(
+            key = winreg.CreateKeyEx(
                 winreg.HKEY_CURRENT_USER,
                 AUTOSTART_WIN_REG_KEY,
                 0,
@@ -400,7 +410,7 @@ class AutostartManager:
         previous = plist_path.read_bytes() if plist_path.exists() else None
         plist_content = {
             'Label': AUTOSTART_MACOS_PLIST.replace('.plist', ''),
-            'ProgramArguments': launch_arguments(),
+            'ProgramArguments': launch_arguments(autostart=True),
             'RunAtLoad': True,
             'KeepAlive': False,
             'StandardOutPath': '/dev/null',
@@ -408,6 +418,10 @@ class AutostartManager:
         }
         try:
             plist_path.write_bytes(plistlib.dumps(plist_content))
+            # Updating a loaded agent must not unload/kill its running app.
+            # The replacement configuration is picked up at the next login.
+            if previous is not None:
+                return True
             # Ladda LaunchAgent
             subprocess.run(
                 ["launchctl", "load", str(plist_path)],
@@ -471,10 +485,10 @@ class AutostartManager:
         desktop_path = self._get_linux_desktop_path()
         desktop_path.parent.mkdir(parents=True, exist_ok=True)
 
-        desktop_content = desktop_entry(name=self._app_name)
+        desktop_content = desktop_entry(name=self._app_name, autostart=True)
 
         try:
-            desktop_path.write_text(desktop_content, encoding="utf-8")
+            desktop_path.write_text(desktop_content, encoding="utf-8", newline="\r\n")
             return True
         except Exception:
             return False

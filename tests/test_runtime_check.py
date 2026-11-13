@@ -89,6 +89,14 @@ class RuntimeTests(unittest.TestCase):
             result = runtime.main()
             return result, prompt.call_count, repair.call_count, launch.call_count, notice.call_count
 
+    def test_autostart_marker_reaches_main(self):
+        with patch.object(sys, 'argv', ['runtime_check.py', '--autostart']), \
+             patch('core.logging_setup.setup_logging'), \
+             patch.object(runtime.logging, 'shutdown'), \
+             patch.object(runtime.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)) as run:
+            self.assertEqual(runtime.main(), 0)
+            self.assertEqual(run.call_args.kwargs['env']['SEMESTERLISTA_AUTOSTART'], '1')
+
     def test_missing_dependencies_offer_repair_and_retry_once(self):
         self.assertEqual(self._startup([42, 0]), (0, 1, 1, 2, 0))
 

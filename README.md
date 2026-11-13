@@ -67,6 +67,7 @@ macOS-startappen är lokalt skapad, inte en signerad installationsfil med inbygg
 > för att öppna fönstret. Saknas systemfält finns appen minimerad i aktivitetsfältet/Dock.
 > Startar du appen igen öppnas den redan körande instansen.
 > **Minimera och stäng (X)** gömmer appen i systemfältet. Välj **Avsluta** för att avsluta.
+> Aktivera **Autostart** i inställningarna för minimerad start vid inloggning.
 
 **Hitta appens filer:** högerklicka på kalenderikonen i systemfältet och välj
 **Öppna appmappen**. Då öppnas appens huvudmapp i datorns filhanterare.

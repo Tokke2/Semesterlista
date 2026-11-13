@@ -4,11 +4,11 @@ import sys
 from core.roster import app_root
 
 
-def launch_arguments(root=None):
+def launch_arguments(root=None, autostart=False):
     if getattr(sys, 'frozen', False):
-        return [sys.executable]
+        return [sys.executable] + (['--autostart'] if autostart else [])
     executable = getattr(sys, '_base_executable', None) or sys.executable
-    return [executable, str(Path(root or app_root()) / 'tools' / 'runtime_check.py')]
+    return [executable, str(Path(root or app_root()) / 'tools' / 'runtime_check.py')] + (['--autostart'] if autostart else [])
 
 
 def desktop_value(value):
@@ -29,11 +29,11 @@ def desktop_exec(arguments):
     return ' '.join(quote(arg) for arg in arguments)
 
 
-def desktop_entry(root=None, name='Semesterlista'):
+def desktop_entry(root=None, name='Semesterlista', autostart=False):
     root = Path(root or app_root()).resolve()
     return '\n'.join([
         '[Desktop Entry]', 'Type=Application', f'Name={desktop_value(name)}',
-        f'Exec={desktop_exec(launch_arguments(root))}',
+        f'Exec={desktop_exec(launch_arguments(root, autostart=autostart))}',
         f'Path={desktop_value(root)}',
         f'Icon={desktop_value(root / "assets" / "ikon" / "appikon-256.png")}',
         'Terminal=false', 'StartupNotify=false', 'Categories=Office;Calendar;', '',

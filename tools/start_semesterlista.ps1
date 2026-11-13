@@ -1,5 +1,5 @@
 ﻿# Windows entry point: runs before any application packages are imported.
-param([switch]$FunctionsOnly, [switch]$MaintenanceOnly)
+param([switch]$FunctionsOnly, [switch]$MaintenanceOnly, [switch]$Autostart)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
 
@@ -180,6 +180,7 @@ function Start-Runtime($Python, [switch]$Maintenance) {
 }
 
 if ($FunctionsOnly) { return }
+if ($Autostart) { $env:SEMESTERLISTA_AUTOSTART = "1" }
 $removed = Remove-LegacyMaintenance
 if ($MaintenanceOnly) { exit 0 }
 Ensure-AppShortcut

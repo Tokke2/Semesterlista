@@ -38,7 +38,7 @@ try {
     New-Item (Join-Path $temp 'tools') -ItemType Directory -Force | Out-Null
     Copy-Item "$PSScriptRoot/../Starta Semesterlista.vbs" $temp
     @'
-param([switch]$MaintenanceOnly)
+param([switch]$MaintenanceOnly, [switch]$Autostart)
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -47,15 +47,18 @@ public class WindowProbe {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
 }
 "@
-@{ maintenance = [bool]$MaintenanceOnly;
+@{ maintenance = [bool]$MaintenanceOnly; autostart = [bool]$Autostart;
    visible = [WindowProbe]::IsWindowVisible([WindowProbe]::GetConsoleWindow()) } |
    ConvertTo-Json | Set-Content (Join-Path $PSScriptRoot '../result.json') -Encoding UTF8
 if ($MaintenanceOnly) { exit 0 }
 exit 23
 '@ | Set-Content (Join-Path $temp 'tools/start_semesterlista.ps1') -Encoding UTF8
-    foreach ($maintenance in @($false, $true)) {
+    foreach ($mode in @('normal', 'maintenance', 'autostart')) {
+        $maintenance = $mode -eq 'maintenance'
+        $autostart = $mode -eq 'autostart'
         $arguments = '//NoLogo "' + (Join-Path $temp 'Starta Semesterlista.vbs') + '"'
         if ($maintenance) { $arguments += ' /maintenance' }
+        if ($autostart) { $arguments += ' /autostart' }
         $process = Start-Process -FilePath "$env:SystemRoot/System32/wscript.exe" -ArgumentList $arguments -PassThru
         $null = $process.Handle  # Keep the handle available for ExitCode.
         if (-not $process.WaitForExit(30000)) {
@@ -67,6 +70,7 @@ exit 23
         $result = Get-Content (Join-Path $temp 'result.json') -Raw | ConvertFrom-Json
         if ($result.visible) { throw 'Bootstrap console is visible' }
         if ($result.maintenance -ne $maintenance) { throw 'Maintenance flag not forwarded' }
+        if ($result.autostart -ne $autostart) { throw 'Autostart flag not forwarded' }
     }
 } finally {
     Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue

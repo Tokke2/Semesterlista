@@ -195,6 +195,8 @@ def main():
         if maintenance_only:
             return 0
         env = dict(os.environ, SEMESTERLISTA_RUNTIME_READY="1")
+        if "--autostart" in sys.argv:
+            env["SEMESTERLISTA_AUTOSTART"] = "1"
         if os.name == "nt":
             executable = executable.with_name("pythonw.exe")
 

@@ -129,6 +129,8 @@ from typing import Dict, List, Any, Optional, TYPE_CHECKING
 # ──────────────────────────────────────────────────────────
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
 
+AUTOSTART_LAUNCH = os.environ.pop("SEMESTERLISTA_AUTOSTART", "") == "1" or "--autostart" in sys.argv
+
 # Route direct starts and updater restarts through the same dependency recovery.
 if __name__ == "__main__":
     if os.environ.pop("SEMESTERLISTA_RUNTIME_READY", "") != "1":
@@ -138,9 +140,11 @@ if __name__ == "__main__":
                 "powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
                 "-ExecutionPolicy", "Bypass", "-File",
                 str(PROJECT_ROOT / "tools" / "start_semesterlista.ps1"),
+                *(["-Autostart"] if AUTOSTART_LAUNCH else []),
             ], cwd=PROJECT_ROOT, creationflags=subprocess.CREATE_NO_WINDOW)
         else:
-            subprocess.Popen([sys.executable, str(PROJECT_ROOT / "tools" / "runtime_check.py")],
+            subprocess.Popen([sys.executable, str(PROJECT_ROOT / "tools" / "runtime_check.py"),
+                              *(["--autostart"] if AUTOSTART_LAUNCH else [])],
                              cwd=PROJECT_ROOT, start_new_session=True,
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         raise SystemExit(0)
@@ -279,7 +283,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.21.1"
+APP_VERSION: str = "2.21.2"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -1701,6 +1705,9 @@ def main() -> None:
     lock     = SingleInstanceLock(app_name)
 
     if lock.is_running():
+        if AUTOSTART_LAUNCH:
+            logger.info("Autostart: appen kör redan; behåller befintligt fönsterläge")
+            sys.exit(0)
         logger.warning(
             "En instans körs redan – skickar 'visa fönster' till den och avslutar"
         )
@@ -1862,9 +1869,14 @@ def main() -> None:
 
     # Synka autostart från sparad inställning
     saved_autostart = settings_manager.get("advanced.autostart", False)
-    if saved_autostart != lock.get_autostart():
-        logger.info("Synkar autostart till %s", saved_autostart)
-        lock.set_autostart(bool(saved_autostart))
+    if (saved_autostart != lock.get_autostart()
+            or (saved_autostart and lock.autostart_manager.needs_refresh())):
+        logger.info("Synkar/reparerar autostart till %s", saved_autostart)
+        if not lock.set_autostart(bool(saved_autostart)):
+            logger.error("Autostart kunde inte registreras: %s", lock.get_autostart_info())
+
+    if main_window._autostart_action is not None:
+        main_window._autostart_action.setChecked(lock.get_autostart())
 
     # 12. Notifiera att appen är redo
     event_bus.emit("app:started", {

@@ -75,7 +75,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.21.1"
+MODULE_VERSION: str = "2.21.2"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark", "contrast")
@@ -796,10 +796,14 @@ class SettingsDialog(QDialog):
             want = self.autostart_check.isChecked()
             try:
                 if want != self.lock.get_autostart():
-                    self.lock.set_autostart(want)
-                    logger.info(f"Autostart {'aktiverad' if want else 'avaktiverad'}")
-                # Håll advanced.autostart i takt med systemets verkliga läge
-                manager.set("advanced.autostart", want)
+                    if not self.lock.set_autostart(want):
+                        self.autostart_check.setChecked(bool(self.lock.get_autostart()))
+                        QMessageBox.warning(self, i18n.t("autostart.title"), i18n.t(
+                            "autostart.error", action=i18n.t(
+                                "autostart.enable" if want else "autostart.disable")))
+                    else:
+                        logger.info(f"Autostart {'aktiverad' if want else 'avaktiverad'}")
+                manager.set("advanced.autostart", bool(self.lock.get_autostart()))
             except Exception as exc:  # pragma: no cover – defensivt
                 logger.warning(f"Kunde inte ändra autostart: {exc}")
 

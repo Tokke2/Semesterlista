@@ -7,6 +7,7 @@ shell.CurrentDirectory = root
 maintenance = WScript.Arguments.Named.Exists("maintenance")
 command = """" & shell.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\WindowsPowerShell\v1.0\powershell.exe"" -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & root & "\tools\start_semesterlista.ps1"""
 If maintenance Then command = command & " -MaintenanceOnly"
+If WScript.Arguments.Named.Exists("autostart") Then command = command & " -Autostart"
 ' Window style 0 hides the console before creation. Wait preserves task status.
 On Error Resume Next
 result = shell.Run(command, 0, True)

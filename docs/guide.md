@@ -371,3 +371,25 @@ Beteendet testas med riktiga Qt-fönster på Windows, macOS och Linux.
 Ny kalenderikon med gul bockmarkering. Färg- och svartvit trycklogotyp levereras
 som vektor-SVG med konturiserad text och transparent bakgrund i assets/brand.
 Se assets/brand/README.md för format, färgprofil och bygginstruktioner.
+
+## Reparerad autostart och tyst inloggning (2.21.2)
+
+Efter uppdatering: starta appen en gång och kontrollera Autostart i inställningarna.
+Om autostart redan var aktiverad uppdateras gamla sökvägar automatiskt. Windows
+använder den dolda VBS-starten i appmappen, inte en fast pythonw.exe-version.
+Ingen Python installeras eller uppdateras genom registreringen.
+
+Inloggningsstart öppnar inte ett befintligt fönster. Första starten är minimerad,
+även om föregående session var maximerad. Ett manuellt startförsök öppnar däremot
+fortfarande den befintliga instansen, enligt tidigare beteende.
+Utan systemfält finns appen minimerad i aktivitetsfältet/Dock.
+
+Om autostart fortfarande uteblir, kontrollera att operativsystemet inte har
+blockerat den: Windows Aktivitetshanteraren → Autostart-appar, macOS
+Systeminställningar → Allmänt → Inloggningsobjekt, respektive Linux skrivbordsinställningar.
+Appen kringgår inte sådana OS-blockeringar. Flyttas appmappen måste appen startas
+från den nya platsen för att skriva om en tidigare aktiverad autostartpost.
+
+macOS: en befintlig LaunchAgent uppdateras på disk för nästa inloggning utan att
+avlasta/terminera den app som just körs. En ny agent laddas med en markerad,
+tyst start. Registreringsfel visas och sparas inte som lyckad aktivering.
