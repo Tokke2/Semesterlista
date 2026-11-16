@@ -19,30 +19,21 @@
 | <img src="assets/brand/car.svg" width="24" alt=""> **Fordon** | Gör körlistor för dina fordon. |
 | <img src="assets/brand/home.svg" width="24" alt=""> **Hyra** | Håll ordning på månads- och kvartalshyresgäster, utskick och betalstatus. Inga fakturor skapas. |
 
-Välj egna bilder och logotyper för PDF:erna. Kalendern kan visa **1–3 månader per blad**.
-Appen har ljust, mörkt och högkontrasttema.
+Välj egna bilder och logotyper för PDF:erna. Kalendern kan visa **1–3 månader per blad**. Appen har ljust, mörkt och högkontrasttema.
 
 ## Kom igång
 
-**Python-val:** först en fungerande installerad **3.15**, sedan **3.14**, därefter
-en annan installerad **3.10+**. Startprogrammet kontrollerar att Qt/reportlab kan
-laddas. Ingen extra Python installeras för att lösa kompatibilitetsproblem.
+**Python-val:** först en fungerande installerad **3.15**, sedan **3.14**, därefter en annan installerad **3.10+**. Startprogrammet kontrollerar att Qt/reportlab kan laddas. Ingen extra Python installeras för att lösa kompatibilitetsproblem.
 
-**1. Hämta och packa upp** senaste versionens **Semesterlista-alla-OS.zip** från
-[Releases](https://github.com/Tokke2/Semesterlista/releases/latest).
-Lägg mappen där du har skrivrättigheter, till exempel i din hemkatalog.
-Behåll filerna tillsammans.
+**1. Hämta och packa upp** senaste versionens **Semesterlista-alla-OS.zip** från [Releases](https://github.com/Tokke2/Semesterlista/releases/latest). Lägg mappen där du har skrivrättigheter, till exempel i din hemkatalog. Behåll filerna tillsammans.
 
 **2. Starta för ditt system:**
 
 ### Windows
 
-Dubbelklicka på **`Starta Semesterlista.vbs`**.
-Startprogrammet skapar även genvägen **`Semesterlista.lnk`** med appens ikon.
+Dubbelklicka på **`Starta Semesterlista.vbs`**. Startprogrammet skapar även genvägen **`Semesterlista.lnk`** med appens ikon.
 
-Befintlig Python återanvänds. Om Python helt saknas kan startprogrammet installera den.
-Saknade tillägg ger ett erbjudande om reparation – inget installeras utan ditt godkännande.
-Windows Script Host behövs för VBS-starten.
+Befintlig Python återanvänds. Om Python helt saknas kan startprogrammet installera den. Saknade tillägg ger ett erbjudande om reparation – inget installeras utan ditt godkännande. Windows Script Host behövs för VBS-starten.
 
 ### macOS och Linux
 
@@ -50,17 +41,9 @@ Samma ZIP innehåller startfiler som kan köras **även utan Python**:
 - **macOS:** dubbelklicka på `Starta Semesterlista macOS.app`.
 - **Linux:** öppna `Starta Semesterlista Linux.desktop` (välj vid behov **Tillåt start**).
 
-Finns Python används den utan installationsfråga. Trasig/äldre Python ger ett fel,
-inte en ny installation. Saknas Python helt erbjuds installation med **Nej som standard**:
-Windows använder senaste stabila winget-versionen, macOS befintlig Homebrew eller
-Python.orgs officiella installerare. Linux använder distributionens senaste
-Python 3 via apt/dnf och kräver administratörsgodkännande; annars visas instruktioner.
-Linux ersätter aldrig systemets Python med en annan version.
+Finns Python används den utan installationsfråga. Trasig/äldre Python ger ett fel, inte en ny installation. Saknas Python helt erbjuds installation med **Nej som standard**: Windows använder senaste stabila winget-versionen, macOS befintlig Homebrew eller Python.orgs officiella installerare. Linux använder distributionens senaste Python 3 via apt/dnf och kräver administratörsgodkännande; annars visas instruktioner. Linux ersätter aldrig systemets Python med en annan version.
 
-macOS-startfilen är inte Apple-notariserad; operativsystemet kan kräva godkännande
-under **Integritet och säkerhet**. Linux behöver Zenity/KDialog för installationsfrågan.
-Ingen separat Python-installerare, uppdaterare eller egen Pythonmiljö följer med.
-Saknade **apptillägg** kan fortfarande ge ett separat erbjudande om reparation.
+macOS-startfilen är inte Apple-notariserad; operativsystemet kan kräva godkännande under **Integritet och säkerhet**. Linux behöver Zenity/KDialog för installationsfrågan. Ingen separat Python-installerare, uppdaterare eller egen Pythonmiljö följer med. Saknade **apptillägg** kan fortfarande ge ett separat erbjudande om reparation.
 
 > **Appen startar alltid minimerad.** Klicka på kalenderikonen i systemfältet
 > för att öppna fönstret. Saknas systemfält finns appen minimerad i aktivitetsfältet/Dock.
@@ -68,8 +51,7 @@ Saknade **apptillägg** kan fortfarande ge ett separat erbjudande om reparation.
 > **Minimera och stäng (X)** gömmer appen i systemfältet. Välj **Avsluta** för att avsluta.
 > Aktivera **Autostart** i inställningarna för minimerad start vid inloggning.
 
-**Hitta appens filer:** högerklicka på kalenderikonen i systemfältet och välj
-**Öppna appmappen**. Då öppnas appens huvudmapp i datorns filhanterare.
+**Hitta appens filer:** högerklicka på kalenderikonen i systemfältet och välj **Öppna appmappen**. Då öppnas appens huvudmapp i datorns filhanterare.
 
 ## Var hamnar mina PDF:er?
 
@@ -83,14 +65,11 @@ export/
 └── Hyra/
 ```
 
-**Äldre PDF:er skrivs inte över.** Nya filer får ett datum-/tidstillägg när namnet redan finns.
-Knappen **Öppna exportmapp** tar dig till listans arkiv. Egna PDF-logotyper ändras inte av appens nya ikonstil.
+**Äldre PDF:er skrivs inte över.** Nya filer får ett datum-/tidstillägg när namnet redan finns. Knappen **Öppna exportmapp** tar dig till listans arkiv. Egna PDF-logotyper ändras inte av appens nya ikonstil.
 
 ## Uppdatera
 
-Välj **Hjälp → Sök efter uppdatering…**. Exportarkivet och användardata skyddas vid uppdatering.
-Python uppdateras inte automatiskt. Om du flyttar appmappen behöver startgenvägen skapas om.
-På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskommandot igen.
+Välj **Hjälp → Sök efter uppdatering…**. Exportarkivet och användardata skyddas vid uppdatering. Python uppdateras inte automatiskt. Om du flyttar appmappen behöver startgenvägen skapas om. På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskommandot igen.
 
 ## Om något inte fungerar
 
@@ -104,8 +83,7 @@ På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskomma
 
 ## Logotyp och utveckling
 
-**Trycklogotyperna ingår i samma release-ZIP som appen**, i `assets/brand/`.
-Färg och svartvitt, helt vektoriserade med bokstäver som banor. Ingen separat nedladdning.
+**Trycklogotyperna ingår i samma release-ZIP som appen**, i `assets/brand/`. Färg och svartvitt, helt vektoriserade med bokstäver som banor. Ingen separat nedladdning.
 
 [Utförlig guide](docs/guide.md) · [Teknisk specifikation](spec.md) · [Ikoner och logotyp](assets/ikon/README.md)
 
@@ -114,20 +92,12 @@ python -m unittest discover -s tests -v
 python tools/bump_version.py --check
 ```
 
-CI testar på Linux, macOS och Windows. Programmet kräver PySide6 och reportlab;
-se [requirements.txt](requirements.txt). Licens: [MIT](LICENSE).
+CI testar på Linux, macOS och Windows. Programmet kräver PySide6 och reportlab; se [requirements.txt](requirements.txt). Licens: [användarvillkor](LICENSE).
 
 ## Licens och frivilligt stöd
 
-Gratis för privat och kommersiell användning. Det oförändrade originalpaketet
-får delas gratis med licensen kvar. Ändring eller försäljning kräver tillstånd;
-se [LICENSE](LICENSE) för fullständiga villkor och undantag för tredjepart.
-Detta är en begränsad licens, inte en OSI-licens för öppen källkod.
+Gratis för privat och kommersiell användning. Det oförändrade originalpaketet får delas gratis med licensen kvar. Ändring eller försäljning kräver tillstånd; se [LICENSE](LICENSE) för fullständiga villkor och undantag för tredjepart. Detta är en begränsad licens, inte en OSI-licens för öppen källkod.
 
-Under **Hjälp → 💚 Stöd Semesterlista** finns en lokal Swish-QR samt PayPal och
-Ko-fi. Valfritt belopp, inga betalväggar. Mottagarna kan inte ändras i appens
-inställningar. QR-koden innehåller mottagarnumret – den är inte kryptering.
-Betalningen godkänns i betaltjänsten, aldrig i appen. Licensen kan läsas i dialogen.
+Under **Hjälp → 💚 Stöd Semesterlista** finns en lokal Swish-QR samt PayPal och Ko-fi. Valfritt belopp, inga betalväggar. Mottagarna kan inte ändras i appens inställningar. QR-koden innehåller mottagarnumret – den är inte kryptering. Betalningen godkänns i betaltjänsten, aldrig i appen. Licensen kan läsas i dialogen.
 
-Tidigare GPL-3.0-utgåvor behåller sina licensrättigheter; de nya villkoren gäller
-inte retroaktivt. Den tidigare licenstexten finns i `docs/licensing/`.
+Tidigare GPL-3.0-utgåvor behåller sina licensrättigheter; de nya villkoren gäller inte retroaktivt. Den tidigare licenstexten finns i `docs/licensing/`. 
