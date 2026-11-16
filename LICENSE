@@ -39,3 +39,8 @@ Alla rättigheter som inte uttryckligen ges här förbehålls rättighetshavaren
 Detta är en egen begränsad licens, inte en öppen källkodslicens enligt OSI.
 För tillstånd utöver licensen, kontakta Rickard Längkvist via projektet:
 https://github.com/Tokke2/Semesterlista
+
+7. Tidigare utgåvor
+Tidigare utgåvor som tillhandahölls under GNU GPL version 3 påverkas inte av
+denna licensändring. Redan beviljade rättigheter under GPL återkallas inte.
+Den tidigare licenstexten finns i docs/licensing/GPL-3.0-previous.txt.
