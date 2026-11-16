@@ -283,7 +283,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.23.0"
+APP_VERSION: str = "2.24.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -816,6 +816,10 @@ class MainWindow(QMainWindow):
         )
         hjalp_menu.addAction(self._update_action)
         hjalp_menu.addSeparator()
+
+        support_action = QAction(i18n.t("donation.title"), self)
+        support_action.triggered.connect(self._show_donation)
+        hjalp_menu.addAction(support_action)
 
         about_action = QAction(
             i18n.t("menu.help.about", app=self._app_name()), self
@@ -1383,6 +1387,10 @@ class MainWindow(QMainWindow):
         # Autostart kan ha ändrats i dialogen
         if self._autostart_action is not None:
             self._autostart_action.setChecked(self._lock.get_autostart())
+
+    def _show_donation(self) -> None:
+        from core.donation_dialog import DonationDialog
+        DonationDialog(self).exec()
 
     def _show_about(self) -> None:
         """

@@ -75,7 +75,7 @@ def verify_archive(path):
         required = ['Starta Semesterlista.vbs', LINUX_DESKTOP, MAC_APP + '/Contents/Info.plist',
                     MAC_APP + '/Contents/MacOS/applet', 'main.pyw', 'tools/start_posix.sh',
                     'assets/brand/logotyp-tryck.svg', 'assets/brand/logotyp-svart.svg',
-                    'assets/brand/FONT-LICENSE.txt']
+                    'assets/brand/FONT-LICENSE.txt', 'LICENSE', 'assets/donation/swish.png']
         for name in required:
             if 'Semesterlista/' + name not in names:
                 raise ValueError('Missing release file: ' + name)

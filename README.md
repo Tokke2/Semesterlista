@@ -116,3 +116,15 @@ python tools/bump_version.py --check
 
 CI testar på Linux, macOS och Windows. Programmet kräver PySide6 och reportlab;
 se [requirements.txt](requirements.txt). Licens: [MIT](LICENSE).
+
+## Licens och frivilligt stöd
+
+Gratis för privat och kommersiell användning. Det oförändrade originalpaketet
+får delas gratis med licensen kvar. Ändring eller försäljning kräver tillstånd;
+se [LICENSE](LICENSE) för fullständiga villkor och undantag för tredjepart.
+Detta är en begränsad licens, inte en OSI-licens för öppen källkod.
+
+Under **Hjälp → 💚 Stöd Semesterlista** finns en lokal Swish-QR samt PayPal och
+Ko-fi. Valfritt belopp, inga betalväggar. Mottagarna kan inte ändras i appens
+inställningar. QR-koden innehåller mottagarnumret – den är inte kryptering.
+Betalningen godkänns i betaltjänsten, aldrig i appen. Licensen kan läsas i dialogen.

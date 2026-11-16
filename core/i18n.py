@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.23.0"
+MODULE_VERSION: str = "2.24.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -156,6 +156,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "menu.view.show_all":              "Visa alla dolda tabbar",
         "menu.appearance":                 "&Utseende",
         "menu.help":                       "&Hjälp",
+        "donation.title": '💚 Stöd Semesterlista',
+        "donation.intro": 'Gillar du Semesterlista? Din frivilliga gåva stödjer fortsatt utveckling och underhåll. Tack för ditt stöd!',
+        "donation.swish": 'Swish · valfritt belopp',
+        "donation.qr_accessible": 'Swish QR-kod för donation till utvecklaren',
+        "donation.qr_missing": 'QR-koden saknas. Hämta det kompletta releasepaketet.',
+        "donation.instructions": 'Öppna Swish och skanna QR-koden. Ange valfritt belopp och kontrollera mottagaren innan du godkänner betalningen.',
+        "donation.voluntary": 'Helt frivilligt. Inga nivåer, inga låsta funktioner och inget köpkrav.',
+        "donation.paypal": 'PayPal ↗',
+        "donation.kofi": 'Ko-fi ↗',
+        "donation.privacy": 'QR-koden skapas lokalt och kontaktar ingen QR-tjänst. PayPal och Ko-fi öppnas i din webbläsare och har egna integritetsvillkor. Appen samlar inte in betaluppgifter.',
+        "donation.license": 'Visa användarlicens',
+        "donation.open_failed": 'Kunde inte öppna webbläsaren. Försök igen efter att ha kontrollerat standardwebbläsaren.',
+        "donation.license_missing": 'LICENSE saknas. Hämta det kompletta releasepaketet.',
         "menu.help.about":                 "&Om {app}...",
         "menu.unknown_tab":                "Okänd",
 
@@ -716,6 +729,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "menu.view.show_all":              "Show all hidden tabs",
         "menu.appearance":                 "&Appearance",
         "menu.help":                       "&Help",
+        "donation.title": '💚 Support Semesterlista',
+        "donation.intro": 'Enjoy Semesterlista? Your voluntary gift supports continued development and maintenance. Thank you!',
+        "donation.swish": 'Swish · any amount',
+        "donation.qr_accessible": 'Swish QR code for a donation to the developer',
+        "donation.qr_missing": 'QR code missing. Download the complete release package.',
+        "donation.instructions": 'Open Swish and scan the QR code. Enter any amount and check the recipient before approving payment.',
+        "donation.voluntary": 'Entirely optional. No tiers, no locked features and no purchase required.',
+        "donation.paypal": 'PayPal ↗',
+        "donation.kofi": 'Ko-fi ↗',
+        "donation.privacy": 'The QR code is generated locally without contacting a QR service. PayPal and Ko-fi open in your browser and have their own privacy terms. The app does not collect payment details.',
+        "donation.license": 'View user license',
+        "donation.open_failed": 'Could not open your browser. Check your default browser and try again.',
+        "donation.license_missing": 'LICENSE missing. Download the complete release package.',
         "menu.help.about":                 "&About {app}...",
         "menu.unknown_tab":                "Unknown",
 

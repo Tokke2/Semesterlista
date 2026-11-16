@@ -3300,3 +3300,12 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - GitHub release-workflow laddar upp ett enda färdigt ZIP, inga separata printfiler.
 - Tester för befintlig Python, trasig Python, Nej, normaliserad shellstart, native
   Linux desktop-start, macOS native bundle, arkivinnehåll och Windows senaste stabila.
+
+## 55. Licens och frivilliga donationer (2.24.0)
+- LICENSE: gratis privat/kommersiell användning, gratis oförändrad delning.
+  Ändring/försäljning kräver tillstånd, tredjepartslicenser har företräde.
+- Hjälpmeny: lokal, rullningsbar donationsdialog med SV/EN och appens ikon.
+- Fast Swish QR C0721817177;;Semesterlista;6, utan förvalt belopp, lokalt PNG.
+- Fasta PayPal/Ko-fi-adresser, inga mottagarinställningar eller betalningsinsamling.
+- Licensvisare skrivskyddad. Källfiler är inte tekniskt manipulationssäkra.
+- LICENSE och QR inkluderas och kontrolleras i det gemensamma releasepaketet.
