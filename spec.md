@@ -3285,3 +3285,18 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - README instruerar att tryckmaterialet ingår i samma release-ZIP som appen.
 - Arkivtest verifierar app, print-SVG, licens och ikoner i Git-baserat releasepaket.
 - Oförändrat autostart-, tray-, OS-, Python- och PDF-beteende.
+
+## 54. En release, ett paket, start utan Python på alla OS (v2.23.0)
+
+- Gemensamt Semesterlista-alla-OS.zip med en tydlig startfil per OS, app och tryck.
+- Windows VBS, macOS native applet och Linux Desktop Entry. POSIX-payload är CRLF
+  i källan och normaliseras före körning utan beroende av Python.
+- Ingen separat Python-installerare/uppdaterare. Extra CMD-startfil borttagen.
+- Befintlig Python ger aldrig installationsfråga. Upptäckt trasig/äldre installation
+  ger fel. Saknad Python kräver explicit Ja (default Nej) före ändring.
+- WinGet senaste stabila manifest väljs dynamiskt; macOS Homebrew eller officiell
+  installersida; Linux distributionens Python via apt/dnf/pkexec, aldrig globalt byte.
+- Paketerare bygger riktig macOS-app med ikon och lokal signatur, inte notariserad.
+- GitHub release-workflow laddar upp ett enda färdigt ZIP, inga separata printfiler.
+- Tester för befintlig Python, trasig Python, Nej, normaliserad shellstart, native
+  Linux desktop-start, macOS native bundle, arkivinnehåll och Windows senaste stabila.

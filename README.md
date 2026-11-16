@@ -28,7 +28,7 @@ Appen har ljust, mörkt och högkontrasttema.
 en annan installerad **3.10+**. Startprogrammet kontrollerar att Qt/reportlab kan
 laddas. Ingen extra Python installeras för att lösa kompatibilitetsproblem.
 
-**1. Hämta och packa upp** senaste versionens **Source code (zip)** från
+**1. Hämta och packa upp** senaste versionens **Semesterlista-alla-OS.zip** från
 [Releases](https://github.com/Tokke2/Semesterlista/releases/latest).
 Lägg mappen där du har skrivrättigheter, till exempel i din hemkatalog.
 Behåll filerna tillsammans.
@@ -46,22 +46,21 @@ Windows Script Host behövs för VBS-starten.
 
 ### macOS och Linux
 
-Du behöver en befintlig **Python 3.10+** och en grafisk skrivbordsmiljö.
-Öppna en terminal i appmappen och kör **en gång**:
+Samma ZIP innehåller startfiler som kan köras **även utan Python**:
+- **macOS:** dubbelklicka på `Starta Semesterlista macOS.app`.
+- **Linux:** öppna `Starta Semesterlista Linux.desktop` (välj vid behov **Tillåt start**).
 
-```sh
-python3 tools/install_launcher.py
-```
+Finns Python används den utan installationsfråga. Trasig/äldre Python ger ett fel,
+inte en ny installation. Saknas Python helt erbjuds installation med **Nej som standard**:
+Windows använder senaste stabila winget-versionen, macOS befintlig Homebrew eller
+Python.orgs officiella installerare. Linux använder distributionens senaste
+Python 3 via apt/dnf och kräver administratörsgodkännande; annars visas instruktioner.
+Linux ersätter aldrig systemets Python med en annan version.
 
-Starta sedan utan terminal:
-- **macOS:** dubbelklicka på `Semesterlista.app` i appmappen.
-- **Linux:** välj **Semesterlista** i programmenyn.
-
-Startikonen installerar inte Python och skapar ingen separat Pythonmiljö.
-Saknade tillägg kan repareras efter ditt godkännande. Linux behöver Zenity,
-KDialog eller Tkinter för reparationsdialogen; systembibliotek och skyddad
-system-Python kan kräva manuell hantering. [Läs plattformskraven](docs/guide.md#windows-macos-och-linux-2190).
-macOS-startappen är lokalt skapad, inte en signerad installationsfil med inbyggd Python.
+macOS-startfilen är inte Apple-notariserad; operativsystemet kan kräva godkännande
+under **Integritet och säkerhet**. Linux behöver Zenity/KDialog för installationsfrågan.
+Ingen separat Python-installerare, uppdaterare eller egen Pythonmiljö följer med.
+Saknade **apptillägg** kan fortfarande ge ett separat erbjudande om reparation.
 
 > **Appen startar alltid minimerad.** Klicka på kalenderikonen i systemfältet
 > för att öppna fönstret. Saknas systemfält finns appen minimerad i aktivitetsfältet/Dock.

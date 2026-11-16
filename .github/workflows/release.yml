@@ -1,0 +1,39 @@
+name: Gemensamt releasepaket
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Befintlig releasetagg att paketera
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Kontrollera releasetagg
+        run: |
+          python -c 'import os,re; assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", os.environ["RELEASE_TAG"])'
+          gh release view "$RELEASE_TAG"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Bygg ett ZIP för alla operativsystem
+        run: python tools/build_release.py --output "$RUNNER_TEMP/Semesterlista-alla-OS.zip"
+      - name: Publicera i samma release
+        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/Semesterlista-alla-OS.zip" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

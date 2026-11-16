@@ -107,6 +107,7 @@ function Find-Python {
 function Invoke-Winget([string[]]$Arguments) {
     # Do not hang application startup indefinitely on network/UAC problems.
     $process = Start-Process -FilePath 'winget.exe' -ArgumentList $Arguments -PassThru -NoNewWindow
+    $null = $process.Handle
     if (-not $process.WaitForExit(180000)) {
         $process.Kill()
         throw 'Python-kontrollen tog för lång tid.'
@@ -114,12 +115,46 @@ function Invoke-Winget([string[]]$Arguments) {
     return $process.ExitCode
 }
 
+function Confirm-PythonInstall {
+    Add-Type -AssemblyName System.Windows.Forms
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+        'Python saknas helt. Vill du installera senaste stabila Python? Om winget saknas öppnas den officiella nedladdningssidan. Befintlig Python uppdateras aldrig.',
+        'Semesterlista', [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question, [System.Windows.Forms.MessageBoxDefaultButton]::Button2)
+    return $answer -eq [System.Windows.Forms.DialogResult]::Yes
+}
+
+function Get-LatestPythonPackage {
+    # Only called AFTER confirming Python is absent and the user has consented.
+    $base = 'https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests/p/Python/Python'
+    $headers = @{ 'User-Agent' = 'Semesterlista-bootstrap'; 'Accept' = 'application/vnd.github+json' }
+    $listing = Invoke-RestMethod -Uri $base -Headers $headers -TimeoutSec 30
+    $families = @($listing |
+        Where-Object { $_.type -eq 'dir' -and $_.name -match '^3\.\d+$' } |
+        Sort-Object { [version]$_.name } -Descending)
+    foreach ($family in $families) {
+        $listing = Invoke-RestMethod -Uri ($base + '/' + $family.name) -Headers $headers -TimeoutSec 30
+        $versions = @($listing |
+            Where-Object { $_.type -eq 'dir' -and $_.name -match '^3\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.name } -Descending)
+        if ($versions.Count -gt 0) {
+            return [pscustomobject]@{ Id = ('Python.Python.' + $family.name); Version = $versions[0].name }
+        }
+    }
+    throw 'Kunde inte identifiera en stabil Python-version. Ingen installation gjordes.'
+}
+
 function Update-Python($Python) {
-    # Compatibility name: never upgrade an existing interpreter.
+    # Legacy internal function name, NOT a standalone updater.
     if ($Python) { return $Python }
+    if (-not (Confirm-PythonInstall)) { return $null }
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if (-not $winget) { throw 'Python saknas. Installera Python från python.org eller Windows App Installer (winget).' }
-    $code = Invoke-Winget -Arguments @('install', '--id', 'Python.Python.3.14', '--exact',
+    if (-not $winget) {
+        Start-Process 'https://www.python.org/downloads/windows/'
+        return $null
+    }
+    $package = Get-LatestPythonPackage
+    $code = Invoke-Winget -Arguments @('install', '--id', $package.Id, '--version', $package.Version, '--exact',
         '--source', 'winget', '--scope', 'user', '--silent',
         '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
     if ($code -ne 0) { throw "Python kunde inte installeras (kod $code)." }
@@ -176,6 +211,7 @@ function Start-Runtime($Python, [switch]$Maintenance) {
     # First installation remains possible only if no Python exists at all.
     # No weekly catch-up and no upgrade of existing Python during app startup.
     if (-not $Python) { $Python = Update-Python $null }
+    if (-not $Python) { return 0 } # Declined or official installer page opened.
     return (Invoke-RuntimeCheck -Python $Python)
 }
 

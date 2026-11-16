@@ -19,16 +19,32 @@ if ((Select-CompatiblePython @($p315,$p314,$p312)).minor -ne 14) { throw 'Repair
 if ($null -ne (Select-CompatiblePython @($p39))) { throw 'Unsupported Python 3.9 selected' }
 if ($null -ne (Get-PythonInfo -Executable 'C:\missing-python-for-test\python.exe')) { throw 'Broken executable accepted' }
 Write-Host 'Python 3.15 / 3.14 / system fallback tests passed'
+# Resolve the newest STABLE winget manifest, never a preview or hardcoded version.
+function Invoke-RestMethod {
+    param($Uri, $Headers, $TimeoutSec)
+    if ($Uri -match '/3.16$') { return @([pscustomobject]@{type='dir'; name='3.16.0a1'}) }
+    if ($Uri -match '/3.15$') { return @([pscustomobject]@{type='dir'; name='3.15.1'}, [pscustomobject]@{type='dir'; name='3.15.2'}) }
+    return @([pscustomobject]@{type='dir'; name='3.14'}, [pscustomobject]@{type='dir'; name='3.16'}, [pscustomobject]@{type='dir'; name='3.15'})
+}
+$latest = Get-LatestPythonPackage
+if ($latest.Id -ne 'Python.Python.3.15' -or $latest.Version -ne '3.15.2') { throw 'Latest stable resolution failed' }
+$script:consent = $true
+$script:prompts = 0
+function Confirm-PythonInstall { $script:prompts++; return $script:consent }
 $script:commands = @()
 function Invoke-Winget([string[]]$Arguments) { $script:commands += ,$Arguments; return 0 }
 function Get-Command { return @{ Source = 'winget.exe' } }
 $python = [pscustomobject]@{ major = 3; minor = 12; executable = 'C:\Python312\python.exe' }
 $result = Update-Python $python
-if ($result.executable -ne $python.executable -or $script:commands.Count -ne 0) { throw 'Existing Python must never be upgraded' }
+if ($result.executable -ne $python.executable -or $script:commands.Count -ne 0 -or $script:prompts -ne 0) { throw 'Existing Python must never be prompted or upgraded' }
 $script:detectedPython = $python
 function Find-Python { return $script:detectedPython }
 $result = Update-Python $null
 if ($script:commands.Count -ne 1 -or $script:commands[0][0] -ne 'install') { throw 'First installation broken' }
+$script:consent = $false
+$result = Update-Python $null
+if ($null -ne $result -or $script:commands.Count -ne 1) { throw 'Declined installation changed the system' }
+$script:consent = $true
 Write-Host 'No automatic Python upgrade tests passed'
 
 # Exercise the real GUI launcher using a harmless fake bootstrap in a path

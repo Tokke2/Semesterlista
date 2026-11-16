@@ -393,3 +393,42 @@ från den nya platsen för att skriva om en tidigare aktiverad autostartpost.
 macOS: en befintlig LaunchAgent uppdateras på disk för nästa inloggning utan att
 avlasta/terminera den app som just körs. En ny agent laddas med en markerad,
 tyst start. Registreringsfel visas och sparas inte som lyckad aktivering.
+
+## Ett gemensamt startpaket för alla OS (2.23.0)
+
+Hämta **Semesterlista-alla-OS.zip** i releasen. App, startfiler, ikoner och tryckmaterial
+följer med tillsammans. GitHubs automatiska Source code-arkiv finns för utveckling;
+det färdiga gemensamma ZIP-paketet innehåller även den kompilerade macOS-startappen.
+
+Välj endast startfilen för ditt system:
+- Windows: Starta Semesterlista.vbs (utan terminal).
+- macOS: Starta Semesterlista macOS.app (kräver inte Python för att visa erbjudandet).
+- Linux: Starta Semesterlista Linux.desktop; skrivbordet kan kräva Tillåt start.
+
+Det finns ingen separat Installera senaste Python.bat eller Python-uppdaterare
+i paketet. Den äldre extra Windows-CMD-startfilen ingår inte heller. Om en sådan
+installerare ligger kvar från en annan/gammal nedladdning, använd den inte; packa
+upp den nya releasen i en ren mapp. Vi har inte åtkomst till filer på din dator.
+
+Finns en upptäckbar Python-installation används den. En trasig/äldre upptäckt
+installation ger fel, aldrig ett erbjudande att lägga till en extra Python.
+Installationsfrågan visas endast när Python saknas helt och standardval är Nej.
+- Windows: senaste stabila version i den officiella winget-katalogen hämtas
+  dynamiskt först efter Ja. Utan winget öppnas Python.orgs officiella sida.
+- macOS: befintlig Homebrew kan installera senaste stabila Python. Utan Homebrew
+  öppnas Python.org, där användaren slutför installationen och startar igen.
+- Linux: apt/dnf installerar distributionens senaste tillgängliga Python 3 via
+  pkexec efter Ja och administratörsgodkännande. Andra system får instruktioner.
+  OS-Python byts inte mot en annan global version. Zenity/KDialog behövs för frågan.
+
+Saknas fungerande dialogstöd sker ingen installation. Fel skrivs till
+`data/loggar/fel.log`. Saknade apptillägg har fortsatt en separat reparationsfråga;
+det innebär inte en Python-installation eller Python-uppdatering.
+
+macOS-appen har en lokal ad-hoc-signatur, men är inte Apple-notariserad. macOS
+kan kräva godkännande via Integritet och säkerhet. Flytta inte bara startappen:
+behåll den tillsammans med tools/, assets/ och övriga appfiler.
+
+Release-workflow bygger och verifierar ett ZIP på macOS och publicerar detta i
+samma GitHub-release. Tryck-SVG och licens verifieras inne i paketet. Bygg och
+nedladdning av paketet installerar ingen Python på användarens dator.
