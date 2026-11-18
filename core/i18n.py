@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.25.0"
+MODULE_VERSION: str = "2.25.1"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -157,7 +157,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "menu.appearance":                 "&Utseende",
         "menu.help":                       "&Hjälp",
         "donation.title": '💚 Stöd Semesterlista',
-        "donation.intro": 'Gillar du Semesterlista? Din frivilliga gåva stödjer fortsatt utveckling och underhåll. Tack för ditt stöd!',
+        "donation.intro": 'Gör Semesterlista din vardag enklare? Hjälp till att utveckla planeringen, kalendrarna och utskrifterna vidare. Din frivilliga gåva är ett uppskattat stöd – tack! 💚',
+        "donation.purpose_title": 'Tillsammans gör vi Semesterlista bättre',
+        "donation.purpose": 'Ditt stöd uppmuntrar fortsatt utveckling, buggfixar och tydligare utskrifter för kalender, semester, fordon och hyra. Du behöver aldrig donera för att använda funktionerna.',
+        "donation.other": 'Vill du stödja på annat sätt?',
+        "donation.thanks": 'Även felrapporter, förbättringsförslag och tips till andra användare hjälper. Tack för att du använder Semesterlista!',
         "donation.swish": 'Swish · valfritt belopp',
         "donation.qr_accessible": 'Swish QR-kod för donation till utvecklaren',
         "donation.qr_missing": 'QR-koden saknas. Hämta det kompletta releasepaketet.',
@@ -752,7 +756,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "menu.appearance":                 "&Appearance",
         "menu.help":                       "&Help",
         "donation.title": '💚 Support Semesterlista',
-        "donation.intro": 'Enjoy Semesterlista? Your voluntary gift supports continued development and maintenance. Thank you!',
+        "donation.intro": 'Does Semesterlista make your day easier? Help improve planning, calendars and printed documents. Your voluntary gift is greatly appreciated – thank you! 💚',
+        "donation.purpose_title": 'Together we can improve Semesterlista',
+        "donation.purpose": 'Your support encourages continued development, bug fixes and clearer printed calendars, vacation lists, vehicle sheets and rental documents. Donations are never required to use the features.',
+        "donation.other": 'Prefer another way to support?',
+        "donation.thanks": 'Bug reports, improvement suggestions and recommending the app also help. Thank you for using Semesterlista!',
         "donation.swish": 'Swish · any amount',
         "donation.qr_accessible": 'Swish QR code for a donation to the developer',
         "donation.qr_missing": 'QR code missing. Download the complete release package.',

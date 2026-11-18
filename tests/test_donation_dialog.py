@@ -52,3 +52,17 @@ class DonationDialogTests(unittest.TestCase):
              patch('core.donation_dialog.QMessageBox.warning') as warning:
             dialog._open_payment(PAYPAL_URL)
             warning.assert_called_once()
+
+    def test_paypal_and_kofi_are_buttons_and_only_swish_has_qr(self):
+        from core.donation_dialog import DonationDialog, PAYPAL_URL, KOFI_URL
+        from PySide6.QtWidgets import QLabel, QPushButton
+        dialog = DonationDialog()
+        self.addCleanup(dialog.deleteLater)
+        self.assertIs(dialog.findChild(QLabel, 'swishQr'), dialog.qr)
+        self.assertEqual(list((ROOT / 'assets/donation').glob('*')), [ROOT / 'assets/donation/swish.png'])
+        with patch('core.donation_dialog.QDesktopServices.openUrl', return_value=True) as opened:
+            for name, url in [('donation_paypal', PAYPAL_URL), ('donation_kofi', KOFI_URL)]:
+                button = dialog.findChild(QPushButton, name)
+                self.assertIsNotNone(button)
+                button.click()
+                self.assertEqual(opened.call_args.args[0].toString(), url)

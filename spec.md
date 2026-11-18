@@ -3322,3 +3322,10 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   Stående A4, stor text, fortsättningssidor vid behov, datumarkivering och autoöppning.
 - PDF-datum och fritext skickas inte till externa tjänster. Befintliga månadsscheman
   och deras orienteringsregler ändras inte. SV/EN, tester för sök/PDF/överblick.
+
+## 57. Donationsdialog anpassad till appen (2.25.1)
+- Hjälp → Stöd Semesterlista, native Qt-dialog, ingen stod.html eller webbvy.
+- Endast Swish har lokal QR. PayPal/Ko-fi är vanliga webbläsarknappar, inga QR.
+- Stödtext handlar om appens planering och utskrifter, inga recept, statistik,
+  påhittade procenttal eller löften om kvitton. Frivilligt stöd och fasta mottagare.
+- Knapparnas verkliga klick och mål testas, QR-tillgång oförändrad.
