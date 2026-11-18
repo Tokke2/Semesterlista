@@ -410,15 +410,15 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "update.current":                  "Nuvarande version: {version}",
         "update.check":                    "Sök efter uppdatering",
         "update.checking":                 "Söker efter uppdatering…",
-        "update.available":                "Ny version {version} finns ({date}).",
-        "update.latest":                   "Du har senaste versionen ({version}).",
+        "update.available":                "Releasefiler skiljer sig från din installation ({version}, {date}).",
+        "update.latest":                   "Programfilerna matchar releasen ({version}).",
         "update.error":                    "Kunde inte söka: {error}",
         "update.install":                  "Uppdatera nu",
         "update.downloading":              "Laddar ner… {percent} %",
         "update.installing":               "Installerar…",
         "update.confirm_title":            "Uppdatera",
         "update.confirm":                  (
-            "Uppdatera från {old} till {new}?\n\n"
+            "Installera nya och ändrade releasefiler? Lokal version: {old}. Releaseversion: {new}.\n\n"
             "Dina listor, inställningar och loggar rörs inte. Nuvarande "
             "programfiler säkerhetskopieras i data/backup/."
         ),
@@ -1020,8 +1020,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "update.current":                  "Current version: {version}",
         "update.check":                    "Check for updates",
         "update.checking":                 "Checking for updates…",
-        "update.available":                "New version {version} is available ({date}).",
-        "update.latest":                   "You have the latest version ({version}).",
+        "update.available": 'Release files differ from your installation ({version}, {date}).',
+        "update.latest": 'Program files match the release ({version}).',
         "update.error":                    "Could not check: {error}",
         "update.install":                  "Update now",
         "update.downloading":              "Downloading… {percent} %",

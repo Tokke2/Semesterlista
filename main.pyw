@@ -520,7 +520,7 @@ class StartupUpdateChecker(QObject):
 
     def _run(self) -> None:
         try:
-            info = updater.check_for_update(self._local_version)
+            info = updater.check_for_update(self._local_version, app_dir=PROJECT_ROOT)
         except Exception as exc:  # noqa: BLE001 – nätet får aldrig stoppa appen
             logger.info("Uppdateringskontroll vid start misslyckades: %s", exc)
             self.failed.emit(str(exc))

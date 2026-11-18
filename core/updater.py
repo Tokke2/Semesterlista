@@ -132,10 +132,13 @@ class UpdateInfo:
     local_version: str = ""
     from_api: bool = True
     error: str = ""
+    changed_files: Optional[int] = None
 
     @property
     def available(self) -> bool:
         """True om GitHub-versionen är nyare än den lokala."""
+        if self.changed_files is not None:
+            return self.changed_files > 0
         if not self.version or not self.local_version:
             return False
         return is_newer(self.version, self.local_version)
@@ -344,6 +347,7 @@ def fetch_version_at_tag(tag: str, timeout: int = TIMEOUT) -> str:
 def check_for_update(
     local_version: str,
     timeout: int = TIMEOUT,
+    app_dir: Optional[Path] = None,
 ) -> UpdateInfo:
     """
     Jämför appens version med senaste releasen på GitHub.
@@ -386,6 +390,15 @@ def check_for_update(
         logger.warning(
             "Kunde inte läsa versionen ur config.json – använder taggen %s", tag
         )
+
+    if app_dir is not None:
+        if not info.zip_url:
+            raise UpdateError("Releasen saknar nedladdningsbart paket för filjämförelse.")
+        with tempfile.TemporaryDirectory(prefix="semesterlista_compare_") as temporary:
+            archive = download_release(info, Path(temporary) / "release.zip", timeout=timeout)
+            comparison = install_from_zip(archive, Path(app_dir), local_version=local_version, dry_run=True)
+            info.version = comparison.version
+            info.changed_files = comparison.file_count
 
     logger.info(
         "Uppdateringskontroll: lokal %s, GitHub %s (%s) → %s",
@@ -668,9 +681,9 @@ def install_from_zip(
         root = safe_extract(zip_path, Path(tmp))
         version = verify_payload(root)
 
-        if local_version and not is_newer(version, local_version):
+        if local_version and is_newer(local_version, version):
             raise UpdateError(
-                f"Releasen ({version}) är inte nyare än {local_version}."
+                f"Releasen ({version}) är äldre än {local_version}."
             )
 
         files = _iter_payload_files(root)

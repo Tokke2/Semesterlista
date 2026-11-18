@@ -76,3 +76,30 @@ class DeltaUpdateTests(unittest.TestCase):
             with self.assertRaises(updater.UpdateError):
                 updater.compare_payload(source, app, [Path('file')])
             self.assertEqual(outside.read_text(), 'keep')
+
+    def test_same_version_compares_actual_files(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            app = root / 'app'
+            app.mkdir()
+            archive = make_release_zip(root / 'release.zip', version='2.26.0')
+            updater.install_from_zip(archive, app, local_version='2.26.0')
+            info = {'tag_name': 'v0.0.36', 'zipball_url': 'https://example.invalid/release.zip'}
+            def download(info, target, **kwargs):
+                shutil.copyfile(archive, target)
+                return target
+            with patch.object(updater, 'fetch_latest_release', return_value=info), \
+                 patch.object(updater, 'fetch_version_at_tag', return_value='2.26.0'), \
+                 patch.object(updater, 'download_release', side_effect=download):
+                identical = updater.check_for_update('2.26.0', app_dir=app)
+                self.assertFalse(identical.available)
+                self.assertEqual(identical.changed_files, 0)
+                (app / 'main.pyw').write_text('changed locally')
+                changed = updater.check_for_update('2.26.0', app_dir=app)
+                self.assertTrue(changed.available)
+                self.assertEqual(changed.changed_files, 1)
+                self.assertEqual((app / 'main.pyw').read_text(), 'changed locally')
+                result = updater.install_from_zip(archive, app, local_version='2.26.0')
+                self.assertEqual(result.files, ['main.pyw'])
+                self.assertIsNotNone(result.backup)

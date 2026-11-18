@@ -3349,3 +3349,11 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Inställningar har egen Uppdateringar-flik, skrivskyddad filrapport efter installation,
   flikscrollning och radbrytning av långa formulärfält. Menyn grupperar navigation,
   moduler samt stöd/information. Samtycke och minimerad omstart behålls.
+
+## 60. Fast appversion och filbaserad uppdateringskontroll
+- Appversionen ligger kvar på 2.26.0, ingen automatisk versionshöjning vid kodändring.
+- Både startkontroll och manuell sökning hämtar releasepaketet i bakgrunden och
+  torrkör SHA-256-jämförelsen. Samma version med ändrade filer ger erbjudande.
+- Identiska programfiler ger inget erbjudande; noll ändringar vid installation
+  ger ingen omstartsfråga. Äldre appversioner nekas fortfarande som nedgradering.
+- Nya releasetaggar identifierar byggen, appens versionsnummer förblir oförändrat.

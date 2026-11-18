@@ -545,7 +545,7 @@ class SettingsDialog(QDialog):
     def _check_worker(self) -> None:
         """Arbetstråd: fråga GitHub efter senaste releasen."""
         try:
-            info = updater.check_for_update(self._app_version)
+            info = updater.check_for_update(self._app_version, app_dir=self._app_dir())
             self._update_signals.checked.emit(info, None)
         except Exception as exc:  # noqa: BLE001 – allt ska bli ett meddelande
             logger.warning("Uppdateringskontrollen misslyckades: %s", exc)
@@ -676,6 +676,11 @@ class SettingsDialog(QDialog):
                 backup=result.backup or "—",
             )
         )
+        if result.file_count == 0:
+            self.update_status_label.setText(i18n.t("update.latest", version=result.version))
+            self.update_install_button.setEnabled(False)
+            return
+
         report = []
         for key, names in (("update.added", result.added), ("update.changed", result.changed),
                            ("update.unchanged", result.unchanged), ("update.protected", result.skipped)):
