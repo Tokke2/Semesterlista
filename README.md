@@ -10,6 +10,12 @@
   <a href="https://github.com/Tokke2/Semesterlista/issues">Rapportera ett problem</a>
 </p>
 
+## Ny överblick och snabbare arbete
+
+**Startsida** visar listantal och registrerad semester kommande 30 dagar. **Ctrl+K** söker i aktiva listor och öppnar rätt modul med postens uppgifter, eller går till en funktion. Inga listdata skickas till en söktjänst.
+
+Under **Fordon → Förarvänligt körblad** fyller du i datum, fordon, förare, tider, hämtadress, destination och anteckningar. En stor, lättläst A4-PDF sparas i `export/Fordon` och öppnas automatiskt. Formuläret är inte en bokning och sparas inte separat. Körstatus och individuell betalstatus finns ännu inte i startsidans överblick.
+
 ## Vad kan jag göra?
 
 | Flik | Funktion |

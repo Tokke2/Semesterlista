@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.24.0"
+MODULE_VERSION: str = "2.25.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -169,6 +169,28 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "donation.license": 'Visa användarlicens',
         "donation.open_failed": 'Kunde inte öppna webbläsaren. Försök igen efter att ha kontrollerat standardwebbläsaren.',
         "donation.license_missing": 'LICENSE saknas. Hämta det kompletta releasepaketet.',
+        'work.home': 'Startsida',
+        'work.search': 'Sök och gå till… (Ctrl+K)',
+        'work.settings': 'Inställningar',
+        'work.refresh': 'Uppdatera överblick',
+        'work.placeholder': 'Sök namn, fordon, hyresgäst eller funktion…',
+        'work.no_results': 'Inga träffar. Prova ett annat sökord.',
+        'work.welcome': 'Din överblick · {date}',
+        'work.scope': 'Aktuella listor och registrerad semester de närmaste 30 dagarna. Årslösa semesterdatum tolkas i innevarande år. Körningar med tider och individuella betalstatusar lagras ännu inte – därför visas inga sådana statusar här. Ctrl+K öppnar moduler och visar hittade listposter.',
+        'work.count': '{name} · {count} listposter',
+        'work.invalid': '{count} datumrader kunde inte tolkas. Kontrollera semesterlistan.',
+        'work.empty': 'Inga aktiva moduler med listdata.',
+        'work.read_error': '{name}: kunde inte läsa listan – {error}',
+        'driver.title': 'Förarvänligt körblad',
+        'driver.date': 'Datum',
+        'driver.vehicle': 'Fordon',
+        'driver.driver': 'Förare',
+        'driver.time': 'Tid / tider',
+        'driver.pickup': 'Hämtadress',
+        'driver.destination': 'Destination',
+        'driver.notes': 'Anteckningar',
+        'driver.export': 'Skapa och öppna PDF',
+        'driver.hint': 'Ett separat körblad i stående A4 med stor text. Fyll i uppgifterna eller lämna tomma fält för handskrift. PDF:en arkiveras i export/Fordon; formuläret sparas inte som en bokning. Långa texter fortsätter på nästa sida.',
         "menu.help.about":                 "&Om {app}...",
         "menu.unknown_tab":                "Okänd",
 
@@ -742,6 +764,28 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "donation.license": 'View user license',
         "donation.open_failed": 'Could not open your browser. Check your default browser and try again.',
         "donation.license_missing": 'LICENSE missing. Download the complete release package.',
+        'work.home': 'Home',
+        'work.search': 'Search and go to… (Ctrl+K)',
+        'work.settings': 'Settings',
+        'work.refresh': 'Refresh overview',
+        'work.placeholder': 'Search a name, vehicle, tenant or command…',
+        'work.no_results': 'No matches. Try another search term.',
+        'work.welcome': 'Your overview · {date}',
+        'work.scope': 'Current lists and recorded vacation within the next 30 days. Vacation dates without a year use the current year. Timed trips and individual payment statuses are not stored yet, so none are shown here. Ctrl+K opens modules and displays matching list entries.',
+        'work.count': '{name} · {count} list entries',
+        'work.invalid': '{count} date entries could not be parsed. Check the vacation list.',
+        'work.empty': 'No active modules with list data.',
+        'work.read_error': '{name}: could not read the list – {error}',
+        'driver.title': 'Driver-friendly trip sheet',
+        'driver.date': 'Date',
+        'driver.vehicle': 'Vehicle',
+        'driver.driver': 'Driver',
+        'driver.time': 'Time / times',
+        'driver.pickup': 'Pickup address',
+        'driver.destination': 'Destination',
+        'driver.notes': 'Notes',
+        'driver.export': 'Create and open PDF',
+        'driver.hint': 'A separate portrait A4 trip sheet with large text. Enter details or leave fields blank for handwriting. The PDF is archived in export/Fordon; this form is not saved as a booking. Long text continues on the next page.',
         "menu.help.about":                 "&About {app}...",
         "menu.unknown_tab":                "Unknown",
 

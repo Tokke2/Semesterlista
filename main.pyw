@@ -283,7 +283,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.24.0"
+APP_VERSION: str = "2.25.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -604,6 +604,11 @@ class MainWindow(QMainWindow):
 
         # Ladda plugins som tabbar
         self._load_plugin_tabs()
+        from core.workbench import StartPage
+        self._start_page = StartPage(self)
+        self._tab_positions = {pid: index + 1 for pid, index in self._tab_positions.items()}
+        self._tab_widget.insertTab(0, self._start_page, i18n.t("work.home"))
+        self._tab_widget.setCurrentIndex(0)
 
         # Återställ fönsterposition
         self._restore_window_state()
@@ -837,6 +842,12 @@ class MainWindow(QMainWindow):
             return
 
         self._visa_menu.clear()
+        home_action = self._visa_menu.addAction(i18n.t("work.home"))
+        home_action.triggered.connect(self._show_start)
+        search_action = self._visa_menu.addAction(i18n.t("work.search"))
+        search_action.setShortcut("Ctrl+K")
+        search_action.triggered.connect(self._show_search)
+        self._visa_menu.addSeparator()
         self._tab_actions = {}
 
         for plugin_id in self._plugin_manager.get_plugin_order():
@@ -893,6 +904,9 @@ class MainWindow(QMainWindow):
                         i18n.plugin_display_name_qt(plugin.get_name()),
                     )
 
+        if hasattr(self, "_start_page"):
+            self._start_page.refresh()
+            self._tab_widget.setTabText(self._tab_widget.indexOf(self._start_page), i18n.t("work.home"))
         self.set_status(i18n.t("status.ready"))
 
         if self._tray_manager is not None:
@@ -1387,6 +1401,14 @@ class MainWindow(QMainWindow):
         # Autostart kan ha ändrats i dialogen
         if self._autostart_action is not None:
             self._autostart_action.setChecked(self._lock.get_autostart())
+
+    def _show_start(self) -> None:
+        self._tab_widget.setCurrentWidget(self._start_page)
+        self._start_page.refresh()
+
+    def _show_search(self) -> None:
+        from core.workbench import SearchDialog
+        SearchDialog(self).exec()
 
     def _show_donation(self) -> None:
         from core.donation_dialog import DonationDialog

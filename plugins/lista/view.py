@@ -623,6 +623,11 @@ class SemesterlistaView(QWidget):
 
 
 
+        if self._fixed_mode == "Limokörning":
+            driver = QPushButton(i18n.t("driver.title"))
+            driver.clicked.connect(self._driver_sheet)
+            layout.addWidget(driver)
+
         test_btn = QPushButton(i18n.t("lista.button.tests"))
         test_btn.setMinimumHeight(36)
         test_btn.clicked.connect(self._run_tests)
@@ -744,6 +749,16 @@ class SemesterlistaView(QWidget):
             mode = self._fixed_mode or self.mode_combo.currentText()
             name = self._default_file if mode == "Limokörning" else "Anställda.txt"
         return resolve_path(name)
+
+    def _driver_sheet(self):
+        from core.driver_sheet import show_driver_sheet
+        from core.roster import RosterError
+        try:
+            vehicles = read_names(self._current_list_path())
+        except (OSError, RosterError) as exc:
+            QMessageBox.warning(self, i18n.t("driver.title"), str(exc))
+            return
+        show_driver_sheet(self, vehicles)
 
     def _pdf_appearance(self):
         from core.seasonal_options import edit_seasonal_options

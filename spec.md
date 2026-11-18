@@ -3309,3 +3309,16 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Fasta PayPal/Ko-fi-adresser, inga mottagarinställningar eller betalningsinsamling.
 - Licensvisare skrivskyddad. Källfiler är inte tekniskt manipulationssäkra.
 - LICENSE och QR inkluderas och kontrolleras i det gemensamma releasepaketet.
+
+## 56. Startsida, körblad och Ctrl+K (2.25.0)
+- Startsida först i tabbkontrollen utan att ändra alltid-minimerad-start.
+- Läser aktuella listfiler från aktiva modulers vyer; visar listantal och
+  semesterperioder som överlappar idag till idag+30. Årslösa datum använder aktuellt år.
+- Saknad/trasig lista visas som fel, inte falskt nollantal. Inga betal- eller
+  körstatusar härleds ur namnlistor. De delarna av förslag 1 återstår.
+- Ctrl+K/Visa-meny söker lokalt, skiftlägesokänsligt, med alla sökord. Aktivera
+  post öppnar rätt modul (även dold) och visar postens uppgifter skrivskyddat.
+- Separat förarvänligt körblad i Fordon, manuellt formulär, ingen bokningslagring.
+  Stående A4, stor text, fortsättningssidor vid behov, datumarkivering och autoöppning.
+- PDF-datum och fritext skickas inte till externa tjänster. Befintliga månadsscheman
+  och deras orienteringsregler ändras inte. SV/EN, tester för sök/PDF/överblick.
