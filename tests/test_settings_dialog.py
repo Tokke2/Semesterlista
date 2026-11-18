@@ -162,7 +162,7 @@ class SettingsDialogTests(unittest.TestCase):
         for language in ("sv", "en"):
             self.i18n.set_language(language)
             dialog = self.make_dialog()
-            dialog._tabs.setCurrentIndex(3)
+            dialog._tabs.setCurrentIndex(dialog._tabs.count() - 1)
             dialog.update_status_label.setText("Release notes\n" * 35)
             dialog.resize(560, 420)
             dialog.show()
