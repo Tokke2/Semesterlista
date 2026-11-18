@@ -203,7 +203,8 @@ def main():
         def launch():
             # The launcher owns the maintenance mutex throughout the app lifetime.
             return subprocess.run([str(executable), str(ROOT / "main.pyw")], env=env,
-                                  cwd=ROOT).returncode
+                                  cwd=ROOT,
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode
 
         code = launch()
         if code != DEPENDENCY_EXIT_CODE:

@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.25.1"
+MODULE_VERSION: str = "2.25.2"
 
 #: Mapp (relativt appens rot) där bilder letas upp
 ASSET_DIR_NAME: str = "assets"
@@ -415,6 +415,7 @@ def convert_eps_to_png(path: Union[str, Path], dpi: int = CONVERT_DPI) -> Path:
             capture_output=True,
             text=True,
             timeout=120,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as exc:

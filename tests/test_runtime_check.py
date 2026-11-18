@@ -53,12 +53,14 @@ class RuntimeTests(unittest.TestCase):
         with patch.object(sys, "argv", ["runtime_check.py"]), \
              patch("core.logging_setup.setup_logging"), \
              patch.object(runtime.logging, "shutdown"), \
+             patch.object(runtime.subprocess, "CREATE_NO_WINDOW", 0x08000000, create=True), \
              patch.object(runtime, "prepare_environment") as prepare, \
              patch.object(runtime.subprocess, "run") as launch:
             launch.return_value.returncode = 0
             self.assertEqual(runtime.main(), 0)
             prepare.assert_not_called()
             launch.assert_called_once()
+            self.assertEqual(launch.call_args.kwargs["creationflags"], 0x08000000)
 
     def test_scheduled_maintenance_does_not_launch_app(self):
         with patch.object(sys, "argv", ["runtime_check.py", "--maintenance-only"]), \

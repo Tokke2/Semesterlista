@@ -3329,3 +3329,11 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Stödtext handlar om appens planering och utskrifter, inga recept, statistik,
   påhittade procenttal eller löften om kvitton. Frivilligt stöd och fasta mottagare.
 - Knapparnas verkliga klick och mål testas, QR-tillgång oförändrad.
+
+## 58. Terminalfri start och bakgrundskonvertering (2.25.2)
+- VBS döljer PowerShell före start; Pythonprober och paketkontroller är terminalfria.
+- Även runtime-start av huvudappen och Ghostscript/EPS-konvertering anger
+  CREATE_NO_WINDOW på Windows (0 på POSIX), så bildhantering inte blinkar en konsol.
+- Swish-QR visas lokalt, ingen skannerprocess eller terminal startas.
+- Alltid-minimerad start till tray/Dock/aktivitetsfält behålls oförändrad.
+- Dialoger för samtycke/fel och OS-behörigheter är fortsatt tillåtna, inte terminaler.
