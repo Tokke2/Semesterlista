@@ -190,10 +190,10 @@ class SettingsDialogTests(unittest.TestCase):
     def test_module_version(self) -> None:
         self.assertEqual(MODULE_VERSION, APP_VERSION)
 
-    def test_has_four_tabs(self) -> None:
+    def test_has_five_tabs(self) -> None:
         dialog = self.make_dialog()
-        self.assertEqual(dialog._tabs.count(), 4)
-        titles = [dialog._tabs.tabText(i) for i in range(4)]
+        self.assertEqual(dialog._tabs.count(), 5)
+        titles = [dialog._tabs.tabText(i) for i in range(5)]
         self.assertEqual(
             titles,
             [
@@ -201,6 +201,7 @@ class SettingsDialogTests(unittest.TestCase):
                 self.i18n.t("settings.tab.window"),
                 self.i18n.t("settings.tab.plugins"),
                 self.i18n.t("settings.tab.advanced"),
+                self.i18n.t("settings.tab.updates"),
             ],
         )
 
@@ -240,7 +241,7 @@ class SettingsDialogTests(unittest.TestCase):
         dialog = self.make_dialog(
             theme_manager=None, lock=None, plugin_manager=None, event_bus=None
         )
-        self.assertEqual(dialog._tabs.count(), 4)
+        self.assertEqual(dialog._tabs.count(), 5)
 
     # ── Inläsning ────────────────────────────────────────
 

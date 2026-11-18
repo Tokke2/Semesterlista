@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────
 # Modulversion – synkad med APP_VERSION i main.py
 # ──────────────────────────────────────────────────────────
-MODULE_VERSION: str = "2.25.2"
+MODULE_VERSION: str = "2.26.0"
 
 # Standard- och reservspråk
 DEFAULT_LANGUAGE: str = "sv"
@@ -195,6 +195,17 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'driver.notes': 'Anteckningar',
         'driver.export': 'Skapa och öppna PDF',
         'driver.hint': 'Ett separat körblad i stående A4 med stor text. Fyll i uppgifterna eller lämna tomma fält för handskrift. PDF:en arkiveras i export/Fordon; formuläret sparas inte som en bokning. Långa texter fortsätter på nästa sida.',
+        'settings.tab.updates': 'Uppdateringar',
+        'update.file_hint': 'Releasepaketets programfiler jämförs med dina filer med SHA-256. Bara nya och ändrade filer installeras. Användardata, PDF-arkiv och native macOS-startapp skyddas. Äldre lokala filer raderas inte.',
+        'update.report_hint': 'Efter installation visas vilka filer som var nya, ändrade, oförändrade eller skyddade.',
+        'update.report_title': 'Filjämförelse med releasen',
+        'update.added': 'Nya filer: {count}',
+        'update.changed': 'Ändrade filer: {count}',
+        'update.unchanged': 'Oförändrade filer: {count}',
+        'update.protected': 'Skyddade filer i paketet: {count}',
+        'menu.section.navigation': 'Navigering',
+        'menu.section.modules': 'Moduler',
+        'menu.section.support': 'Stöd och information',
         "menu.help.about":                 "&Om {app}...",
         "menu.unknown_tab":                "Okänd",
 
@@ -794,6 +805,17 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'driver.notes': 'Notes',
         'driver.export': 'Create and open PDF',
         'driver.hint': 'A separate portrait A4 trip sheet with large text. Enter details or leave fields blank for handwriting. The PDF is archived in export/Fordon; this form is not saved as a booking. Long text continues on the next page.',
+        'settings.tab.updates': 'Updates',
+        'update.file_hint': 'Release program files are compared with your files using SHA-256. Only new and changed files are installed. User data, PDF archives and the native macOS starter are protected. Old local files are not deleted.',
+        'update.report_hint': 'After installation, this shows new, changed, unchanged and protected files.',
+        'update.report_title': 'Release file comparison',
+        'update.added': 'New files: {count}',
+        'update.changed': 'Changed files: {count}',
+        'update.unchanged': 'Unchanged files: {count}',
+        'update.protected': 'Protected files in package: {count}',
+        'menu.section.navigation': 'Navigation',
+        'menu.section.modules': 'Modules',
+        'menu.section.support': 'Support and information',
         "menu.help.about":                 "&About {app}...",
         "menu.unknown_tab":                "Unknown",
 

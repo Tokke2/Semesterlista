@@ -56,6 +56,7 @@ from PySide6.QtWidgets import (
     QLayout,
     QMessageBox,
     QPushButton,
+    QPlainTextEdit,
     QScrollArea,
     QSpinBox,
     QTabWidget,
@@ -75,7 +76,7 @@ from core.logging_setup import (
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.25.2"
+MODULE_VERSION: str = "2.26.0"
 
 #: Temanycklar i den ordning de visas
 THEME_ORDER: tuple = ("system", "light", "dark", "contrast")
@@ -174,6 +175,9 @@ class SettingsDialog(QDialog):
         self._tabs.addTab(self._scrollable_tab(self._create_window_tab()), i18n.t("settings.tab.window"))
         self._tabs.addTab(self._scrollable_tab(self._create_plugins_tab()), i18n.t("settings.tab.plugins"))
         self._tabs.addTab(self._scrollable_tab(self._create_advanced_tab()), i18n.t("settings.tab.advanced"))
+        self._tabs.addTab(self._scrollable_tab(self._create_updates_tab()), i18n.t("settings.tab.updates"))
+        self._tabs.setUsesScrollButtons(True)
+        self._tabs.setDocumentMode(True)
         layout.addWidget(self._tabs, 1)
 
         # Data-mapp
@@ -217,6 +221,8 @@ class SettingsDialog(QDialog):
 
         appearance = QGroupBox(i18n.t("settings.group.appearance"))
         form = QFormLayout(appearance)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        form.setVerticalSpacing(12)
 
         self.language_combo = QComboBox()
         for code, name in i18n.LANGUAGES.items():
@@ -233,6 +239,7 @@ class SettingsDialog(QDialog):
 
         holidays = QGroupBox(i18n.t("settings.group.holidays"))
         holiday_form = QFormLayout(holidays)
+        holiday_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.holiday_combo = QComboBox()
         for region in HOLIDAY_REGIONS:
@@ -427,7 +434,6 @@ class SettingsDialog(QDialog):
         inner.addLayout(error_row)
 
         layout.addWidget(group)
-        layout.addWidget(self._create_update_group())
         layout.addStretch()
         return page
 
@@ -449,6 +455,16 @@ class SettingsDialog(QDialog):
         if size >= 1024 * 1024:
             return f"{size / (1024 * 1024):.1f} MB".replace(".", ",")
         return f"{size / 1024:.0f} kB"
+
+    def _create_updates_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        hint = QLabel(i18n.t("update.file_hint"))
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        layout.addWidget(self._create_update_group())
+        layout.addStretch()
+        return page
 
     def _create_update_group(self) -> QGroupBox:
         """Uppdatering från GitHub Releases (v2.9.0)."""
@@ -485,6 +501,12 @@ class SettingsDialog(QDialog):
 
         button_row.addStretch()
         inner.addLayout(button_row)
+        self.update_file_report = QPlainTextEdit()
+        self.update_file_report.setReadOnly(True)
+        self.update_file_report.setPlaceholderText(i18n.t("update.report_hint"))
+        self.update_file_report.setMinimumHeight(120)
+        self.update_file_report.setAccessibleName(i18n.t("update.report_title"))
+        inner.addWidget(self.update_file_report)
         return group
 
     # ──────────────────────────────────────────────────────
@@ -515,7 +537,7 @@ class SettingsDialog(QDialog):
         threading.Thread(target=self._check_worker, daemon=True).start()
 
     def show_update_check(self) -> None:
-        """Visa Avancerat-fliken och sök direkt efter uppdatering."""
+        """Visa uppdateringsfliken och sök direkt efter uppdatering."""
         if self._tabs.count():
             self._tabs.setCurrentIndex(self._tabs.count() - 1)
         self.check_for_updates()
@@ -654,6 +676,11 @@ class SettingsDialog(QDialog):
                 backup=result.backup or "—",
             )
         )
+        report = []
+        for key, names in (("update.added", result.added), ("update.changed", result.changed),
+                           ("update.unchanged", result.unchanged), ("update.protected", result.skipped)):
+            report.append(i18n.t(key, count=len(names)) + "\n" + "\n".join(names))
+        self.update_file_report.setPlainText("\n\n".join(report))
         self.update_install_button.setEnabled(False)
 
         if self.event_bus is not None:

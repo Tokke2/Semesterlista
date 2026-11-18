@@ -283,7 +283,7 @@ if TYPE_CHECKING:
 # ──────────────────────────────────────────────────────────
 # Applikationsversion – EN källa för alla versioner
 # ──────────────────────────────────────────────────────────
-APP_VERSION: str = "2.25.2"
+APP_VERSION: str = "2.26.0"
 
 # ──────────────────────────────────────────────────────────
 # Copyright-år – dynamiskt
@@ -822,6 +822,7 @@ class MainWindow(QMainWindow):
         hjalp_menu.addAction(self._update_action)
         hjalp_menu.addSeparator()
 
+        hjalp_menu.addSection(i18n.t("menu.section.support"))
         support_action = QAction(i18n.t("donation.title"), self)
         support_action.triggered.connect(self._show_donation)
         hjalp_menu.addAction(support_action)
@@ -842,12 +843,13 @@ class MainWindow(QMainWindow):
             return
 
         self._visa_menu.clear()
+        self._visa_menu.addSection(i18n.t("menu.section.navigation"))
         home_action = self._visa_menu.addAction(i18n.t("work.home"))
         home_action.triggered.connect(self._show_start)
         search_action = self._visa_menu.addAction(i18n.t("work.search"))
         search_action.setShortcut("Ctrl+K")
         search_action.triggered.connect(self._show_search)
-        self._visa_menu.addSeparator()
+        self._visa_menu.addSection(i18n.t("menu.section.modules"))
         self._tab_actions = {}
 
         for plugin_id in self._plugin_manager.get_plugin_order():

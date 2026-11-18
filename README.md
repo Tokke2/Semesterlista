@@ -75,6 +75,8 @@ export/
 
 ## Uppdatera
 
+**Inställningar → Uppdateringar** har en egen flik. Programfiler jämförs med releasepaketet med SHA-256; bara nya och ändrade filer ersätts. Efter installation visas en filrapport. Oförändrade filer och skyddade användardata lämnas orörda. Gamla lokala filer raderas inte.
+
 Välj **Hjälp → Sök efter uppdatering…**. Exportarkivet och användardata skyddas vid uppdatering. Python uppdateras inte automatiskt. Om du flyttar appmappen behöver startgenvägen skapas om. På macOS: ta först bort den gamla `Semesterlista.app` och kör startikonskommandot igen.
 
 ## Om något inte fungerar

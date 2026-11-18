@@ -3337,3 +3337,15 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Swish-QR visas lokalt, ingen skannerprocess eller terminal startas.
 - Alltid-minimerad start till tray/Dock/aktivitetsfält behålls oförändrad.
 - Dialoger för samtycke/fel och OS-behörigheter är fortsatt tillåtna, inte terminaler.
+
+## 59. Filjämförande uppdatering och tydligare navigation (2.26.0)
+- Väljer Semesterlista-alla-OS.zip i releasen om den finns; sourcezip som äldre fallback.
+- SHA-256 jämför varje uppdateringsbar fil: ny, ändrad eller oförändrad. Bara nya och
+  ändrade kopieras; oförändrades tidsstämplar lämnas orörda. Skyddade mappar undantas.
+- Torrkörning ger samma filklassificering utan skrivning. Ingen automatisk radering
+  av gamla lokala filer. Mac-startappen skyddas fortsatt från uppdatering.
+- Säkerhetskopieringsfel stoppar installationen innan skrivning. Unika temporära
+  filer, hashkontroll före atomärt filbyte och avvisning av lokala symboliska länkar.
+- Inställningar har egen Uppdateringar-flik, skrivskyddad filrapport efter installation,
+  flikscrollning och radbrytning av långa formulärfält. Menyn grupperar navigation,
+  moduler samt stöd/information. Samtycke och minimerad omstart behålls.

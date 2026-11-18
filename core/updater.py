@@ -39,6 +39,7 @@ copyright Rickard Längkvist 2025 – dynamiskt år
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 import platform
@@ -56,7 +57,7 @@ from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
-MODULE_VERSION: str = "2.25.2"
+MODULE_VERSION: str = "2.26.0"
 
 #: GitHub-repot som uppdateringen hämtas från
 GITHUB_OWNER: str = "Tokke2"
@@ -167,6 +168,9 @@ class InstallResult:
     files: List[str] = field(default_factory=list)
     backup: Optional[Path] = None
     skipped: List[str] = field(default_factory=list)
+    added: List[str] = field(default_factory=list)
+    changed: List[str] = field(default_factory=list)
+    unchanged: List[str] = field(default_factory=list)
 
     @property
     def file_count(self) -> int:
@@ -366,6 +370,14 @@ def check_for_update(
         zip_url=str(release.get("zipball_url", "") or ""),
         local_version=local_version,
     )
+
+    # Prefer the actual all-OS release asset, not GitHub's source snapshot.
+    for asset in release.get("assets", []):
+        if asset.get("name") == "Semesterlista-alla-OS.zip" and asset.get("state") == "uploaded":
+            url = str(asset.get("browser_download_url", ""))
+            if url.startswith("https://github.com/Tokke2/Semesterlista/releases/download/"):
+                info.zip_url = url
+                break
 
     info.version = fetch_version_at_tag(tag, timeout=timeout)
     if not info.version:
@@ -584,6 +596,40 @@ def _make_backup(
     return backup_path
 
 
+def _file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(128 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def compare_payload(root: Path, app_dir: Path, files: List[Path]) -> InstallResult:
+    """Compare contents, not timestamps; never follow local symlinks for updates."""
+    result = InstallResult()
+    base = app_dir.resolve()
+    for relative in files:
+        target = app_dir / relative
+        current = app_dir
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                raise UpdateError(f"Symbolisk länk får inte uppdateras: {relative}")
+        if base not in target.resolve().parents:
+            raise UpdateError(f"Mål utanför appmappen: {relative}")
+        name = relative.as_posix()
+        if not target.exists():
+            result.added.append(name)
+        elif not target.is_file():
+            raise UpdateError(f"Målet är inte en fil: {relative}")
+        elif _file_digest(root / relative) == _file_digest(target):
+            result.unchanged.append(name)
+        else:
+            result.changed.append(name)
+    result.files = result.added + result.changed
+    return result
+
+
 def install_from_zip(
     zip_path: Path,
     app_dir: Path,
@@ -631,16 +677,17 @@ def install_from_zip(
         if not files:  # pragma: no cover – verify_payload fångar detta
             raise UpdateError("Releasen innehöll inga filer att installera.")
 
+        comparison = compare_payload(root, app_dir, files)
+        comparison.version = version
+        comparison.skipped = sorted(p.relative_to(root).as_posix() for p in root.rglob("*")
+                                    if p.is_file() and _skip_file(p.relative_to(root)))
+        files = [Path(name) for name in comparison.files]
         if dry_run:
-            logger.info("Torrkörning: %d filer skulle uppdateras till %s", len(files), version)
-            return InstallResult(
-                version=version,
-                files=[str(rel) for rel in files],
-                skipped=sorted({str(p) for p in root.rglob("*") if p.is_file()}
-                               - {str(root / rel) for rel in files}),
-            )
+            return comparison
 
         backup = _make_backup(app_dir, files, local_version, version, backup_dir)
+        if comparison.changed and backup is None:
+            raise UpdateError("Säkerhetskopian kunde inte skapas. Inga filer har ändrats.")
 
         copied: List[str] = []
         for relative in files:
@@ -649,9 +696,16 @@ def install_from_zip(
             try:
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 # Skriv via temp-fil så att en halv fil aldrig blir kvar
-                temp_target = destination.with_name(destination.name + ".new")
-                shutil.copy2(source, temp_target)
-                os.replace(temp_target, destination)
+                descriptor, temporary = tempfile.mkstemp(prefix=".update-", dir=destination.parent)
+                os.close(descriptor)
+                temp_target = Path(temporary)
+                try:
+                    shutil.copy2(source, temp_target)
+                    if _file_digest(source) != _file_digest(temp_target):
+                        raise UpdateError(f"Filkontrollen misslyckades: {relative}")
+                    os.replace(temp_target, destination)
+                finally:
+                    temp_target.unlink(missing_ok=True)
                 copied.append(str(relative))
             except OSError as exc:
                 raise UpdateError(
@@ -667,7 +721,9 @@ def install_from_zip(
         backup or "saknas",
     )
 
-    return InstallResult(version=version, files=copied, backup=backup)
+    comparison.files = copied
+    comparison.backup = backup
+    return comparison
 
 
 # ══════════════════════════════════════════════════════════
