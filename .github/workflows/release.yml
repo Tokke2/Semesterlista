@@ -37,3 +37,8 @@ jobs:
         run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/Semesterlista-alla-OS.zip" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Markera färdigt publicerat paket som senaste release
+        if: github.event_name == 'release' && !github.event.release.prerelease
+        run: gh release edit "$RELEASE_TAG" --latest
+        env:
+          GH_TOKEN: ${{ github.token }}

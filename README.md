@@ -108,5 +108,5 @@ Gratis för privat och kommersiell användning. Det oförändrade originalpakete
 
 Under **Hjälp → 💚 Stöd Semesterlista** finns en lokal Swish-QR samt PayPal och Ko-fi. Valfritt belopp, inga betalväggar. Mottagarna kan inte ändras i appens inställningar. QR-koden innehåller mottagarnumret – den är inte kryptering. Betalningen godkänns i betaltjänsten, aldrig i appen. Licensen kan läsas i dialogen.
 
-Tidigare GPL-3.0-utgåvor behåller sina licensrättigheter; de nya villkoren gäller inte retroaktivt. Den tidigare licenstexten finns i `docs/licensing/`. 
+Tidigare GPL-3.0-utgåvor behåller sina licensrättigheter; de nya villkoren gäller inte retroaktivt. Den tidigare licenstexten finns i `docs/licensing/`.
 **Fast appversion: 2.26.0.** Uppdateringskontrollen jämför releasefiler även när versionsnumret är samma. Endast nya eller ändrade programfiler installeras; identiska filer ger inget uppdateringserbjudande. GitHubs releasetaggar identifierar separata byggen, inte ett nytt appversionsnummer.
