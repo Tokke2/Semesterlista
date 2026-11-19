@@ -85,6 +85,15 @@ def clamp_geometry(
     w = max(int(width), int(min_width))
     h = max(int(height), int(min_height))
 
+    # Fit oversized saved windows to the relevant screen, while keeping ordinary
+    # saved geometry intact. This also handles a smaller replacement monitor.
+    selected = max(screens, key=lambda screen: _intersection((int(x), int(y), w, h), screen)[0]
+                   * _intersection((int(x), int(y), w, h), screen)[1])
+    sx, sy, sw, sh = selected
+    if w > sw or h > sh:
+        w, h = min(w, sw), min(h, sh)
+        x = max(sx, min(int(x), sx + sw - w))
+        y = max(sy, min(int(y), sy + sh - h))
     window = (int(x), int(y), w, h)
     for screen in screens:
         visible_w, visible_h = _intersection(window, screen)

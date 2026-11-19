@@ -25,7 +25,7 @@ Under **Fordon → Förarvänligt körblad** fyller du i datum, fordon, förare,
 | <img src="assets/brand/car.svg" width="24" alt=""> **Fordon** | Gör körlistor för dina fordon. |
 | <img src="assets/brand/home.svg" width="24" alt=""> **Hyra** | Håll ordning på månads- och kvartalshyresgäster, utskick och betalstatus. Inga fakturor skapas. |
 
-Välj egna bilder och logotyper för PDF:erna. Kalendern kan visa **1–3 månader per blad**. Appen har ljust, mörkt och högkontrasttema.
+Välj egna bilder och logotyper för PDF:erna. Kalendern kan visa **1–3 månader per blad**. Appen har ljust, mörkt, system- och högkontrasttema med tydligare systemtypsnitt, vektorikoner och skärmanpassad fönsterstorlek.
 
 ## Kom igång
 

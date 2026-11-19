@@ -479,7 +479,7 @@ class SettingsDialogTests(unittest.TestCase):
         dialog._on_update_checked(self._update_info(version="2.9.0", local="2.9.0"), None)
 
         self.assertFalse(dialog.update_install_button.isEnabled())
-        self.assertIn("senaste", dialog.update_status_label.text())
+        self.assertEqual(dialog.update_status_label.text(), self.i18n.t("update.latest", version="2.9.0"))
 
     def test_update_error_is_shown(self) -> None:
         dialog = self.make_dialog(app_version="2.9.0")

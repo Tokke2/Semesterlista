@@ -68,10 +68,10 @@ class ClampGeometryTests(unittest.TestCase):
         _, _, w, h = clamp_geometry(10, 10, 100, 100, [PRIMARY])
         self.assertEqual((w, h), (MIN_WIDTH, MIN_HEIGHT))
 
-    def test_bigger_than_screen_is_anchored(self) -> None:
+    def test_bigger_than_screen_is_resized_to_fit(self) -> None:
         x, y, w, h = clamp_geometry(0, 0, 4000, 3000, [(0, 0, 800, 600)])
         self.assertEqual((x, y), (0, 0))
-        self.assertEqual((w, h), (4000, 3000))
+        self.assertEqual((w, h), (800, 600))
         # Minst det synliga minimumet ryms
         self.assertGreaterEqual(w, MIN_VISIBLE_W)
         self.assertGreaterEqual(h, MIN_VISIBLE_H)

@@ -3357,3 +3357,14 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Identiska programfiler ger inget erbjudande; noll ändringar vid installation
   ger ingen omstartsfråga. Äldre appversioner nekas fortfarande som nedgradering.
 - Nya releasetaggar identifierar byggen, appens versionsnummer förblir oförändrat.
+
+## 61. Sammanhållen desktopdesign (appversion fortsatt 2.26.0)
+- Lokalt systemtypsnitt med Segoe UI/SF Pro/Noto Sans där tillgängligt; minst 11 pt.
+  Ingen fontnedladdning. Textstorlek i punkt för huvudkontroller, DPI-skalning via Qt.
+- Ljust tema med ljusa blågrå ytor och mörk text; mörkt tema med marinblå ytor.
+  Turkos accent, tydliga fokusramar, rundade kontroller och grupperade inställningar.
+- Systemtema och svart/gul högkontrast kvar. Vektorikoner för sök, stöd, startsida,
+  körblad och inställningsflikar, färgsatta efter paletten.
+- Inställningar utnyttjar upp till 880 logiska pixlar; loggknappar radbryts.
+  Sparade fönster större än skärmen krymps till aktuell arbetsyta.
+- PDF-format, appversion, alltid-minimerad/terminalfri start oförändrade.

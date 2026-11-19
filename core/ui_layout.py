@@ -90,7 +90,17 @@ def design_styles(colors):
     arrows = "black" if c["button_fg"].upper() == "#000000" else "white"
     check = "black" if c["tab_selected_fg"].upper() == "#000000" else "white"
     return f'''
-QWidget {{ font-size: 13px; }}
+QMenuBar {{ padding: 4px 8px; }}
+QMenuBar::item {{ padding: 7px 12px; border-radius: 6px; }}
+QMenu {{ padding: 6px; border: 1px solid {c['input_border']}; }}
+QMenu::item {{ padding: 8px 30px 8px 12px; border-radius: 5px; }}
+QMenu::separator {{ height: 1px; background: {c['input_border']}; margin: 6px 10px; }}
+QPlainTextEdit, QTextEdit {{ background: {c['input_bg']}; color: {c['input_fg']}; border: 1px solid {c['input_border']}; border-radius: 8px; padding: 8px; }}
+QPushButton, QToolButton {{ border-radius: 8px; }}
+QPushButton:disabled, QToolButton:disabled {{ background: {c['button_disabled_bg']}; color: {c['button_disabled_fg']}; }}
+QTabWidget::pane {{ border: none; padding-top: 8px; }}
+QTabBar::tab {{ margin-right: 4px; border-radius: 7px; }}
+QTabBar::tab:selected {{ border-bottom: 3px solid {c['accent']}; }}
 QComboBox::down-arrow, QSpinBox::down-arrow {{ image: url("{root}/down-{arrows}.svg"); width: 14px; height: 14px; }}
 QSpinBox::up-arrow {{ image: url("{root}/up-{arrows}.svg"); width: 14px; height: 14px; }}
 QSpinBox, QComboBox {{ padding-right: 28px; }}
@@ -100,10 +110,10 @@ QPushButton, QToolButton {{ min-width: 0px; min-height: 22px; padding: 6px 12px;
 QPushButton[primary="true"] {{ background: {c['accent']}; color: {c['tab_selected_fg']}; }}
 QPushButton:focus, QToolButton:focus, QComboBox:focus, QLineEdit:focus {{ border: 2px solid {c['accent']}; }}
 QTabBar::tab {{ padding: 8px 16px; min-width: 70px; min-height: 22px; border-width: 1px; }}
-QGroupBox {{ border: none; border-top: 1px solid {c['input_border']}; border-radius: 0px; margin-top: 18px; padding-top: 12px; }}
+QGroupBox {{ border: 1px solid {c['input_border']}; border-radius: 10px; margin-top: 20px; padding: 18px 12px 12px 12px; }}
 QGroupBox::title {{ color: {c['window_fg']}; padding: 0px 4px; }}
 QLabel[role="muted"] {{ color: {c['muted']}; background: transparent; }}
-QLabel[role="title"] {{ font-size: 22px; font-weight: bold; }}
+QLabel[role="title"] {{ font-size: 18pt; font-weight: bold; }}
 QLabel[role="row"] {{ padding: 4px 8px; background: {c['input_bg']}; color: {c['input_fg']}; }}
 QComboBox, QLineEdit, QSpinBox, QDateEdit {{ min-height: 24px; padding: 3px 6px; }}
 QAbstractItemView, QComboBox QAbstractItemView, QCalendarWidget QAbstractItemView {{

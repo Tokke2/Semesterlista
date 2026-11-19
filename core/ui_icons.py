@@ -12,10 +12,14 @@ TAB_ICONS = {'kalender': 'calendar', 'lista': 'leave', 'fordon': 'car', 'hyra': 
 EMOJI = {'📅': 'calendar', '🏠': 'home', '🚗': 'car', '🖨': 'pdf', '📁': 'folder',
          '📝': 'edit', '🔄': 'refresh', '✅': 'check', '❌': 'close', '🧪': 'check'}
 KEYS = {
+    'search': ('work.search',),
+    'heart': ('donation.title',),
+    'home': ('work.home',),
+    'car': ('driver.title',),
     'pdf': ('calendar.export', 'lista.button.generate', 'hyra.button.generate'),
     'folder': ('lista.button.browse', 'lista.button.open_documents', 'settings.open_log_folder'),
     'edit': ('lista.manage_list', 'hyra.button.edit', 'vacation.title'),
-    'settings': ('menu.file.settings', 'tray.settings'),
+    'settings': ('menu.file.settings', 'tray.settings', 'work.settings'),
     'refresh': ('hyra.button.reload', 'menu.help.check_updates', 'tray.check_updates',
                 'update.check', 'update.install'),
     'palette': ('season.settings',),

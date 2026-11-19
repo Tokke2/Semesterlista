@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, TYPE_CHECKING
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QPalette, QColor
+from PySide6.QtGui import QPalette, QColor, QFontDatabase
 from PySide6.QtCore import QObject, Signal
 
 if TYPE_CHECKING:
@@ -98,43 +98,43 @@ class ThemeManager(QObject):
 
     LIGHT_COLORS: Dict[str, str] = {
         # ── Knappar – MÖRKA med VIT text ──────────────────
-        "button_bg":           "#3D3D3D",   # Mörkgrå – syns mot ljus bg
+        "button_bg":           "#243D52",   # Mörkgrå – syns mot ljus bg
         "button_fg":           "#FFFFFF",   # Vit – hög kontrast
-        "button_border":       "#222222",   # Nästan svart ram
-        "button_hover_bg":     "#555555",   # Ljusare mörkgrå vid hover
+        "button_border":       "#243D52",   # Nästan svart ram
+        "button_hover_bg":     "#31536D",   # Ljusare mörkgrå vid hover
         "button_hover_border": "#0078D4",   # Blå accent vid hover
-        "button_pressed_bg":   "#2A2A2A",   # Mörkare vid tryck
+        "button_pressed_bg":   "#193044",   # Mörkare vid tryck
         "button_disabled_bg":  "#CCCCCC",   # Grå vid inaktiv
         "button_disabled_fg":  "#888888",   # Mellangrå text
         # ── Tabbar – MÖRKA med VIT text ───────────────────
-        "tab_bg":              "#4A4A4A",   # Mörkgrå – syns mot ljus bg
-        "tab_fg":              "#FFFFFF",   # Vit – hög kontrast
-        "tab_hover_bg":        "#5E5E5E",   # Ljusare mörkgrå vid hover
-        "tab_selected_bg":     "#0078D4",   # Blå accent (aktiv tabb)
+        "tab_bg":              "#E5EDF3",   # Mörkgrå – syns mot ljus bg
+        "tab_fg":              "#243D52",   # Vit – hög kontrast
+        "tab_hover_bg":        "#D5E5ED",   # Ljusare mörkgrå vid hover
+        "tab_selected_bg":     "#086F78",   # Blå accent (aktiv tabb)
         "tab_selected_fg":     "#FFFFFF",   # Vit text på aktiv
-        "tab_border":          "#333333",   # Mörk ram
+        "tab_border":          "#C6D4DE",   # Mörk ram
         # ── Fönster/text ───────────────────────────────────
-        "window_bg":           "#FAFAFA",   # Nästan vit
-        "window_fg":           "#1A1A1A",   # Nästan svart
+        "window_bg":           "#F3F6FA",   # Nästan vit
+        "window_fg":           "#172E43",   # Nästan svart
         # ── Accent ─────────────────────────────────────────
-        "accent":              "#0078D4",   # Blå
+        "accent":              "#086F78",   # Blå
         "accent_hover":        "#1084E8",   # Ljusare blå
         # ── Scrollbar ──────────────────────────────────────
         "scrollbar_bg":        "#D0D0D0",
         "scrollbar_handle":    "#909090",
         # ── Meny ───────────────────────────────────────────
-        "menu_bg":             "#F5F5F5",
+        "menu_bg":             "#FFFFFF",
         "menu_fg":             "#1A1A1A",
-        "menu_hover_bg":       "#0078D4",
+        "menu_hover_bg":       "#086F78",
         "menu_hover_fg":       "#FFFFFF",
         # ── Statusrad ──────────────────────────────────────
-        "statusbar_bg":        "#E8E8E8",
+        "statusbar_bg":        "#E5EDF3",
         "statusbar_fg":        "#333333",
         # ── Inmatningsfält ─────────────────────────────────
         "input_bg":            "#FFFFFF",
         "input_fg":            "#1A1A1A",
-        "input_border":        "#CCCCCC",
-        "input_focus_border":  "#0078D4",
+        "input_border":        "#BBCAD6",
+        "input_focus_border":  "#086F78",
     }
 
     # ──────────────────────────────────────────────────────────
@@ -146,43 +146,43 @@ class ThemeManager(QObject):
 
     DARK_COLORS: Dict[str, str] = {
         # ── Knappar – mörka ytor med ljus text ────────────────
-        "button_bg":           "#30363F",
+        "button_bg":           "#294254",
         "button_fg":           "#FFFFFF",
-        "button_border":       "#687481",
-        "button_hover_bg":     "#414D5A",
+        "button_border":       "#60788C",
+        "button_hover_bg":     "#36586E",
         "button_hover_border": "#0078D4",   # Blå accent vid hover
         "button_pressed_bg":   "#243D52",
         "button_disabled_bg":  "#555555",   # Mörkgrå vid inaktiv
         "button_disabled_fg":  "#BBBBBB",
         # ── Tabbar – mörka ytor med ljus text ─────────────────
-        "tab_bg":              "#30363F",
+        "tab_bg":              "#1B2B3B",
         "tab_fg":              "#FFFFFF",
-        "tab_hover_bg":        "#414D5A",
-        "tab_selected_bg":     "#0078D4",   # Blå accent (aktiv tabb)
+        "tab_hover_bg":        "#294254",
+        "tab_selected_bg":     "#087780",   # Blå accent (aktiv tabb)
         "tab_selected_fg":     "#FFFFFF",   # Vit text på aktiv
-        "tab_border":          "#888888",   # Mellangrå ram
+        "tab_border":          "#435B70",   # Mellangrå ram
         # ── Fönster/text ───────────────────────────────────
-        "window_bg":           "#1A1A1A",   # Mörk
-        "window_fg":           "#E8E8E8",   # Ljus
+        "window_bg":           "#121D2A",   # Mörk
+        "window_fg":           "#E7EEF5",   # Ljus
         # ── Accent ─────────────────────────────────────────
-        "accent":              "#0078D4",   # Blå
+        "accent":              "#087780",   # Blå
         "accent_hover":        "#1084E8",   # Ljusare blå
         # ── Scrollbar ──────────────────────────────────────
         "scrollbar_bg":        "#3A3A3A",
         "scrollbar_handle":    "#6A6A6A",
         # ── Meny ───────────────────────────────────────────
-        "menu_bg":             "#2D2D2D",
-        "menu_fg":             "#E8E8E8",
-        "menu_hover_bg":       "#0078D4",
+        "menu_bg":             "#1B2B3B",
+        "menu_fg":             "#E7EEF5",
+        "menu_hover_bg":       "#087780",
         "menu_hover_fg":       "#FFFFFF",
         # ── Statusrad ──────────────────────────────────────
-        "statusbar_bg":        "#252525",
+        "statusbar_bg":        "#152332",
         "statusbar_fg":        "#CCCCCC",
         # ── Inmatningsfält ─────────────────────────────────
-        "input_bg":            "#2D2D2D",
-        "input_fg":            "#E8E8E8",
-        "input_border":        "#555555",
-        "input_focus_border":  "#0078D4",
+        "input_bg":            "#1B2B3B",
+        "input_fg":            "#E7EEF5",
+        "input_border":        "#506477",
+        "input_focus_border":  "#65D8D0",
     }
 
     # ──────────────────────────────────────────────────────────
@@ -280,6 +280,17 @@ class ThemeManager(QObject):
         if app is None:
             return
 
+        # Native, locally installed UI font: no network fonts or extra dependencies.
+        if not hasattr(self, "_ui_font"):
+            font = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont)
+            families = set(QFontDatabase.families())
+            for family in ("Segoe UI Variable", "Segoe UI", "SF Pro Text", "Noto Sans"):
+                if family in families:
+                    font.setFamily(family)
+                    break
+            font.setPointSizeF(max(11.0, font.pointSizeF()))
+            self._ui_font = font
+        app.setFont(self._ui_font)
         effective = self._get_effective_theme()
 
         if effective in (self.DARK_THEME, "contrast"):
@@ -288,7 +299,7 @@ class ThemeManager(QObject):
             self._apply_light_theme(app)
 
         self._current_colors["muted"] = "#BFC9D5" if self.is_dark() else "#536273"
-        self._current_colors["accent"] = "#005A9E"
+
         if effective == "contrast":
             self._current_colors.update({
                 "window_bg": "#000000", "window_fg": "#FFFFFF", "input_bg": "#000000",
@@ -607,7 +618,7 @@ QPushButton {{
     border-radius: 6px;
     padding: 8px 20px;
     font-weight: bold;
-    font-size: 13px;
+    font-size: 11pt;
     min-height: 32px;
     min-width: 80px;
 }}
@@ -655,7 +666,7 @@ QToolButton {{
     border-radius: 5px;
     padding: 6px 12px;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
     min-height: 28px;
 }}
 
@@ -690,7 +701,7 @@ QTabBar::tab {{
     padding: 10px 22px;
     margin-right: 3px;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
     min-width: 90px;
 }}
 
@@ -805,7 +816,7 @@ QMenu {{
     border-radius: 5px;
     padding: 6px 0;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
 }}
 
 QMenu::item {{
@@ -833,7 +844,7 @@ QMenuBar {{
     color: {c["window_fg"]};
     border-bottom: 1px solid {c["tab_border"]};
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
     padding: 2px;
 }}
 
@@ -862,7 +873,7 @@ QStatusBar {{
     color: {c["statusbar_fg"]};
     border-top: 1px solid {c["tab_border"]};
     padding: 4px 10px;
-    font-size: 11px;
+    font-size: 10pt;
     font-weight: bold;
 }}
 
@@ -875,7 +886,7 @@ QGroupBox {{
     padding-top: 16px;
     font-weight: bold;
     color: {c["window_fg"]};
-    font-size: 12px;
+    font-size: 10pt;
 }}
 
 QGroupBox::title {{
@@ -899,7 +910,7 @@ QComboBox {{
     background-color: {c["input_bg"]};
     color: {c["input_fg"]};
     min-height: 24px;
-    font-size: 12px;
+    font-size: 10pt;
     font-weight: bold;
 }}
 
@@ -941,7 +952,7 @@ QComboBox QAbstractItemView {{
     border: 1px solid {c["tab_border"]};
     border-radius: 3px;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
     padding: 4px;
 }}
 
@@ -963,7 +974,7 @@ QCheckBox {{
     color: {c["window_fg"]};
     spacing: 8px;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10pt;
 }}
 
 QCheckBox::indicator {{
@@ -992,7 +1003,7 @@ QCheckBox::indicator:disabled {{
 
 QLabel {{
     color: {c["window_fg"]};
-    font-size: 12px;
+    font-size: 10pt;
 }}
 
 QLabel[heading="true"] {{
@@ -1023,7 +1034,7 @@ QProgressBar {{
     border-radius: 5px;
     text-align: center;
     font-weight: bold;
-    font-size: 11px;
+    font-size: 10pt;
     height: 22px;
     color: {c["window_fg"]};
     background-color: {c["input_bg"]};
@@ -1050,7 +1061,7 @@ QDialogButtonBox QPushButton {{
     border-radius: 6px;
     padding: 8px 20px;
     font-weight: bold;
-    font-size: 13px;
+    font-size: 11pt;
     min-height: 32px;
     min-width: 80px;
 }}
@@ -1080,7 +1091,7 @@ QMessageBox QPushButton {{
     border-radius: 6px;
     padding: 8px 20px;
     font-weight: bold;
-    font-size: 13px;
+    font-size: 11pt;
     min-height: 32px;
     min-width: 80px;
 }}
@@ -1107,7 +1118,7 @@ QToolTip {{
     border: 1px solid {c["tab_border"]};
     border-radius: 4px;
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: 10pt;
     font-weight: bold;
 }}
 """ + design_styles(c)

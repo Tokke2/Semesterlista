@@ -606,6 +606,7 @@ class MainWindow(QMainWindow):
         self._load_plugin_tabs()
         from core.workbench import StartPage
         self._start_page = StartPage(self)
+        self._start_page.setProperty("semesterlistaIcon", "home")
         self._tab_positions = {pid: index + 1 for pid, index in self._tab_positions.items()}
         self._tab_widget.insertTab(0, self._start_page, i18n.t("work.home"))
         self._tab_widget.setCurrentIndex(0)
@@ -641,7 +642,7 @@ class MainWindow(QMainWindow):
         central     = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(4, 4, 4, 4)
+        main_layout.setContentsMargins(10, 6, 10, 6)
         main_layout.setSpacing(0)
 
         # Compact wordmark; Qt text stays readable in dark/high-contrast themes.

@@ -152,7 +152,7 @@ class SettingsDialog(QDialog):
         screen = self.screen()
         if screen is not None:
             area = screen.availableGeometry()
-            self.resize(min(720, area.width() - 48), min(780, area.height() - 80))
+            self.resize(min(880, area.width() - 48), min(780, area.height() - 80))
 
         logger.debug("Inställningsdialogen skapad")
 
@@ -176,6 +176,12 @@ class SettingsDialog(QDialog):
         self._tabs.addTab(self._scrollable_tab(self._create_plugins_tab()), i18n.t("settings.tab.plugins"))
         self._tabs.addTab(self._scrollable_tab(self._create_advanced_tab()), i18n.t("settings.tab.advanced"))
         self._tabs.addTab(self._scrollable_tab(self._create_updates_tab()), i18n.t("settings.tab.updates"))
+        from core.ui_icons import icon
+        from PySide6.QtGui import QPalette
+        color = self.palette().color(QPalette.ColorRole.WindowText).name()
+        for index, name in enumerate(("palette", "open", "settings", "info", "refresh")):
+            self._tabs.widget(index).setProperty("semesterlistaIcon", name)
+            self._tabs.setTabIcon(index, icon(name, color))
         self._tabs.setUsesScrollButtons(True)
         self._tabs.setDocumentMode(True)
         layout.addWidget(self._tabs, 1)
@@ -388,7 +394,8 @@ class SettingsDialog(QDialog):
         self.log_path_label.setWordWrap(True)
         inner.addWidget(self.log_path_label)
 
-        button_row = QHBoxLayout()
+        from core.ui_layout import FlowLayout
+        button_row = FlowLayout()
         self.open_log_button = QPushButton(i18n.t("settings.open_log_folder"))
         self.open_log_button.clicked.connect(self._open_log_folder)
         self.open_log_button.setEnabled(bool(log_info.get("log_file")))
@@ -417,7 +424,7 @@ class SettingsDialog(QDialog):
         self.error_log_label.setWordWrap(True)
         inner.addWidget(self.error_log_label)
 
-        error_row = QHBoxLayout()
+        error_row = FlowLayout()
         self.open_error_log_button = QPushButton(i18n.t("settings.open_error_log"))
         self.open_error_log_button.clicked.connect(self._open_error_log)
         self.open_error_log_button.setEnabled(bool(log_info.get("error_log")))
