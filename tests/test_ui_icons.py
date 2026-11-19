@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class BrandAssetTests(unittest.TestCase):
     def test_brand_and_all_ui_assets_are_self_contained_svg(self):
         paths = list((ROOT / 'assets' / 'ui').glob('*.svg'))
-        self.assertEqual(len(paths), 18)
+        self.assertEqual(len(paths), 20)
+        self.assertTrue({"search.svg", "heart.svg"}.issubset({p.name for p in paths}))
         paths += list((ROOT / 'assets' / 'brand').glob('*.svg'))
         for path in paths:
             with self.subTest(path=path.name):
