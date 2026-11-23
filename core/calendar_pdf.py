@@ -21,6 +21,9 @@ def export_calendar(path, year, months, per_page, region, settings):
     months = sorted(set(months))
     if not months or any(month not in range(1, 13) for month in months) or per_page not in (1, 2, 3):
         raise ValueError(i18n.t("calendar.select_months"))
+    from core.export_period import validate_period
+    validate_period([(year, month) for month in months])
+    from core.pdf_labels import month_label, weekdays
     pagesize = landscape(A4)
     width = pagesize[0] - 24 * mm - 12
     height = pagesize[1] - 28 * mm - 20
@@ -45,13 +48,13 @@ def export_calendar(path, year, months, per_page, region, settings):
         slot_height = (height - note_height - gap * (len(page_months) - 1)) / len(page_months)
         for index, month in enumerate(page_months):
             header = seasonal_header(month, settings, width)
-            header.append(Paragraph(f"{escape(i18n.month_name(month))} {year}", title))
+            header.append(Paragraph(f"{escape(month_label(month, settings))} {year}", title))
             # Only actual header content consumes space: no empty image slot.
             header_height = sum(flow.wrapOn(measuring, width, height)[1]
                                 + flow.getSpaceBefore() + flow.getSpaceAfter()
                                 for flow in header)
             content.extend(header)
-            data = [[i18n.t("calendar.week")] + list(i18n.weekday_short_names())]
+            data = [[i18n.t("calendar.week")] + list(weekdays(settings))]
             commands = [("GRID", (0, 0), (-1, -1), .35, colors.grey),
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
                         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),

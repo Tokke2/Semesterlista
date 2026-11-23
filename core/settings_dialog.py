@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QLayout,
     QMessageBox,
     QPushButton,
@@ -241,7 +242,27 @@ class SettingsDialog(QDialog):
             self.theme_combo.addItem(i18n.t(f"theme.{theme}.name"), theme)
         form.addRow(i18n.t("settings.theme"), self.theme_combo)
 
-        layout.addWidget(appearance)
+        self.zoom_spin = QSpinBox()
+        self.zoom_spin.setRange(100, 200)
+        self.zoom_spin.setSingleStep(10)
+        self.zoom_spin.setSuffix(" %")
+        form.addRow(i18n.t("display.zoom"), self.zoom_spin)
+        self.density_combo = QComboBox()
+        for key in ("compact", "normal", "spacious"):
+            self.density_combo.addItem(i18n.t(f"display.{key}"), key)
+        form.addRow(i18n.t("display.density"), self.density_combo)
+        self.accent_edit = QLineEdit()
+        self.accent_edit.setPlaceholderText("#086F78")
+        self.accent_edit.setMaxLength(7)
+        form.addRow(i18n.t("display.accent"), self.accent_edit)
+        self.contrast_label = QLabel()
+        self.contrast_label.setWordWrap(True)
+        form.addRow(self.contrast_label)
+        self.accent_edit.textChanged.connect(self._check_accent)
+        from core.ui_layout import AdaptiveColumns
+        columns = AdaptiveColumns()
+        columns.addWidget(appearance)
+        layout.addLayout(columns)
 
         holidays = QGroupBox(i18n.t("settings.group.holidays"))
         holiday_form = QFormLayout(holidays)
@@ -260,9 +281,21 @@ class SettingsDialog(QDialog):
         help_label.setProperty("role", "muted")
         holiday_form.addRow("", help_label)
 
-        layout.addWidget(holidays)
+        columns.addWidget(holidays)
         layout.addStretch()
         return page
+
+    def _check_accent(self):
+        from core.display_options import contrast_ratio
+        value = self.accent_edit.text().strip()
+        try:
+            ratio = contrast_ratio(value or "#086F78")
+            valid = ratio >= 4.5
+            text = i18n.t("display.contrast", ratio=f"{ratio:.2f}")
+        except ValueError:
+            valid, text = False, i18n.t("display.invalid")
+        self.contrast_label.setText(text + ("" if valid else " · " + i18n.t("display.low")))
+        return valid
 
     def _create_window_tab(self) -> QWidget:
         """Fönster och systemfält."""
@@ -762,6 +795,11 @@ class SettingsDialog(QDialog):
         index = self.theme_combo.findData(theme)
         self.theme_combo.setCurrentIndex(index if index >= 0 else 0)
 
+        from core.display_options import text_scale
+        self.zoom_spin.setValue(round(text_scale(get("ui.text_zoom", 100)) * 100))
+        self.density_combo.setCurrentIndex(max(0, self.density_combo.findData(get("ui.density", "normal"))))
+        self.accent_edit.setText(str(get("ui.accent", "") or ""))
+        self._check_accent()
         region = str(get("holiday_region", "sv"))
         index = self.holiday_combo.findData(region)
         self.holiday_combo.setCurrentIndex(index if index >= 0 else 0)
@@ -802,6 +840,11 @@ class SettingsDialog(QDialog):
         Används av ``_save()`` och av testerna.
         """
         manager = self.settings_manager
+        if not self._check_accent():
+            raise ValueError(i18n.t("display.low"))
+        manager.set("ui.text_zoom", self.zoom_spin.value())
+        manager.set("ui.density", self.density_combo.currentData())
+        manager.set("ui.accent", self.accent_edit.text().strip())
 
         language = self.language_combo.currentData()
         theme = self.theme_combo.currentData()
@@ -818,6 +861,8 @@ class SettingsDialog(QDialog):
             if self.theme_manager is not None:
                 try:
                     self.theme_manager.set_theme(str(theme))
+                    if hasattr(self.theme_manager, "refresh"):
+                        self.theme_manager.refresh()
                 except Exception as exc:  # pragma: no cover – defensivt
                     logger.warning(f"Kunde inte byta tema: {exc}")
             manager.set("theme", theme)

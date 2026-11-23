@@ -175,6 +175,9 @@ class CalendarView(QWidget):
         if not months:
             QMessageBox.information(self, i18n.t("calendar.title"), i18n.t("calendar.select_months"))
             return
+        from core.export_period import confirm_period
+        if not confirm_period([(self.year.value(), month) for month in months], self):
+            return
         try:
             target = Path(get_export_folder("Kalender")) / f"kalender_{self.year.value()}.pdf"
             filename = render_to_archive(target, lambda temporary: export_calendar(

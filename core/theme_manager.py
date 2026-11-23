@@ -40,12 +40,13 @@ copyright Rickard Längkvist 2025 – dynamiskt år
 from __future__ import annotations
 
 import platform
+import re
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional, Tuple, TYPE_CHECKING
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QPalette, QColor, QFontDatabase
+from PySide6.QtGui import QPalette, QColor, QFontDatabase, QFont
 from PySide6.QtCore import QObject, Signal
 
 if TYPE_CHECKING:
@@ -290,7 +291,11 @@ class ThemeManager(QObject):
                     break
             font.setPointSizeF(max(11.0, font.pointSizeF()))
             self._ui_font = font
-        app.setFont(self._ui_font)
+        from core.display_options import text_scale
+        zoom = text_scale(self._settings_manager.get("ui.text_zoom", 100))
+        font = QFont(self._ui_font)
+        font.setPointSizeF(self._ui_font.pointSizeF() * zoom)
+        app.setFont(font)
         effective = self._get_effective_theme()
 
         if effective in (self.DARK_THEME, "contrast"):
@@ -317,11 +322,29 @@ class ThemeManager(QObject):
             palette.setColor(QPalette.ColorRole.Highlight, QColor("#FFFF00"))
             palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#000000"))
             app.setPalette(palette)
+        from core.display_options import contrast_ratio
+        custom = self._settings_manager.get("ui.accent", "")
+        if custom and effective != "contrast":
+            try:
+                if contrast_ratio(custom) >= 4.5:
+                    for key in ("accent", "tab_selected_bg", "menu_hover_bg", "input_focus_border"):
+                        self._current_colors[key] = custom
+                    palette = app.palette()
+                    palette.setColor(QPalette.ColorRole.Highlight, QColor(custom))
+                    app.setPalette(palette)
+            except (ValueError, TypeError):
+                pass
         app.setStyle("Fusion")
 
         # Applicera alltid komplett stylesheet –
         # säkerställer att knappar/tabbar är korrekt inverterade
-        app.setStyleSheet(self.get_button_tab_stylesheet())
+        stylesheet = self.get_button_tab_stylesheet()
+        stylesheet = re.sub(r"font-size:\s*([0-9.]+)(pt|px)",
+                            lambda m: f"font-size: {float(m[1]) * zoom:g}{m[2]}", stylesheet)
+        density = self._settings_manager.get("ui.density", "normal")
+        padding = {"compact": 3, "normal": 6, "spacious": 10}.get(density, 6)
+        stylesheet += f"QPushButton, QToolButton, QTabBar::tab {{ padding: {padding}px 12px; }}"
+        app.setStyleSheet(stylesheet)
 
     def _get_effective_theme(self) -> str:
         """Returnera effektivt tema (dark/light). Löser upp system→OS."""

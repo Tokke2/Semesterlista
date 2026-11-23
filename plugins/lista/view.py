@@ -848,6 +848,10 @@ class SemesterlistaView(QWidget):
         self.plugin.settings["start_month"] = start_index
         self.plugin._save_settings()
 
+        from core.export_period import confirm_period
+        sequence = PDFGenerator._build_month_sequence(int(year_str), start_month)
+        if not confirm_period(sequence, self):
+            return
         generator = PDFGenerator(self.plugin)
         success = generator.generate(
             year_str=year_str,

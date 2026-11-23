@@ -21,6 +21,19 @@ class SeasonalOptions(QWidget):
         self.monochrome.setChecked(bool(settings.get("pdf_monochrome", False)))
         form.addRow(self.enabled)
         form.addRow(self.monochrome)
+        self.bilingual = QCheckBox(i18n.t("export.bilingual"))
+        self.bilingual.setChecked(bool(settings.get("pdf_bilingual", False)))
+        form.addRow(self.bilingual)
+        self.bilingual.toggled.connect(lambda *_: self.changed.emit())
+        self.layout_combos = {}
+        for key in ("winter", "spring", "summer", "autumn"):
+            combo = QComboBox()
+            for style in ("auto", "band", "line", "frame", "split"):
+                combo.addItem(i18n.t(f"season.layout.{style}"), style)
+            combo.setCurrentIndex(max(0, combo.findData(settings.get("season_layouts", {}).get(key, "auto"))))
+            combo.currentIndexChanged.connect(lambda *_: self.changed.emit())
+            self.layout_combos[key] = combo
+            form.addRow(i18n.t(f"season.{key}") + " · " + i18n.t("season.layout"), combo)
         self.folder = str(settings.get("season_image_folder", ""))
         self.folder_label = QLabel(self.folder or i18n.t("season.no_folder"))
         self.folder_label.setWordWrap(True)
@@ -79,7 +92,9 @@ class SeasonalOptions(QWidget):
             self.changed.emit()
 
     def values(self):
-        return {"seasonal_pdf": self.enabled.isChecked(), "pdf_monochrome": self.monochrome.isChecked(),
+        return {"pdf_bilingual": self.bilingual.isChecked(),
+                "season_layouts": {key: combo.currentData() for key, combo in self.layout_combos.items()},
+                "seasonal_pdf": self.enabled.isChecked(), "pdf_monochrome": self.monochrome.isChecked(),
                 "season_image_folder": self.folder,
                 "season_images": {key: combo.currentData() or "" for key, combo in self.combos.items()}}
 

@@ -10,6 +10,10 @@
   <a href="https://github.com/Tokke2/Semesterlista/issues">Rapportera ett problem</a>
 </p>
 
+## Skärm och säsongsutskrifter
+
+Under **Inställningar → Allmänt** finns textzoom 100–200 %, kontrolltäthet och egen accent med kontrastkontroll. Grupperna växlar mellan en och två kolumner. Håll **Alt** för genvägshjälp. Under modulens **PDF-utseende** finns tvåspråkiga rubriker och separat rubriklayout per årstid. Exportperiod och skottdag visas före export av kalender/semester/fordon.
+
 ## Ny överblick och snabbare arbete
 
 **Startsida** visar listantal och registrerad semester kommande 30 dagar. **Ctrl+K** söker i aktiva listor och öppnar rätt modul med postens uppgifter, eller går till en funktion. Inga listdata skickas till en söktjänst.

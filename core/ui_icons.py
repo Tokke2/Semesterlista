@@ -136,4 +136,7 @@ def install_ui_icons(app):
         controller = IconController(app)
         app._semesterlista_icon_controller = controller
         app.installEventFilter(controller)
+        from core.shortcut_hints import ShortcutHints
+        app._semesterlista_shortcut_hints = ShortcutHints(app)
+        app.installEventFilter(app._semesterlista_shortcut_hints)
     return controller

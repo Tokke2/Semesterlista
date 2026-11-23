@@ -32,14 +32,33 @@ def seasonal_header(month, settings, width):
     if not settings.get("seasonal_pdf", False):
         return []
     key = season(month)
-    band = Table([[i18n.t(f"season.{key}")]], colWidths=[width])
-    band.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(SEASON_COLORS[key])),
-        ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
-        ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-    ]))
+    label = i18n.t(f"season.{key}")
+    if settings.get("pdf_bilingual", False):
+        label = i18n.TRANSLATIONS['sv'][f'season.{key}'] + ' / ' + i18n.TRANSLATIONS['en'][f'season.{key}']
+    style = settings.get("season_layouts", {}).get(key, "auto")
+    if style == "auto":
+        style = {"winter": "frame", "spring": "line", "summer": "band", "autumn": "split"}[key]
+    background = colors.HexColor(SEASON_COLORS[key])
+    if style == "split":
+        band = Table([[label, ""]], colWidths=[width * .42, width * .58])
+    else:
+        band = Table([[label]], colWidths=[width])
+    commands = [("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]
+    if style == "line":
+        commands += [("LINEBELOW", (0, 0), (-1, -1), 3, background)]
+    elif style == "frame":
+        commands += [("BOX", (0, 0), (-1, -1), 2, background),
+                     ("ALIGN", (0, 0), (-1, -1), "CENTER")]
+    elif style == "split":
+        commands += [("BACKGROUND", (0, 0), (0, 0), background),
+                     ("LINEBELOW", (1, 0), (1, 0), 2, background)]
+    else:
+        commands += [("BACKGROUND", (0, 0), (-1, -1), background)]
+    band.setStyle(TableStyle(commands))
     result = [band, Spacer(1, 3)]
     path = str(settings.get("season_images", {}).get(key, ""))
     if path:

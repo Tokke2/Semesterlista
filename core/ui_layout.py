@@ -130,3 +130,61 @@ QScrollArea {{ border: none; }}
 QScrollBar:vertical {{ width: 14px; }}
 QCheckBox, QRadioButton {{ spacing: 7px; padding: 3px 0; }}
 '''
+
+
+class AdaptiveColumns(QLayout):
+    """Two equal columns when both fit their minimum width, one column otherwise."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items = []
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSpacing(16)
+
+    def addItem(self, item):
+        self.items.append(item)
+
+    def addWidget(self, widget):
+        self.addChildWidget(widget)
+        self.addItem(QWidgetItem(widget))
+
+    def count(self):
+        return len(self.items)
+
+    def itemAt(self, index):
+        return self.items[index] if 0 <= index < len(self.items) else None
+
+    def takeAt(self, index):
+        return self.items.pop(index) if 0 <= index < len(self.items) else None
+
+    def hasHeightForWidth(self):
+        return True
+
+    def minimumSize(self):
+        return QSize(max((i.minimumSize().width() for i in self.items), default=0), 0)
+
+    def sizeHint(self):
+        return QSize(760, self.heightForWidth(760))
+
+    def columns(self, width):
+        minimum = max(340, self.minimumSize().width())
+        return 2 if width >= minimum * 2 + self.spacing() else 1
+
+    def heightForWidth(self, width):
+        return self._arrange(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._arrange(rect, False)
+
+    def _arrange(self, rect, measure):
+        columns = self.columns(rect.width())
+        width = max(1, (rect.width() - self.spacing() * (columns - 1)) // columns)
+        y = rect.y()
+        for start in range(0, len(self.items), columns):
+            row = self.items[start:start + columns]
+            height = max((i.heightForWidth(width) if i.hasHeightForWidth() else i.sizeHint().height()) for i in row)
+            for column, item in enumerate(row):
+                if not measure:
+                    item.setGeometry(QRect(rect.x() + column * (width + self.spacing()), y, width, height))
+            y += height + self.spacing()
+        return max(0, y - rect.y() - self.spacing())

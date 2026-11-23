@@ -3377,3 +3377,19 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Tester begär ikoner vid 100/125/150/200/300 % DPI samt 192 px.
 - 25 nya produktidéer är dokumenterade i FORSLAG.md, inte verifierad marknadsdata.
 - Tidigare breddanpassning, radbrytande kontroller och temalägen behålls.
+
+## 63. Valda förbättringar 1/3/4/5/6/19/22 och årstidsrubriker (2.26.0)
+- Allmänt-flikens grupper växlar en/två kolumner efter tillgänglig bredd.
+- Textzoom 100–200 %, kompakt/normal/rymlig kontrolltäthet, sparat i ui.*.
+  Påverkar inte PDF-format eller PDF-textstorlekar. Egen accent #RRGGBB med
+  WCAG-luminanskontroll mot vit text, minst 4,5:1. Högkontrast ignorerar egen accent.
+- Håll Alt: visar registrerade genvägar för aktivt fönster i en hjälpruta.
+  Ingen ny tangentbinding skapas och normal menynavigering blockeras inte.
+- Exportperiod valideras före PDF-skrivning, årsskifte och skottdag visas i
+  kontrollfråga för Kalender/Semesterlista/Fordon. Backend validerar även direktanrop.
+- Valbara SV/EN-rubriker i kalender/semester/fordon; inte hela PDF-innehållet.
+- Fyra säsongsrubriklayouter (band/linje/ram/delad), automatiskt vinter=ram,
+  vår=linje, sommar=band, höst=delad, eller eget val per säsong. Säsongsfärger
+  och lokala bilder kvar. Detta ändrar rubrikområdet, inte tabellernas A4-regler.
+- Punkt 1 är införd i Allmänt-fliken, inte ännu alla modulvyer. Punkt 6 är en
+  samlad genvägsruta, inte individuella etiketter vid varje kontroll.

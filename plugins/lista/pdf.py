@@ -569,6 +569,9 @@ class PDFGenerator(ListReader):
         leave_calendar = leave if leave is not None else self._leave_calendar
         documents_path = get_export_folder("Semesterlista" if mode == "Semesterlista" else "Fordon")
         month_sequence = self._build_month_sequence(year, start_month)
+        from core.export_period import validate_period
+        from core.pdf_labels import month_label
+        validate_period(month_sequence)
         range_label = self._format_range_label(month_sequence)
         filename = self._build_output_filename(documents_path, mode, month_sequence)
 
@@ -578,6 +581,10 @@ class PDFGenerator(ListReader):
         else:
             title_prefix = "Limokörningsschema"
             header = "Fordon"
+
+        if self.plugin.settings.get("pdf_bilingual", False):
+            title_prefix += " / " + ("Vacation schedule" if mode == "Semesterlista" else "Vehicle schedule")
+            header += " / " + ("Employee" if mode == "Semesterlista" else "Vehicle")
 
         # Automatisk A4-orientering, oberoende av gamla sparade layoutval.
         orientation = ORIENTATION_PORTRAIT if months_per_page == 1 else ORIENTATION_LANDSCAPE
@@ -718,7 +725,7 @@ class PDFGenerator(ListReader):
                     for day_num in range(1, days_in_month + 1)
                 ]
 
-                header_row1 = [f"{i18n.month_name(month_num)} {month_year}"] + week_numbers
+                header_row1 = [f"{month_label(month_num, self.plugin.settings, compact=True)} {month_year}"] + week_numbers
                 header_row2 = [header] + list(map(str, range(1, days_in_month + 1)))
                 header_row3 = [""] + day_texts
                 table_data = [header_row1, header_row2, header_row3]
