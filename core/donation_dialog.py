@@ -36,8 +36,9 @@ class DonationDialog(QDialog):
         hero.setStyleSheet("#donationHero {background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #143958,stop:1 #087e86); border-radius:18px;} #donationHero QLabel {color:white;background:transparent;}")
         header = QVBoxLayout(hero)
         header.setContentsMargins(24, 24, 24, 24)
-        icon = QLabel()
-        icon.setPixmap(app_icon().pixmap(64, 64))
+        from core.vector_graphics import VectorMark
+        from core.app_icon import ICON_SVG
+        icon = VectorMark(ICON_SVG, 64)
         header.addWidget(icon, alignment=Qt.AlignmentFlag.AlignHCenter)
         title = QLabel(i18n.t("donation.title"))
         title.setStyleSheet("font-size:24px;font-weight:700;")

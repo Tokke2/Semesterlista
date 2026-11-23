@@ -3368,3 +3368,12 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 - Inställningar utnyttjar upp till 880 logiska pixlar; loggknappar radbryts.
   Sparade fönster större än skärmen krymps till aktuell arbetsyta.
 - PDF-format, appversion, alltid-minimerad/terminalfri start oförändrade.
+
+## 62. Skarpare vektorgrafik vid hög DPI (2.26.0 oförändrad)
+- Meny-/kontrollikoner använder en SVG-baserad QIconEngine som renderar i begärd
+  upplösning i stället för att skala upp förgenererade 16–64 px-bilder.
+- Appmärket i huvudfönstret och donationsdialogen ritas direkt som SVG på Qt:s
+  DPI-anpassade rityta. Ommålning följer aktuell skärm; inga lågupplösta pixmaps.
+- Tester begär ikoner vid 100/125/150/200/300 % DPI samt 192 px.
+- 25 nya produktidéer är dokumenterade i FORSLAG.md, inte verifierad marknadsdata.
+- Tidigare breddanpassning, radbrytande kontroller och temalägen behålls.

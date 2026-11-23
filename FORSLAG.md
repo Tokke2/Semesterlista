@@ -1,3 +1,34 @@
+## 25 nya förslag – skärm, tillgänglighet och arbetsflöden
+
+Detta är produktförslag, inte verifierade påståenden om konkurrenters utbud eller
+uppmätt användarefterfrågan. De är inte implementerade om inget annat anges.
+
+1. Automatisk en-/tvåkolumnslayout efter fönstrets bredd, inte bara skärmens upplösning.
+2. Separata arbetsytor för laptop, extern skärm och dockning.
+3. Textzoom 100–200 % utan att förstora alla bilder eller ändra PDF-format.
+4. Valbar kompakt, normal och rymlig kontrolltäthet.
+5. Förhandskontroll av kontrast vid egna temafärger.
+6. Synliga tangentbordsgenvägar när Alt hålls nere.
+7. Skärmläsarbeskrivningar för kalenderceller: datum, helgdag och semesterstatus.
+8. Presentationsläge som döljer personuppgifter vid skärmdelning.
+9. Manuellt integritetslås när datorn lämnas, utan att radera pågående arbete.
+10. Supportbild där användaren kan maskera känsliga fält före export.
+11. Sparade utkast till körblad så uppgifterna inte försvinner när dialogen stängs.
+12. Valbara körbladsmallar för upphämtning, transfer och heldagskörning.
+13. Separat förarkopia där interna anteckningar kan utelämnas.
+14. Varning för tvetydiga klockslag vid övergång till sommar-/vintertid.
+15. Lokal adressbok för ofta använda hämt- och destinationsadresser.
+16. Automatiska datumundantag på helgdagar för återkommande körningar.
+17. Förhandsvisning av hur semesterperioder justeras till veckoregler innan sparning.
+18. Klämdagsöversikt utan att automatiskt registrera semester.
+19. Kontroller för årsskifte och skottår innan ett helt års plan exporteras.
+20. Lokala påminnelser inför kvartalsutskick, utan att påstå att betalning är mottagen.
+21. Enkel utskicksjournal med användarbekräftat datum och anteckning, inga fakturor.
+22. Tvåspråkiga svenska/engelska rubriker i valda PDF-underlag.
+23. Kontextbaserad offlinehjälp direkt vid den funktion användaren arbetar med.
+24. Ladda tunga moduler först när de öppnas för snabbare start på äldre datorer.
+25. Förhandsvisning av uppdateringens filskillnader och varning för egna kodändringar.
+
 ## Genomfört v2.14.0 – valda punkter 1 och 2
 
 - Kalenderbaserat datumval för semester, alltid måndag som veckostart.

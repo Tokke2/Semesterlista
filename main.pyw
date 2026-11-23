@@ -649,8 +649,9 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QHBoxLayout
         brand = QHBoxLayout()
         brand.setContentsMargins(12, 8, 12, 8)
-        mark = QLabel()
-        mark.setPixmap(app_icon().pixmap(28, 28))
+        from core.vector_graphics import VectorMark
+        from core.app_icon import ICON_SVG
+        mark = VectorMark(ICON_SVG, 28)
         mark.setAccessibleName("Semesterlista")
         wordmark = QLabel(self._app_name())
         wordmark.setProperty("role", "title")

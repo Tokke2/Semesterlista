@@ -36,3 +36,23 @@ class DesignTests(unittest.TestCase):
         for name in ('search', 'heart', 'home', 'car'):
             for color in ('#172e43', '#ffffff'):
                 self.assertFalse(icon(name, color).pixmap(24, 24).isNull())
+
+    def test_vector_icons_render_at_fractional_and_high_dpi(self):
+        from PySide6.QtCore import QSize
+        from core.ui_icons import icon
+        for ratio in (1.0, 1.25, 1.5, 2.0, 3.0):
+            image = icon('search', '#172e43').pixmap(QSize(32, 32), ratio)
+            self.assertFalse(image.isNull())
+            self.assertGreaterEqual(image.width(), round(32 * ratio))
+            self.assertAlmostEqual(image.devicePixelRatio(), ratio, places=2)
+        # Beyond the previous maximum 64px raster bucket: still native rendering.
+        image = icon('heart', '#ffffff').pixmap(192, 192)
+        self.assertEqual(image.width(), 192)
+
+    def test_app_marks_are_painted_from_vector_not_scaled_bitmaps(self):
+        from core.vector_graphics import VectorMark
+        from core.app_icon import ICON_SVG
+        widget = VectorMark(ICON_SVG, 64)
+        self.addCleanup(widget.deleteLater)
+        self.assertTrue(widget.renderer.isValid())
+        self.assertFalse(widget.grab().isNull())

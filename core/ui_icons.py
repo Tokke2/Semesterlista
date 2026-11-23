@@ -1,9 +1,9 @@
 """Shared, palette-aware SVG icons for controls, tabs and menus (no emoji fonts)."""
 from functools import lru_cache
 from pathlib import Path
-from PySide6.QtCore import QByteArray, QEvent, QObject, Qt
-from PySide6.QtGui import QIcon, QPainter, QPixmap, QPalette, QAction
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import QEvent, QObject
+from PySide6.QtGui import QIcon, QPalette, QAction
+from core.vector_graphics import VectorIconEngine
 from PySide6.QtWidgets import QApplication, QPushButton, QToolButton, QTabWidget, QWidget
 from core import i18n
 
@@ -65,16 +65,7 @@ def icon(name, color):
     if not path.is_file():
         return QIcon()
     source = path.read_text(encoding='utf-8').replace('#16324f', color)
-    renderer = QSvgRenderer(QByteArray(source.encode('utf-8')))
-    result = QIcon()
-    for size in (16, 20, 24, 32, 48, 64):
-        pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        result.addPixmap(pixmap)
-    return result
+    return QIcon(VectorIconEngine(source.encode('utf-8')))
 
 
 class IconController(QObject):
