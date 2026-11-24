@@ -1,7 +1,7 @@
 """Shared local image / seasonal print settings for the three PDF types."""
 from pathlib import Path
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Signal, Qt, QSize, QEvent
+from PySide6.QtGui import QPixmap, QImageReader
 from PySide6.QtWidgets import QWidget, QFormLayout, QCheckBox, QComboBox, QPushButton, QFileDialog, QLabel
 from core import i18n
 from core.seasonal_pdf import image_files
@@ -61,13 +61,42 @@ class SeasonalOptions(QWidget):
 
     def _preview(self, combo):
         path = combo.currentData() or ""
-        picture = QPixmap(path) if path else QPixmap()
+        self._preview_path = path
+        self._render_preview()
+        self.changed.emit()
+
+    def _render_preview(self):
+        path = getattr(self, '_preview_path', '')
+        picture = QPixmap()
+        if path:
+            # Decode a thumbnail, not a full camera photo. Keep physical pixels
+            # for the current monitor so a 200% display is not enlarged from 1x.
+            ratio = self.devicePixelRatioF()
+            reader = QImageReader(path)
+            reader.setAutoTransform(True)
+            size = reader.size()
+            if size.isValid():
+                target = QSize(round(320 * ratio), round(100 * ratio))
+                # Square decode envelope also accommodates EXIF rotation.
+                size.scale(QSize(max(target.width(), target.height()),
+                                 max(target.width(), target.height())),
+                           Qt.AspectRatioMode.KeepAspectRatio)
+                reader.setScaledSize(size)
+                image = reader.read()
+                if not image.isNull():
+                    picture = QPixmap.fromImage(image).scaled(
+                        target, Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation)
+                    picture.setDevicePixelRatio(ratio)
         if picture.isNull():
             self.preview.setText(i18n.t("season.no_image"))
         else:
-            self.preview.setPixmap(picture.scaled(320, 100, Qt.AspectRatioMode.KeepAspectRatio,
-                                                  Qt.TransformationMode.SmoothTransformation))
-        self.changed.emit()
+            self.preview.setPixmap(picture)
+
+    def event(self, event):
+        if event.type() == QEvent.Type.DevicePixelRatioChange and hasattr(self, 'preview'):
+            self._render_preview()
+        return super().event(event)
 
     def _fill(self):
         files = image_files(self.folder)

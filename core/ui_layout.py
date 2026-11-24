@@ -63,6 +63,8 @@ class FlowLayout(QLayout):
                 continue
             size = item.sizeHint()
             width = min(size.width(), max(rect.width(), item.minimumSize().width()))
+            if item.hasHeightForWidth():
+                size.setHeight(max(item.minimumSize().height(), item.heightForWidth(width)))
             if x > rect.x() and x + width > rect.right() + 1:
                 x = rect.x()
                 y += height + self.spacing()
@@ -180,8 +182,9 @@ class AdaptiveColumns(QLayout):
         columns = self.columns(rect.width())
         width = max(1, (rect.width() - self.spacing() * (columns - 1)) // columns)
         y = rect.y()
-        for start in range(0, len(self.items), columns):
-            row = self.items[start:start + columns]
+        visible = [item for item in self.items if not item.isEmpty()]
+        for start in range(0, len(visible), columns):
+            row = visible[start:start + columns]
             height = max((i.heightForWidth(width) if i.hasHeightForWidth() else i.sizeHint().height()) for i in row)
             for column, item in enumerate(row):
                 if not measure:

@@ -3393,3 +3393,7 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
   och lokala bilder kvar. Detta ändrar rubrikområdet, inte tabellernas A4-regler.
 - Punkt 1 är införd i Allmänt-fliken, inte ännu alla modulvyer. Punkt 6 är en
   samlad genvägsruta, inte individuella etiketter vid varje kontroll.
+
+
+## 64. DPI och resursarbete
+Säsongsbilders förhandsvisning använder QImageReader med begärd avkodningsstorlek och aktuell device pixel ratio; bildformatets decoder avgör faktisk minnesbesparing. Byte av DPI renderar om. Ikondekorering går inte längre rekursivt genom hela widgetträdet vid varje layoutsignal. FlowLayout respekterar heightForWidth; AdaptiveColumns utelämnar dolda objekt. Ingen uppmätt generell batteri- eller hastighetsgaranti. FORSLAG-NYA.md innehåller 25 nya, ej implementerade hypoteser. Appversion fortsatt 2.26.0.

@@ -119,8 +119,8 @@ class IconController(QObject):
         try:
             self.decorate(obj)
             if isinstance(obj, QWidget):
-                for child in obj.findChildren(QWidget):
-                    self.decorate(child)
+                # Descendants receive their own polish/palette events. Walking
+                # whole subtrees on every layout request costs quadratic work.
                 for action in obj.actions():
                     self.decorate(action)
             if kind in (QEvent.Type.ActionAdded, QEvent.Type.ActionChanged):

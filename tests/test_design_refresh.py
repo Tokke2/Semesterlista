@@ -56,3 +56,34 @@ class DesignTests(unittest.TestCase):
         self.addCleanup(widget.deleteLater)
         self.assertTrue(widget.renderer.isValid())
         self.assertFalse(widget.grab().isNull())
+
+    def test_season_preview_uses_device_pixels(self):
+        import tempfile
+        from pathlib import Path
+        from PySide6.QtGui import QImage, QColor
+        from core.seasonal_options import SeasonalOptions
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / 'large.png')
+            image = QImage(2400, 1200, QImage.Format.Format_RGB32)
+            image.fill(QColor('green'))
+            image.save(path)
+            widget = SeasonalOptions({'season_images': {'winter': path}})
+            self.addCleanup(widget.deleteLater)
+            picture = widget.preview.pixmap()
+            self.assertFalse(picture.isNull())
+            self.assertAlmostEqual(picture.devicePixelRatio(), widget.devicePixelRatioF())
+            self.assertLessEqual(picture.width(), round(320 * widget.devicePixelRatioF()))
+            self.assertLessEqual(picture.height(), round(100 * widget.devicePixelRatioF()))
+
+    def test_hidden_adaptive_group_occupies_no_row(self):
+        from core.ui_layout import AdaptiveColumns
+        from PySide6.QtWidgets import QWidget, QLabel
+        parent = QWidget()
+        self.addCleanup(parent.deleteLater)
+        layout = AdaptiveColumns(parent)
+        first, second = QLabel('First'), QLabel('Second')
+        layout.addWidget(first)
+        layout.addWidget(second)
+        before = layout.heightForWidth(400)
+        second.hide()
+        self.assertLess(layout.heightForWidth(400), before)
