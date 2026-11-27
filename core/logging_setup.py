@@ -140,6 +140,30 @@ def get_error_log_file() -> Optional[Path]:
 # Dagarkivering
 # ══════════════════════════════════════════════════════════
 
+def prune_archived_logs(log_file: Union[str, Path], today: Optional[date] = None) -> int:
+    """Delete only this app log's dated archives after seven days, never fel.log."""
+    path = Path(log_file)
+    if path.name == DEFAULT_ERROR_LOG_FILE:
+        return 0
+    current = today or date.today()
+    removed = 0
+    folder = path.parent / ARCHIVE_SUBDIR
+    if not folder.is_dir():
+        return 0
+    for candidate in folder.glob(f"{path.stem}-????-??-??.log"):
+        if candidate.is_symlink() or not candidate.is_file():
+            continue
+        try:
+            day = date.fromisoformat(candidate.name[len(path.stem) + 1:-4])
+            if (current - day).days >= 7:
+                candidate.unlink()
+                removed += 1
+        except (ValueError, OSError):
+            # Never break application logging because cleanup is unavailable.
+            continue
+    return removed
+
+
 def archive_previous_days(
     log_file: Union[str, Path],
     today: Optional[date] = None,
@@ -160,6 +184,7 @@ def archive_previous_days(
         Sökvägen till arkivfilen, eller None om inget arkiverades.
     """
     path = Path(log_file)
+    prune_archived_logs(path, today)
     if not path.is_file():
         return None
 
@@ -188,6 +213,7 @@ def archive_previous_days(
     logging.getLogger("core.logging_setup").info(
         f"Loggen för {stamp.isoformat()} arkiverad: {target.name}"
     )
+    prune_archived_logs(path, today)
     return target
 
 

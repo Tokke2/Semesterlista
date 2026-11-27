@@ -3397,3 +3397,7 @@ början som visas även när datumet är helgdag; ingen bankdagsjustering görs.
 
 ## 64. DPI och resursarbete
 Säsongsbilders förhandsvisning använder QImageReader med begärd avkodningsstorlek och aktuell device pixel ratio; bildformatets decoder avgör faktisk minnesbesparing. Byte av DPI renderar om. Ikondekorering går inte längre rekursivt genom hela widgetträdet vid varje layoutsignal. FlowLayout respekterar heightForWidth; AdaptiveColumns utelämnar dolda objekt. Ingen uppmätt generell batteri- eller hastighetsgaranti. FORSLAG-NYA.md innehåller 25 nya, ej implementerade hypoteser. Appversion fortsatt 2.26.0.
+
+
+## 65. Bestående regler och loggretention
+AGENTS.md samlar användarens regler och kvarstående krav; docs/conversation-state.md håller manuell meddelanderäknare och idéhistorik. Arkiverade daterade apploggar tas bort vid sju dagars ålder vid start/dagrotation. Aktiva fel och andra filnamn skyddas. Standardbranchbyte nekades av GitHub (403); inga brancher raderades. Automatisk midnattsuppdatering, uppdateringsbackup efter hälsokontroll och fullständig UI-ombyggnad är inte levererade i denna del.
